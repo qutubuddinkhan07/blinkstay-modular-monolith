@@ -1,0 +1,76 @@
+# ===============================
+# 🔹 Backend (Spring Boot)
+# ===============================
+
+# Build folders
+backend/target/
+backend/build/
+backend/out/
+
+# Logs
+backend/*.log
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Application secrets - can be removed but here I needed it
+# backend/src/main/resources/application-dev.properties
+
+# Maven Wrapper Jar (optional)
+backend/.mvn/wrapper/maven-wrapper.jar
+
+# STS / Eclipse
+backend/.apt_generated
+backend/.classpath
+backend/.factorypath
+backend/.project
+backend/.settings/
+backend/.springBeans
+backend/.sts4-cache
+
+# IntelliJ
+backend/.idea/
+backend/*.iml
+backend/*.ipr
+backend/*.iws
+
+# VS Code
+.vscode/
+
+# NetBeans
+backend/nbproject/private/
+backend/nbbuild/
+backend/dist/
+backend/nbdist/
+backend/.nb-gradle/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# ===============================
+# 🔹 Frontend (React / Vite)
+# ===============================
+
+# Dependencies
+frontend/node_modules/
+
+# Production builds
+frontend/dist/
+frontend/build/
+
+# Vite cache
+frontend/.vite/
+
+# Logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+
+# ===============================
+# 🔹 Common
+# ===============================
+.idea
+HELP.md
