@@ -10,7 +10,7 @@ left to right direction
 
 actor "Customer" as User
 
-rectangle "Blinkstay" {
+rectangle "Blinkstay System" {
     ' top to bottom direction
     usecase "View Listings" as UC1
     usecase "View Listing Details" as UC2
@@ -34,3 +34,38 @@ UC3 --> UC4 : require payment
 
 @enduml
 
+@startuml OverallDesign
+
+left to right direction
+
+actor "Customer" as customer
+actor "Hotel Manager" as manager
+actor "Admin" as admin
+
+package "Blinkstay System" {
+    usecase "View Listing" as UC_View
+    usecase "Booking" as UC_Book
+    usecase "Review" as UC_Review
+    
+    usecase "Manage Listing" as UC_ManageListing
+    usecase "Manage Booking" as UC_ManageBooking
+    usecase "Manage Reviews" as UC_ManageReviews
+    
+    usecase "Manage Users & Platform" as UC_AdminPlatform
+}
+
+' Customer Interactions
+customer --> UC_View
+customer --> UC_Book
+customer --> UC_Review
+
+' Hotel Manager Interactions
+manager --> UC_ManageListing
+
+' Admin Interactions
+admin --> UC_AdminPlatform
+admin --> UC_ManageListing
+admin --> UC_ManageBooking
+admin --> UC_ManageReviews
+
+@enduml
