@@ -1,0 +1,86 @@
+@startuml SystemClassDiagram
+
+class User {
+    - id: Long
+    - name: String
+    - email: String
+    - password: String
+    - image: String
+    - role: UserRole
+}
+
+enum UserRole {
+    USER
+    HOTEL_MANAGER
+    ADMIN
+}
+
+User --> UserRole
+
+
+class Listing {
+    - id: Long
+    - title: String
+    - location: String
+    - description: String
+    - country: String
+    - images: List<String>
+    - amenities: List<String>
+    - isActive: Boolean
+    - category: String
+    - managerId: Long
+}
+
+User "1" --> "*" Listing : manages >
+
+
+class RoomType {
+    - id: Long
+    - listingId: Long
+    - roomType: String
+    - price: BigDecimal
+    - availableRooms: Integer
+}
+
+Listing "1" --> "*" RoomType : contains >
+
+
+class Review {
+    - id: Long
+    - comment: String
+    - rating: Float
+    - createdAt: LocalDateTime
+    - userId: Long
+    - listingId: Long
+}
+
+User "1" --> "*" Review : writes >
+Listing "1" --> "*" Review : receives >
+
+
+class Booking {
+    - id: Long
+    - checkIn: LocalDate
+    - checkOut: LocalDate
+    - guests: Integer
+    - roomsBooked: Integer
+    - bookingStatus: BookingStatus
+    - createdAt: LocalDateTime
+    - updatedAt: LocalDateTime
+    - userId: Long
+    - listingId: Long
+    + totalAmount(): BigDecimal
+}
+
+enum BookingStatus {
+    UPCOMING
+    CHECKED_IN
+    COMPLETED
+    CANCELLED
+}
+
+Booking --> BookingStatus
+User "1" --> "*" Booking : makes >
+Listing "1" --> "*" Booking : booked for >
+
+@enduml

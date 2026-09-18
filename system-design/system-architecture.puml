@@ -1,0 +1,28 @@
+@startuml SystemArchitecture
+
+skinparam {
+    BackgroundColor #F5F7FA
+    DefaultFontColor #2D3748
+    RoundCorner 8
+}
+
+package "Presentation / API Layer" {
+    class CustomerController
+    class CustomerDTO <<DTO>>
+}
+
+package "Business Logic Layer" {
+    class CustomerService
+    class OrderService
+}
+
+package "Data Access / Domain Layer" {
+    class CustomerEntity
+    class OrderEntity
+}
+
+' Show how data flows downward through the layers
+CustomerController ..> CustomerDTO : uses
+CustomerController --> CustomerService : invokes
+CustomerService --> CustomerEntity : maps to
+@enduml

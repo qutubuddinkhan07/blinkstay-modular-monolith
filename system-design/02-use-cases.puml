@@ -1,0 +1,36 @@
+@startuml UseCase
+
+' 1. Change the entire diagram background color
+skinparam {
+    BackgroundColor #F5F7FA
+    DefaultFontColor #333333
+}
+
+left to right direction
+
+actor "Customer" as User
+
+rectangle "Blinkstay" {
+    ' top to bottom direction
+    usecase "View Listings" as UC1
+    usecase "View Listing Details" as UC2
+    usecase "Book Room" as UC3
+    usecase "Make Payment" as UC4
+    usecase "View Booking" as UC5
+    usecase "Cancel Booking" as UC6
+    usecase "Write Review" as UC7
+}
+
+User --> UC1
+' User --> UC2
+User --> UC3
+' User --> UC4
+User --> UC5
+User --> UC6
+User --> UC7
+
+UC1 --> UC2 : select listing
+UC3 --> UC4 : require payment
+
+@enduml
+
