@@ -2,11 +2,15 @@
 
 class User {
     - id: Long
-    - name: String
+    - username: String
     - email: String
     - password: String
-    - image: String
     - role: UserRole
+    - isActive: Boolean
+    - profileImgUrl: String
+    - imagePublicId: String
+    - createdAt: LocalDateTime
+    - updatedAt: LocalDateTime
 }
 
 enum UserRole {
