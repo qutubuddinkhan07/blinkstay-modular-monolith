@@ -10,7 +10,7 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 @Service
-public class EmailServiceImpl implements MailService {
+public class MailServiceImpl implements MailService {
     @Autowired
     private JavaMailSender mailSender;
 
@@ -18,15 +18,16 @@ public class EmailServiceImpl implements MailService {
     private String senderId;
 
     @Override
-    public boolean sentEmail(String receiverId, String message) {
+    public boolean sentEmail(String receiverId, String message, String subject) {
         try {
             SimpleMailMessage mailMessage = new SimpleMailMessage();
             mailMessage.setTo(receiverId);
             mailMessage.setFrom(senderId);
-            mailMessage.setText("demo test");
+            mailMessage.setSubject(subject);
+            mailMessage.setText(message);
             mailSender.send(mailMessage);
             return true;
-        }catch (MailException mailException){
+        } catch (MailException mailException) {
             throw new MailSendException("Failed to send email", mailException);
         }
     }
