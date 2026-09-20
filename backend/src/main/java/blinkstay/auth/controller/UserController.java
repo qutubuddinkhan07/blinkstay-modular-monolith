@@ -71,7 +71,7 @@ public class UserController {
 	@PostMapping(value = "/register-init", consumes = "multipart/form-data")
 	public ResponseEntity<ApiResponse<String>> initiateRegistration(
 			@Valid @RequestPart("userData") @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddUserDto.class))) AddUserDto dto,
-			@RequestPart("profileImg") MultipartFile profileImg) {
+			@RequestPart(value = "profileImg", required = true) MultipartFile profileImg) {
 		try {
 			String serviceResponse = userService.initiateUserRegistration(dto, profileImg);
 

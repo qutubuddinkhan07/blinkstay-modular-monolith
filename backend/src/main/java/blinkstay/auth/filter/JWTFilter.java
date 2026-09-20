@@ -36,6 +36,10 @@ public class JWTFilter extends OncePerRequestFilter {
 			throws ServletException, IOException {
 		String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
+		System.out.println("JWT FILTER");
+		System.out.println("Request: " + request.getRequestURI());
+		System.out.println("Authorization: " + request.getHeader("Authorization"));
+
 		// Skip filter if no Bearer token (public endpoint)
 		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
 			filterChain.doFilter(request, response);
@@ -74,7 +78,8 @@ public class JWTFilter extends OncePerRequestFilter {
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 		String path = request.getRequestURI();
-		return path.startsWith("/api/v1/auth");
+		return path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
+				|| path.startsWith("/api/v2/user/verify-otp");
 	}
 
 	private void writeError(HttpServletResponse response, String message) throws IOException {

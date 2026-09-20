@@ -32,7 +32,7 @@ public class SpringSecurityConfiguration {
 				.sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 				// no sessions, JWT only
 				.authorizeHttpRequests(auth -> auth.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-						.requestMatchers("/api/v1/auth/**", "/api/v2/user/register-init", "/api/v2/user/verify-otp",
+						.requestMatchers("/api/v1/auth/login", "/api/v2/user/register-init", "/api/v2/user/verify-otp",
 								"/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
 						.permitAll()
 
