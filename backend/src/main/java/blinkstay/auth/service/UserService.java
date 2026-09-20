@@ -15,6 +15,8 @@ public interface UserService {
 
 	User getUserByEmail(String userEmail);
 
+	String deleteUserByEmail(Long userId);
+
 	List<User> getAllUsers();
 
 	Map<String, Object> getImageDetails(Long userId);

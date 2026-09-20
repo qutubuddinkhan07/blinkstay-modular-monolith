@@ -64,6 +64,14 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
+	public String deleteUserByEmail(Long userId) {
+		User user = getUserById(userId);
+
+		user.setIsActive(false);
+		return "User deleted";
+	}
+
+	@Override
 	public List<User> getAllUsers() {
 		List<User> users = userRepository.findAll();
 		return users;

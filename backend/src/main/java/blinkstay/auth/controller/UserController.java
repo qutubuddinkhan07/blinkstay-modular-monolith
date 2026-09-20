@@ -57,6 +57,15 @@ public class UserController {
 		return ResponseEntity.ok(apiResponse);
 	}
 
+	@DeleteMapping("/{userId}")
+	public ResponseEntity<ApiResponse<String>> deleteUserByEmail(Long userId) {
+		String serviceResponse = userService.deleteUserByEmail(userId);
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message("User deletion")
+				.data(serviceResponse).build();
+
+		return ResponseEntity.ok(apiResponse);
+	}
+
 	@PostMapping(value = "/register-init", consumes = "multipart/form-data")
 	public ResponseEntity<ApiResponse<String>> initiateRegistration(
 			@Valid @RequestPart("userData") @Parameter(content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddUserDto.class))) AddUserDto dto,
