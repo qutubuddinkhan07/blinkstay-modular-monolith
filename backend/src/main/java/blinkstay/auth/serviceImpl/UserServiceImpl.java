@@ -6,8 +6,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,10 +25,12 @@ import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
 import blinkstay.notification.service.NotificationService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
+@RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 	private final UserRepository userRepository;
 
@@ -40,15 +44,18 @@ public class UserServiceImpl implements UserService {
 
 	private final ImageUploadService imageUploadService;
 
-	public UserServiceImpl(UserRepository userRepository, SecureRandom random,
-			Map<String, TempUserRegistrationData> otpHolder, NotificationService notificationService,
-			ImageUploadService imageUploadService) {
-		this.userRepository = userRepository;
-		this.otpHolder = otpHolder;
-		this.random = random;
-		this.notificationService = notificationService;
-		this.imageUploadService = imageUploadService;
-	}
+	private final PasswordEncoder passwordEncoder;
+
+//	public UserServiceImpl(UserRepository userRepository, SecureRandom random,
+//			Map<String, TempUserRegistrationData> otpHolder, NotificationService notificationService,
+//			ImageUploadService imageUploadService,PasswordEncoder passwordEncoder) {
+//		this.userRepository = userRepository;
+//		this.otpHolder = otpHolder;
+//		this.random = random;
+//		this.notificationService = notificationService;
+//		this.imageUploadService = imageUploadService;
+//		this.passwordEncoder = passwordEncoder;
+//	}
 
 	@Override
 	public User getUserById(Long userId) {
@@ -128,8 +135,10 @@ public class UserServiceImpl implements UserService {
 		}
 
 		AddUserDto dto = tempData.getUserDto();
-		User user = User.builder().username(dto.getUsername()).email(dto.getEmail()).password(dto.getPassword())
-				.role(UserRole.USER).build();
+		String encodedPassword = passwordEncoder.encode(dto.getPassword());
+
+		User user = User.builder().username(dto.getUsername()).email(dto.getEmail()).password(encodedPassword)
+				.roles(Set.of(UserRole.USER)).build();
 
 		if (tempData.getImageBytes() != null) {
 			String public_id = "user_" + System.currentTimeMillis() + "_" + user.getEmail();
@@ -149,7 +158,7 @@ public class UserServiceImpl implements UserService {
 		otpHolder.remove(email);
 
 		UserResponseDto userResponseDto = UserResponseDto.builder().id(saved.getId()).username(saved.getUsername())
-				.email(saved.getEmail()).role(saved.getRole()).isACtive(saved.getIsActive())
+				.email(saved.getEmail()).roles(saved.getRoles()).isACtive(saved.getIsActive())
 				.profileImgUrl(saved.getProfileImgUrl()).createdAt(saved.getCreatedAt()).updatedAt(saved.getUpdatedAt())
 				.build();
 
