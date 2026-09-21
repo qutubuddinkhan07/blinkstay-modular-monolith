@@ -69,3 +69,46 @@ admin --> UC_ManageBooking
 admin --> UC_ManageReviews
 
 @enduml
+
+@startuml Phase2 - Listing Module & Room module
+
+top to bottom direction
+
+usecase "Listing Controller" as listingController
+usecase "Listing Service\n(orchestrator)" as listingService
+
+listingController --> listingService
+
+usecase "Listing Repository" as listingRepository
+usecase "MySQL" as UC1
+usecase "Listing Gemetry" as UC2
+usecase "Listing Image" as UC3
+
+listingService --> listingRepository
+listingRepository --> UC1
+listingRepository --> UC2
+listingRepository --> UC3
+
+usecase "Geocoding Client" as geocodingClient
+usecase "Geocoding API" as UC4
+
+listingService --> geocodingClient
+geocodingClient --> UC4
+
+usecase "Image Storage Service" as imageStorageService
+usecase "Cloudinary" as UC5
+
+listingService --> imageStorageService
+imageStorageService --> UC5
+
+
+usecase "Room Module" as roomModule
+usecase "Room Controller" as RC
+usecase "Room Service" as RS
+usecase "Listing Room Repository" as RR
+
+roomModule --> RC
+RC --> RS
+RS --> RR
+
+@enduml

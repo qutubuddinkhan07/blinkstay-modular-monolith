@@ -38,6 +38,9 @@ public class ListingGeometry {
 	@Column(nullable = false, unique = true)
 	private UUID listingId;
 
+	@Column(nullable = false)
+	private String address;
+
 	@Column(nullable = false, precision = 10, scale = 7)
 	private BigDecimal latitude;
 

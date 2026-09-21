@@ -63,8 +63,8 @@ public class Listing {
 	private List<String> amenities;
 
 	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private ListingStatus status;
+	@Builder.Default
+	private ListingStatus status = ListingStatus.ACTIVE;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

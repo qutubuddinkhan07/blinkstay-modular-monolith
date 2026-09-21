@@ -220,3 +220,116 @@ your domain model doesn't have to be completely redesigned.
              ↓
 11. Room ownership checks through Listing
 ```
+
+# Phase 2 Architecture
+
+<a href="https://chatgpt.com/share/6ab1a0e7-21f8-83ee-a16d-7ab711f8bc06">Conversation Link</a>
+
+Step 1 — Create listing
+
+```
+POST /api/v1/listings
+```
+
+Handles:
+
+```
+JWT
+ ↓
+get user ID
+ ↓
+verify HOTEL_MANAGER
+ ↓
+save Listing
+```
+
+Step 2 — Add geocoding
+
+```
+location
+   ↓
+GeocodingClient
+   ↓
+latitude + longitude
+   ↓
+ListingGeometry
+```
+
+Step 3 — Add images
+
+```
+MultipartFile[]
+       ↓
+ImageStorageService
+       ↓
+Cloudinary
+       ↓
+imageUrl + publicId
+       ↓
+ListingImage
+```
+
+Step 4 — Create room API
+
+```
+POST /api/v1/listings/{listingId}/rooms
+```
+
+```
+JWT
+ ↓
+managerId
+ ↓
+find listing
+ ↓
+verify listing.managerId == managerId
+ ↓
+create ListingRoom
+```
+
+That last check is very important.
+
+A hotel manager should not be able to do:
+
+```
+POST /listings/OTHER_MANAGER_LISTING_ID/rooms
+```
+
+and add rooms to someone else's listing.
+
+## Backend flow
+
+```
+                       ┌──────────────────────┐
+                       │   ListingController  │
+                       └──────────┬───────────┘
+                                  │
+                                  ↓
+                       ┌──────────────────────┐
+                       │    ListingService    │
+                       │   (orchestrator)     │
+                       └──────┬─────┬─────┬───┘
+                              │     │     │
+                 ┌────────────┘     │     └─────────────┐
+                 ↓                  ↓                   ↓
+        ListingRepository    GeocodingClient    ImageStorageService
+                 │                  │                   │
+                 ↓                  ↓                   ↓
+              MySQL            Geocoding API        Cloudinary
+                 │
+                 ↓
+          ListingGeometry
+          ListingImage
+
+
+                     Room module
+                          │
+                          ↓
+                    RoomController
+                          │
+                          ↓
+                     RoomService
+                          │
+                          ↓
+                  ListingRoomRepository
+```

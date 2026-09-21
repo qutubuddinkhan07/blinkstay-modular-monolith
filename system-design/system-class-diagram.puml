@@ -76,6 +76,7 @@ class ListingImage {
 class Geometry {
     - id: UUID
     - listingId: UUID
+    - address: String
     - latitude: BigDecimal
     - longitude: BigDecimal
 }
