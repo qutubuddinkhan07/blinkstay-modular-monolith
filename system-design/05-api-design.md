@@ -110,3 +110,113 @@ Prerequisites to Make It WorkFor this annotation to actually stop unauthorized u
 - Note: If you already have `spring-boot-starter-test` in your pom.xml, it usually pulls `spring-test` in automatically, so you may not even need to declare this manually.
 
 <b>NOTE:</b> If you are building a system where a user logs in, receives a token, and uses that token to access secured areas or upload files, these are the dependencies needed in the project.
+
+# Listing Module Flow
+
+14. I would structure your Listing APIs like this
+
+```
+/api/listings
+
+POST   /api/listings
+GET    /api/listings
+GET    /api/listings/{listingId}
+PUT    /api/listings/{listingId}
+DELETE /api/listings/{listingId}
+Rooms:
+/api/listings/{listingId}/rooms
+```
+
+```
+POST   /api/listings/{listingId}/rooms
+GET    /api/listings/{listingId}/rooms
+GET    /api/listings/{listingId}/rooms/{roomId}
+PUT    /api/listings/{listingId}/rooms/{roomId}
+DELETE /api/listings/{listingId}/rooms/{roomId}
+```
+
+This is much cleaner than:
+
+```
+POST /rooms
+```
+
+because the URL itself expresses:
+"I'm creating a room belonging to this listing."
+
+15. One architectural point for your modular monolith
+    You asked earlier:
+    "If I don't create the user module first, how can Listing use User?"
+
+The answer is: you don't need the User entity inside Listing.
+Listing only needs:
+UUID managerId;
+
+Your Auth/User module owns:
+User
+
+and Listing owns:
+
+```
+Listing
+ListingImage
+ListingLocation
+```
+
+Room owns:
+ListingRoom
+
+So you're creating a boundary:
+
+```
+             AUTH/USER
+                 │
+                 │ userId
+                 ▼
+             LISTING
+                 │
+                 │ listingId
+                 ▼
+               ROOM
+```
+
+The IDs are the contracts between the modules.
+Later, if you turn them into microservices:
+
+```
+user-service
+     │
+     │ HTTP/event
+     ▼
+listing-service
+     │
+     │ HTTP/event
+     ▼
+room-service
+```
+
+your domain model doesn't have to be completely redesigned.
+
+```
+1. AuthenticatedUser / Security principal
+             ↓
+2. @PreAuthorize role protection
+             ↓
+3. Listing DTOs
+             ↓
+4. Listing creation
+             ↓
+5. managerId automatically extracted from JWT
+             ↓
+6. Listing ownership authorization
+             ↓
+7. Listing CRUD
+             ↓
+8. ListingImage / Cloudinary
+             ↓
+9. ListingLocation
+             ↓
+10. ListingRoom module
+             ↓
+11. Room ownership checks through Listing
+```
