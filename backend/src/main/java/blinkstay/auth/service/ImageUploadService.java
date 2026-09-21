@@ -1,7 +1,8 @@
 package blinkstay.auth.service;
 
-import blinkstay.auth.dto.ImageUploadResult;
 import org.springframework.web.multipart.MultipartFile;
+
+import blinkstay.auth.dtos.ImageUploadResult;
 
 import java.util.Map;
 

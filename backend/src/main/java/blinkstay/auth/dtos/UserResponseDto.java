@@ -1,4 +1,4 @@
-package blinkstay.auth.dto;
+package blinkstay.auth.dtos;
 
 import java.time.LocalDateTime;
 import java.util.Set;

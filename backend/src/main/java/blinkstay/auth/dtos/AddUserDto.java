@@ -1,4 +1,4 @@
-package blinkstay.auth.dto;
+package blinkstay.auth.dtos;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;

@@ -7,8 +7,8 @@ import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.auth.dto.AddUserDto;
-import blinkstay.auth.dto.UserResponseDto;
+import blinkstay.auth.dtos.AddUserDto;
+import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 
 public interface UserService {

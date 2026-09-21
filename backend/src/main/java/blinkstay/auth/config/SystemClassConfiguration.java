@@ -1,9 +1,10 @@
 package blinkstay.auth.config;
 
-import blinkstay.auth.dto.TempUserRegistrationData;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
+
+import blinkstay.auth.dtos.TempUserRegistrationData;
 
 import java.security.SecureRandom;
 import java.util.Map;

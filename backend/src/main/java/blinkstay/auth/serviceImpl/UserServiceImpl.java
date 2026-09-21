@@ -14,10 +14,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.auth.dto.AddUserDto;
-import blinkstay.auth.dto.ImageUploadResult;
-import blinkstay.auth.dto.TempUserRegistrationData;
-import blinkstay.auth.dto.UserResponseDto;
+import blinkstay.auth.dtos.AddUserDto;
+import blinkstay.auth.dtos.ImageUploadResult;
+import blinkstay.auth.dtos.TempUserRegistrationData;
+import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 import blinkstay.auth.exceptionhandler.UserAlreadyExistsException;

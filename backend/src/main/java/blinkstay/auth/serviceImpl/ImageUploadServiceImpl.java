@@ -1,6 +1,6 @@
 package blinkstay.auth.serviceImpl;
 
-import blinkstay.auth.dto.ImageUploadResult;
+import blinkstay.auth.dtos.ImageUploadResult;
 import blinkstay.auth.service.ImageUploadService;
 import com.cloudinary.Cloudinary;
 import com.cloudinary.Transformation;

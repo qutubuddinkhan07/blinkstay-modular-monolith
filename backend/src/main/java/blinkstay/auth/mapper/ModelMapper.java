@@ -4,7 +4,7 @@ import java.util.List;
 
 import org.springframework.stereotype.Component;
 
-import blinkstay.auth.dto.UserResponseDto;
+import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 
 @Component

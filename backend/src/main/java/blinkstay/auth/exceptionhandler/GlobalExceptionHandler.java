@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.server.ResponseStatusException;
 
-import blinkstay.auth.dto.ApiResponse;
+import blinkstay.auth.dtos.ApiResponse;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {

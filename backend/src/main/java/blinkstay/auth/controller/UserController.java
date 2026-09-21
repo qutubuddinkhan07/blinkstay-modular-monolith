@@ -22,10 +22,10 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.auth.dto.AddUserDto;
-import blinkstay.auth.dto.ApiResponse;
-import blinkstay.auth.dto.EmailOtpVerifyDto;
-import blinkstay.auth.dto.UserResponseDto;
+import blinkstay.auth.dtos.AddUserDto;
+import blinkstay.auth.dtos.ApiResponse;
+import blinkstay.auth.dtos.EmailOtpVerifyDto;
+import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.service.UserService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

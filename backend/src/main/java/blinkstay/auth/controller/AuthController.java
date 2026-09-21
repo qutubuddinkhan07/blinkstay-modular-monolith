@@ -7,8 +7,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import blinkstay.auth.dto.ApiResponse;
-import blinkstay.auth.dto.LoginUserDto;
+import blinkstay.auth.dtos.ApiResponse;
+import blinkstay.auth.dtos.LoginUserDto;
 import blinkstay.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
