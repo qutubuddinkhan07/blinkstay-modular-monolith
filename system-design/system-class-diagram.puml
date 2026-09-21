@@ -1,7 +1,7 @@
 @startuml SystemClassDiagram
 
 class User {
-    - id: Long
+    - id: UUID
     - username: String
     - email: String
     - password: String
@@ -22,48 +22,119 @@ enum UserRole {
 User --> UserRole
 
 
+' =========================
+' LISTING MODULE
+' =========================
+
 class Listing {
-    - id: Long
+    - id: UUID
     - title: String
     - location: String
     - description: String
     - country: String
-    - images: List<String>
     - amenities: List<String>
-    - isActive: Boolean
-    - category: String
-    - managerId: Long
+    - status: ListingStatus
+    - category: ListingCategory
+    - managerId: UUID
+    - createdAt: LocalDateTime
+    - updatedAt: LocalDateTime
+}
+
+enum ListingStatus {
+    ACTIVE
+    INACTIVE
+    BLOCKED
+}
+
+enum ListingCategory {
+    BEACH
+    MOUNTAIN
+    CITY
+    COUNTRYSIDE
+    LUXURY
+    BUDGET
+    APARTMENT
+    VILLA
+    RESORT
+    HOTEL
+    HOSTEL
+    OTHER
+}
+
+Listing --> ListingStatus
+Listing --> ListingCategory
+
+
+class ListingImage {
+    - id: UUID
+    - listingId: UUID
+    - imageUrl: String
+    - publicId: String
+    - displayOrder: Integer
+}
+
+class Geometry {
+    - id: UUID
+    - listingId: UUID
+    - latitude: BigDecimal
+    - longitude: BigDecimal
 }
 
 User "1" --> "*" Listing : manages >
+Listing "1" --> "*" ListingImage : has >
+Listing "1" --> "1" Geometry : located at >
 
 
-class RoomType {
-    - id: Long
-    - listingId: Long
-    - roomType: String
+' =========================
+' ROOM MODULE
+' =========================
+
+class ListingRoom {
+    - id: UUID
+    - listingId: UUID
+    - roomType: RoomCategory
     - price: BigDecimal
+    - totalRooms: Integer
     - availableRooms: Integer
 }
 
-Listing "1" --> "*" RoomType : contains >
+enum RoomCategory {
+    SINGLE
+    DOUBLE
+    TWIN
+    DELUXE
+    SUITE
+    FAMILY
+    STUDIO
+}
 
+Listing "1" --> "*" ListingRoom : contains >
+ListingRoom --> RoomCategory
+
+
+' =========================
+' REVIEW MODULE
+' =========================
 
 class Review {
-    - id: Long
+    - id: UUID
     - comment: String
-    - rating: Float
+    - rating: Integer
     - createdAt: LocalDateTime
-    - userId: Long
-    - listingId: Long
+    - userId: UUID
+    - listingId: UUID
 }
 
 User "1" --> "*" Review : writes >
 Listing "1" --> "*" Review : receives >
 
 
+' =========================
+' BOOKING MODULE
+' =========================
+
 class Booking {
-    - id: Long
+    - id: UUID
     - checkIn: LocalDate
     - checkOut: LocalDate
     - guests: Integer
@@ -71,8 +142,9 @@ class Booking {
     - bookingStatus: BookingStatus
     - createdAt: LocalDateTime
     - updatedAt: LocalDateTime
-    - userId: Long
-    - listingId: Long
+    - userId: UUID
+    - listingId: UUID
+    - roomId: UUID
     + totalAmount(): BigDecimal
 }
 
@@ -84,7 +156,10 @@ enum BookingStatus {
 }
 
 Booking --> BookingStatus
+
 User "1" --> "*" Booking : makes >
 Listing "1" --> "*" Booking : booked for >
+ListingRoom "1" --> "*" Booking : booked >
+
 
 @enduml
