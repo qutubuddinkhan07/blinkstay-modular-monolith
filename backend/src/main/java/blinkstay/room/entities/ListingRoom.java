@@ -3,13 +3,16 @@ package blinkstay.room.entities;
 import java.math.BigDecimal;
 import java.util.UUID;
 
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
+
 import blinkstay.room.enums.RoomCategory;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -29,7 +32,10 @@ import lombok.ToString;
 @Builder
 public class ListingRoom {
 	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
+	@GeneratedValue
+	@UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
+	@JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
+	@Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
 	private UUID id;
 
 	@Column(nullable = false)

@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
@@ -16,7 +19,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
@@ -37,7 +39,10 @@ import lombok.ToString;
 @Builder
 public class Listing {
 	@Id
-	@GeneratedValue(strategy = GenerationType.UUID)
+	@GeneratedValue
+	@UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
+	@JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
+	@Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
 	private UUID id;
 
 	@Column(nullable = false)
