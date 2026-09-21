@@ -16,12 +16,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class UserResponseDto {
-	private Long id;
+	private String id;
 	private String username;
 	private String email;
 	private Set<UserRole> roles;
-	private String password;
-	private Boolean isACtive;
+	private Boolean isActive;
 	private String profileImgUrl;
 	private LocalDateTime createdAt;
 	private LocalDateTime updatedAt;

@@ -3,9 +3,13 @@ package blinkstay.auth.entities;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.UUID;
 
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.UuidGenerator;
+import org.hibernate.type.SqlTypes;
 
 import blinkstay.auth.enums.UserRole;
 import jakarta.persistence.CollectionTable;
@@ -16,7 +20,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
@@ -39,8 +42,11 @@ import lombok.ToString;
 @Builder
 public class User {
 	@Id
-	@GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	@GeneratedValue
+	@UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
+	@JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
+	@Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
+	private UUID id;
 
 	@NotBlank(message = "username cannot be empty")
 	@Column(nullable = false)

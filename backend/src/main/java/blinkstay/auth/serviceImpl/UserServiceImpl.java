@@ -21,6 +21,7 @@ import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 import blinkstay.auth.exceptionhandler.UserAlreadyExistsException;
 import blinkstay.auth.exceptionhandler.UserNotFoundException;
+import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
@@ -45,6 +46,8 @@ public class UserServiceImpl implements UserService {
 	private final ImageUploadService imageUploadService;
 
 	private final PasswordEncoder passwordEncoder;
+
+	private final ModelMapper modelMapper;
 
 //	public UserServiceImpl(UserRepository userRepository, SecureRandom random,
 //			Map<String, TempUserRegistrationData> otpHolder, NotificationService notificationService,
@@ -157,10 +160,7 @@ public class UserServiceImpl implements UserService {
 		// Cleanup memory
 		otpHolder.remove(email);
 
-		UserResponseDto userResponseDto = UserResponseDto.builder().id(saved.getId()).username(saved.getUsername())
-				.email(saved.getEmail()).roles(saved.getRoles()).isACtive(saved.getIsActive())
-				.profileImgUrl(saved.getProfileImgUrl()).createdAt(saved.getCreatedAt()).updatedAt(saved.getUpdatedAt())
-				.build();
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(saved);
 
 		return userResponseDto;
 	}

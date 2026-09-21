@@ -100,3 +100,75 @@ Define what your system must do from a user or system perspective (e.g. "A user 
 3. User may/may not give the image
 4. 
 
+## Now the design becomes
+```
+AUTH / USER MODULE
+│
+└── User
+    ├── id
+    ├── username
+    ├── email
+    ├── role
+    └── ...
+
+LISTING MODULE
+│
+├── Listing
+│   ├── id
+│   ├── managerId
+│   ├── title
+│   ├── description
+│   ├── location
+│   ├── country
+│   ├── category
+│   ├── status
+│   └── amenities
+│
+├── ListingImage
+│   ├── id
+│   ├── listingId
+│   ├── imageUrl
+│   ├── publicId
+│   └── displayOrder
+│
+└── ListingLocation
+    ├── id
+    ├── listingId
+    ├── latitude
+    └── longitude
+
+
+ROOM MODULE
+│
+└── ListingRoom
+    ├── id
+    ├── listingId
+    ├── roomType
+    ├── price
+    ├── totalRooms
+    └── availableRooms
+
+
+BOOKING MODULE
+│
+└── Booking
+    ├── id
+    ├── userId
+    ├── listingId
+    ├── roomId
+    ├── checkIn
+    ├── checkOut
+    ├── guests
+    ├── roomsBooked
+    └── status
+
+
+REVIEW MODULE
+│
+└── Review
+    ├── id
+    ├── userId
+    ├── listingId
+    ├── rating
+    └── comment
+```
