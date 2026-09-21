@@ -38,7 +38,8 @@ public class AuthServiceImpl implements AuthService {
 			UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
 			Authentication authentication = authManager.authenticate(token);
 
-			List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+			List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+					.filter(auth -> !auth.startsWith("FACTOR_")).toList();
 
 			log.info("Login successful for {} with roles {}", username, roles);
 			return jwtUtil.generateToken(username, roles);
@@ -61,14 +62,17 @@ public class AuthServiceImpl implements AuthService {
 			return "No JWT found";
 		}
 
-		if (blockedTokenRepositry.existsById(jwt)) {
+		if (blockedTokenRepositry.existsByToken(jwt)) {
 			return "Already Log out";
 		}
 
 		LocalDateTime expireAt = jwtUtil.extractExpiry(jwt).toInstant().atZone(ZoneId.systemDefault())
 				.toLocalDateTime();
 
-		blockedTokenRepositry.save(new BlockedToken(jwt, LocalDateTime.now(), expireAt));
+		BlockedToken token = BlockedToken.builder().token(jwt).blockedAt(LocalDateTime.now()).expiresAt(expireAt)
+				.build();
+
+		blockedTokenRepositry.save(token);
 		return "Log out successful";
 	}
 

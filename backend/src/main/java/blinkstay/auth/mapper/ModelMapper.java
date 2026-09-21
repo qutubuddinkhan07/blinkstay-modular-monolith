@@ -1,5 +1,7 @@
 package blinkstay.auth.mapper;
 
+import java.util.List;
+
 import org.springframework.stereotype.Component;
 
 import blinkstay.auth.dto.UserResponseDto;
@@ -14,5 +16,11 @@ public class ModelMapper {
 				.build();
 
 		return userResponseDto;
+	}
+
+	public List<UserResponseDto> usersToResponseDtos(List<User> users) {
+		List<UserResponseDto> userDtos = users.stream().map(user -> userToUserResponseDto(user)).toList();
+
+		return userDtos;
 	}
 }

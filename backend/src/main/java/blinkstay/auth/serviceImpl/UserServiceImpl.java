@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -61,30 +62,40 @@ public class UserServiceImpl implements UserService {
 //	}
 
 	@Override
-	public User getUserById(Long userId) {
+	public User helperGetUserId(UUID userId) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new UserNotFoundException("User not found"));
 		return user;
 	}
 
 	@Override
-	public User getUserByEmail(String userEmail) {
-		User user = userRepository.findByEmail(userEmail)
-				.orElseThrow(() -> new UserNotFoundException("User not found"));
-		return user;
+	public UserResponseDto getUserById(UUID userId) {
+		User user = helperGetUserId(userId);
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+		return userResponseDto;
 	}
 
 	@Override
-	public String deleteUserByEmail(Long userId) {
-		User user = getUserById(userId);
+	public UserResponseDto getUserByEmail(String userEmail) {
+		User user = userRepository.findByEmail(userEmail)
+				.orElseThrow(() -> new UserNotFoundException("User not found"));
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+		return userResponseDto;
+	}
+
+	@Override
+	public String deleteUserByEmail(UUID userId) {
+		User user = helperGetUserId(userId);
 
 		user.setIsActive(false);
 		return "User deleted";
 	}
 
 	@Override
-	public List<User> getAllUsers() {
+	public List<UserResponseDto> getAllUsers() {
 		List<User> users = userRepository.findAll();
-		return users;
+
+		List<UserResponseDto> userResponseDtos = modelMapper.usersToResponseDtos(users);
+		return userResponseDtos;
 	}
 
 	@Override
@@ -166,8 +177,8 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public Map<String, Object> getImageDetails(Long userId) {
-		User user = getUserById(userId);
+	public Map<String, Object> getImageDetails(UUID userId) {
+		User user = helperGetUserId(userId);
 		if (user.getImagePublicId() != null) {
 			Map<String, Object> details = imageUploadService.getImageDetails(user.getImagePublicId());
 			return details;
@@ -178,7 +189,7 @@ public class UserServiceImpl implements UserService {
 
 	// UPDATE profile image (replace existing)
 	@Override
-	public User updateProfileImage(Long userId, MultipartFile image) {
+	public UserResponseDto updateProfileImage(UUID userId, MultipartFile image) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
 		// Delete old image from Cloudinary if exists
@@ -193,13 +204,16 @@ public class UserServiceImpl implements UserService {
 		user.setProfileImgUrl(result.getPublicId());
 		user.setImagePublicId(result.getPublicId());
 
-		return userRepository.save(user);
+		user = userRepository.save(user);
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+
+		return userResponseDto;
 	}
 
 	// REPLACE image (keep same public_id, URL remains same)
 	@Override
-	public User replaceProfileImage(Long userId, MultipartFile newImage) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+	public UserResponseDto replaceProfileImage(UUID userId, MultipartFile newImage) {
+		User user = helperGetUserId(userId);
 
 		if (user.getImagePublicId() == null) {
 			ImageUploadResult result = imageUploadService.replaceImage(newImage, null);
@@ -212,12 +226,14 @@ public class UserServiceImpl implements UserService {
 			// public_id remains the same
 		}
 
-		return userRepository.save(user);
+		user = userRepository.save(user);
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+		return userResponseDto;
 	}
 
 	// UPDATE image using overwrite (more efficient)
 	@Override
-	public User updateProfileImageEfficient(Long userId, MultipartFile newImage) {
+	public UserResponseDto updateProfileImageEfficient(UUID userId, MultipartFile newImage) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
 		if (user.getImagePublicId() == null) {
@@ -232,12 +248,15 @@ public class UserServiceImpl implements UserService {
 			// public_id remains the same
 		}
 
-		return userRepository.save(user);
+		user = userRepository.save(user);
+
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+		return userResponseDto;
 	}
 
 	// DELETE user profile image
 	@Override
-	public User deleteProfileImage(Long userId) {
+	public UserResponseDto deleteProfileImage(UUID userId) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
 		if (user.getImagePublicId() != null) {
@@ -247,18 +266,19 @@ public class UserServiceImpl implements UserService {
 			if ("ok".equals(result.get("result"))) {
 				user.setProfileImgUrl(null);
 				user.setImagePublicId(null);
-				return userRepository.save(user);
+				user = userRepository.save(user);
 			} else {
 				throw new RuntimeException("Failed to delete image from Cloudinary");
 			}
 		}
 
-		return user; // No image to delete
+		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
+		return userResponseDto;// No image to delete
 	}
 
 	// BULK DELETE - delete multiple user images
 	@Override
-	public void deleteMultipleUserImage(List<Long> userIds) {
+	public void deleteMultipleUserImage(List<UUID> userIds) {
 		List<User> users = userRepository.findAllById(userIds);
 
 		for (User user : users) {

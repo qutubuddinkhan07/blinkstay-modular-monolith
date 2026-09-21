@@ -1,4 +1,4 @@
-package blinkstay.auth.blockedtoken.service;
+package blinkstay.auth.service;
 
 public interface BlockedTokenService {
 	Boolean checkIfPresent(String token);

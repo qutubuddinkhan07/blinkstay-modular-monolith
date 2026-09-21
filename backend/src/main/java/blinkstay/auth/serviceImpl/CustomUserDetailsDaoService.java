@@ -1,7 +1,7 @@
 package blinkstay.auth.serviceImpl;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -19,22 +19,29 @@ public class CustomUserDetailsDaoService implements UserDetailsService {
 	private UserRepository userRepository;
 
 	@Override
-	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-		Optional<User> optUser = userRepository.findByEmail(email);
+	public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
+		User user = null;
 
-		if (optUser.isEmpty()) {
-			throw new UsernameNotFoundException("User not found");
+		// Trying loading by UUID (User by JWT Filter on incoming API calls)
+		try {
+			UUID userId = UUID.fromString(identifier);
+			user = userRepository.findById(userId).orElse(null);
+		} catch (IllegalArgumentException e) {
+			// Not a valid UUID string, proceed to lookup by email
 		}
 
-		User user = optUser.get();
+		// 2. Fallback to lookup by Email (Used during Login authentication)
+		if (user == null) {
+			user = userRepository.findByEmail(identifier)
+					.orElseThrow(() -> new UsernameNotFoundException("User not found"));
+		}
 
 		List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
 				.map(role -> new SimpleGrantedAuthority(role.name())).toList();
 
-		return org.springframework.security.core.userdetails.User.withUsername(user.getEmail()) // or user.getUsername()
-				.password(user.getPassword()).authorities(authorities).disabled(!user.getIsActive()) // Good practice to
-																										// pass account
-																										// state
-				.build();
+		// Passing the user.getId().toString() so Spring security uses UUID as the
+		// principal identifier
+		return org.springframework.security.core.userdetails.User.withUsername(user.getId().toString())
+				.password(user.getPassword()).authorities(authorities).disabled(!user.getIsActive()).build();
 	}
 }

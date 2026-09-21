@@ -27,8 +27,9 @@ public class JWTUtil {
 		secret_key = Keys.hmacShaKeyFor(jwtSignature.getBytes(StandardCharsets.UTF_8));
 	}
 
-	public String generateToken(String username, List<String> roles) {
-		String token = Jwts.builder().subject(username).claim("roles", roles).issuedAt(new Date())
+	// Passing user.getId().toString() as the subject here
+	public String generateToken(String userIdStr, List<String> roles) {
+		String token = Jwts.builder().subject(userIdStr).claim("roles", roles).issuedAt(new Date())
 				.expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)).signWith(secret_key).compact();
 
 		return token;
@@ -38,13 +39,19 @@ public class JWTUtil {
 		return Jwts.parser().verifyWith(secret_key).build().parseSignedClaims(token).getPayload();
 	}
 
+	// Extracts the UUID string from the subject claim
+	public String extractUserId(String token) {
+		return extractClaims(token).getSubject();
+	}
+
+	// Alias for backward compatibility if needed elsewhere
 	public String extractUsername(String token) {
 		return extractClaims(token).getSubject();
 	}
 
 	public boolean validationToken(String token, UserDetails userDetails) {
-		String username = extractUsername(token);
-		return username.equals(userDetails.getUsername());
+		String userIdStr = extractUserId(token);
+		return userIdStr.equals(userDetails.getUsername());
 	}
 
 	public boolean isExpired(String token) {

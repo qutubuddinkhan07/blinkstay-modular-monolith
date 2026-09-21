@@ -1,12 +1,14 @@
 package blinkstay.auth.repository;
 
-import blinkstay.auth.entities.User;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-import java.util.Optional;
+import blinkstay.auth.entities.User;
 
 @Repository
-public interface UserRepository extends JpaRepository<User, Long> {
-    Optional<User> findByEmail(String email);
+public interface UserRepository extends JpaRepository<User, UUID> {
+	Optional<User> findByEmail(String email);
 }

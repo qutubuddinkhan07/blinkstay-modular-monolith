@@ -3,6 +3,7 @@ package blinkstay.auth.service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
@@ -11,29 +12,31 @@ import blinkstay.auth.dto.UserResponseDto;
 import blinkstay.auth.entities.User;
 
 public interface UserService {
-	User getUserById(Long userId);
+	User helperGetUserId(UUID userId);
 
-	User getUserByEmail(String userEmail);
+	UserResponseDto getUserById(UUID userId);
 
-	String deleteUserByEmail(Long userId);
+	UserResponseDto getUserByEmail(String userEmail);
 
-	List<User> getAllUsers();
+	String deleteUserByEmail(UUID userId);
 
-	Map<String, Object> getImageDetails(Long userId);
+	List<UserResponseDto> getAllUsers();
+
+	Map<String, Object> getImageDetails(UUID userId);
 
 	String initiateUserRegistration(AddUserDto addUserDto, MultipartFile profileImg) throws IOException;
 
 	UserResponseDto verifyOtpAndRegister(String email, String otp);
 
-	User updateProfileImage(Long userId, MultipartFile image);
+	UserResponseDto updateProfileImage(UUID userId, MultipartFile image);
 
-	User replaceProfileImage(Long userId, MultipartFile newImage);
+	UserResponseDto replaceProfileImage(UUID userId, MultipartFile newImage);
 
-	User updateProfileImageEfficient(Long userId, MultipartFile newImage);
+	UserResponseDto updateProfileImageEfficient(UUID userId, MultipartFile newImage);
 
-	User deleteProfileImage(Long userId);
+	UserResponseDto deleteProfileImage(UUID userId);
 
-	void deleteMultipleUserImage(List<Long> userIds);
+	void deleteMultipleUserImage(List<UUID> userIds);
 
 	// To make a user Hotel_Manager
 //	String userToHotelManager(Long userId, String email);

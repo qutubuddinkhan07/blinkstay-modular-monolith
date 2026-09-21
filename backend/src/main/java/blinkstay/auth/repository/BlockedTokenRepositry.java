@@ -1,6 +1,7 @@
 package blinkstay.auth.repository;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -10,7 +11,9 @@ import blinkstay.auth.entities.BlockedToken;
 import jakarta.transaction.Transactional;
 
 @Repository
-public interface BlockedTokenRepositry extends JpaRepository<BlockedToken, String> {
+public interface BlockedTokenRepositry extends JpaRepository<BlockedToken, UUID> {
+	Boolean existsByToken(String token);
+
 	@Modifying(clearAutomatically = true)
 	@Transactional
 	void deleteByExpiresAtBefore(LocalDateTime now);

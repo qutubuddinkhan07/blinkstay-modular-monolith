@@ -38,15 +38,20 @@ public class UserDumping implements CommandLineRunner {
 		Set<UserRole> adminRole = Set.of(UserRole.USER, UserRole.ADMIN);
 		Set<UserRole> hotelManagerRole = Set.of(UserRole.USER, UserRole.HOTEL_MANAGER);
 		Set<UserRole> normalRole = Set.of(UserRole.USER);
+
+		String adminImgUrl = "https://res.cloudinary.com/dps1vvchb/image/upload/v1790018317/naruto_es1lqx.jpg";
+		String hotelManagerImgUrl = "https://res.cloudinary.com/dps1vvchb/image/upload/v1790018318/Hinata_Hyuga_sax96p.jpg";
+		String normalUserprofileImgUrl = "https://res.cloudinary.com/dps1vvchb/image/upload/v1790018318/boruto_cofygy.jpg";
 		if (countUser < 1) {
 
 			User admin = User.builder().username(adminUsername).email(adminEmail).password(password).roles(adminRole)
-					.createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+					.profileImgUrl(adminImgUrl).createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
 			User hotelManager = User.builder().username(hotelManagerUsername).email(hotelManagerEmail)
-					.password(password).roles(hotelManagerRole).createdAt(LocalDateTime.now())
-					.updatedAt(LocalDateTime.now()).build();
-			User user = User.builder().username(normalUser).email(normalEmail).password(password).roles(normalRole)
+					.profileImgUrl(hotelManagerImgUrl).password(password).roles(hotelManagerRole)
 					.createdAt(LocalDateTime.now()).updatedAt(LocalDateTime.now()).build();
+			User user = User.builder().username(normalUser).email(normalEmail).password(password).roles(normalRole)
+					.profileImgUrl(normalUserprofileImgUrl).createdAt(LocalDateTime.now())
+					.updatedAt(LocalDateTime.now()).build();
 
 			userRepo.save(admin);
 			userRepo.save(hotelManager);

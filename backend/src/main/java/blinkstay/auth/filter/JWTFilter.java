@@ -11,7 +11,7 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import blinkstay.auth.blockedtoken.service.BlockedTokenService;
+import blinkstay.auth.service.BlockedTokenService;
 import blinkstay.auth.serviceImpl.CustomUserDetailsDaoService;
 import blinkstay.auth.util.JWTUtil;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -49,15 +49,17 @@ public class JWTFilter extends OncePerRequestFilter {
 		String jwt = authHeader.substring(7);
 
 		try {
-			String username = jwtUtil.extractUsername(jwt);
+			// 1. Extract UUID string from JWT subject
+			String userIdStr = jwtUtil.extractUserId(jwt);
 
 			if (blockedTokenService.checkIfPresent(jwt)) {
-				writeError(response, "JWT Expired");
+				writeError(response, "Token has been revoked/logged out");
 				return;
 			}
 
-			if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+			// 2. Fetch UserDetails by UUID string
+			if (userIdStr != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+				UserDetails userDetails = userDetailsService.loadUserByUsername(userIdStr);
 
 				UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails,
 						null, userDetails.getAuthorities());
