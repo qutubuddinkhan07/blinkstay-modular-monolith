@@ -44,10 +44,12 @@ public class UserServiceImpl implements UserService {
 
 	private final NotificationService notificationService;
 
+	@Qualifier("authImageUploadService")
 	private final ImageUploadService imageUploadService;
 
 	private final PasswordEncoder passwordEncoder;
 
+	@Qualifier("authModelMapper")
 	private final ModelMapper modelMapper;
 
 //	public UserServiceImpl(UserRepository userRepository, SecureRandom random,

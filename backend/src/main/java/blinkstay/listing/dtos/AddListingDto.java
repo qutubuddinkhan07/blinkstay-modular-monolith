@@ -4,6 +4,8 @@ import java.util.List;
 
 import blinkstay.listing.enums.ListingCategory;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -30,10 +32,10 @@ public class AddListingDto {
 	@NotBlank(message = "country cannot be empty")
 	private String country;
 
-	@NotBlank(message = "amenities cannot be empty")
+	@NotEmpty(message = "amenities cannot be empty")
 	private List<String> amenities;
 
-	@NotBlank(message = "category cannot be empty")
+	@NotNull(message = "category cannot be empty")
 	private ListingCategory category;
 
 }

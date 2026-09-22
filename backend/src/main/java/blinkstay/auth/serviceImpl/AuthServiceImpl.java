@@ -11,6 +11,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -38,11 +39,18 @@ public class AuthServiceImpl implements AuthService {
 			UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
 			Authentication authentication = authManager.authenticate(token);
 
+			// Retrieve the authenticated UserDetails (its username is now
+			// user.getId().toString())
+			UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+			String userIdStr = userDetails.getUsername();
+
 			List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
 					.filter(auth -> !auth.startsWith("FACTOR_")).toList();
 
-			log.info("Login successful for {} with roles {}", username, roles);
-			return jwtUtil.generateToken(username, roles);
+			log.info("Login successful for userId {} with roles {}", userIdStr, roles);
+
+			// Pass UUID string to generateToken
+			return jwtUtil.generateToken(userIdStr, roles);
 		} catch (AuthenticationException e) {
 			log.warn("Authentication failed for {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");

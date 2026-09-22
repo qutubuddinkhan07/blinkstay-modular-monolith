@@ -1,4 +1,4 @@
-package blinkstay.auth.util;
+package blinkstay.auth.scheduler;
 
 import java.time.LocalDateTime;
 

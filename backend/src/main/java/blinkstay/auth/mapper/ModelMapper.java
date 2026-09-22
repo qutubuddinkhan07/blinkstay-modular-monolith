@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component;
 import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 
-@Component
+@Component("authModelMapper")
 public class ModelMapper {
 	public UserResponseDto userToUserResponseDto(User user) {
 		UserResponseDto userResponseDto = UserResponseDto.builder().id(user.getId().toString())

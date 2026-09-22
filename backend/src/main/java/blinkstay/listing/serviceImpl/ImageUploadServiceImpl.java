@@ -1,4 +1,4 @@
-package blinkstay.auth.serviceImpl;
+package blinkstay.listing.serviceImpl;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -11,45 +11,44 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.Transformation;
 import com.cloudinary.utils.ObjectUtils;
 
-import blinkstay.auth.dtos.ImageUploadResult;
-import blinkstay.auth.service.ImageUploadService;
+import blinkstay.listing.dtos.ImageUploadResult;
+import blinkstay.listing.mapper.ModelMapper;
+import blinkstay.listing.service.ImageUploadService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-@Service("authImageUploadService")
+@Service("lisitingImageUploadService")
 @RequiredArgsConstructor
 @Slf4j
 @SuppressWarnings({ "unchecked", "rawtypes" })
 public class ImageUploadServiceImpl implements ImageUploadService {
 	private final Cloudinary cloudinary;
 
+	private final ModelMapper modelMapper;
+
 	@Override
 	public ImageUploadResult uploadImage(MultipartFile file, String customPublicId) {
 		try {
-			// Validate file type
 			if (file.isEmpty()) {
 				throw new RuntimeException("File is empty");
 			}
 
-			// Upload to Cloudinary with optional folder structure
 			Map<String, Object> uploadParams = new HashMap<>();
-			uploadParams.put("folder", "blinkstay_user_profiles");
+			uploadParams.put("folder", "blinkstay_listings");
 			uploadParams.put("allowed_formats", new String[] { "jpg", "png", "jpeg", "gif" });
 
-			// Set custom public_id if provided, otherwise Cloudinary generates one
 			if (customPublicId != null && !customPublicId.isEmpty()) {
 				uploadParams.put("public_id", customPublicId);
 			}
 
-			// Optional: Add image transformations during upload
-			uploadParams.put("transformation",
-					new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
+			uploadParams.put("transformations",
+					new Transformation<>().width(500).height(500).crop("fill").gravity("center"));
 
 			Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
 
-			// Type conversion
 			Object bytesObj = uploadResult.get("bytes");
 			Long size = 0L;
+
 			if (bytesObj instanceof Long) {
 				size = (Long) bytesObj;
 				log.info("Object bytes[] type: Long");
@@ -61,12 +60,10 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 				log.info("Object bytes[] type: String");
 			}
 
-			// Return the secure url
-			return ImageUploadResult.builder().url((String) uploadResult.get("secured_url"))
-					.publicId((String) uploadResult.get("public_id")).size(size)
-					.format((String) uploadResult.get("format")).build();
+			ImageUploadResult imageUploadResult = modelMapper.objectToImageUploadResult(uploadResult, size);
+			return imageUploadResult;
 		} catch (IOException e) {
-			throw new RuntimeException("Failed to upload image: " + e.getMessage());
+			throw new RuntimeException("Failed to upload Image: " + e.getMessage());
 		}
 	}
 
@@ -89,9 +86,9 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 				size = Long.parseLong(bytesObj.toString());
 			}
 
-			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-					.publicId((String) uploadResult.get("public_id")).size(size)
-					.format((String) uploadResult.get("format")).build();
+			ImageUploadResult imageUploadResult = modelMapper.objectToImageUploadResult(uploadResult, size);
+
+			return imageUploadResult;
 		} catch (IOException e) {
 			throw new RuntimeException("Image upload failed");
 		}
@@ -144,9 +141,17 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 
 			Map uploadResult = cloudinary.uploader().upload(newFile.getBytes(), uploadParams);
 
-			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-					.publicId((String) uploadResult.get("public_id")).size((Long) uploadResult.get("bytes"))
-					.format((String) uploadResult.get("format")).build();
+			Object bytesObj = uploadResult.get("bytes");
+			Long size = 0L;
+			if (bytesObj instanceof Long) {
+				size = (Long) bytesObj;
+			} else if (bytesObj instanceof Integer) {
+				size = ((Integer) bytesObj).longValue();
+			} else if (bytesObj != null) {
+				size = Long.parseLong(bytesObj.toString());
+			}
+
+			return modelMapper.objectToImageUploadResult(uploadResult, size);
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to update image: " + e.getMessage());
 		}
@@ -163,11 +168,4 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 		}
 	}
 
-	// GENERATE transformed URL without re-uploading
-	@Override
-	public String getTransformedUrl(String publicId, int width, int height) {
-		return cloudinary.url()
-				.transformation(new Transformation<>().width(width).height(height).crop("fill").gravity("face"))
-				.generate(publicId);
-	}
 }
