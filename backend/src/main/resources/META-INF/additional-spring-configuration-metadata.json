@@ -1,24 +1,27 @@
-{
-    "properties": [
-        {
-            "name": "cloudinary.cloud-name",
-            "type": "java.lang.String",
-            "description": "A description for 'cloudinary.cloud-name'"
-        },
-        {
-            "name": "cloudinary.api-key",
-            "type": "java.lang.String",
-            "description": "A description for 'cloudinary.api-key'"
-        },
-        {
-            "name": "cloudinary.api-secret",
-            "type": "java.lang.String",
-            "description": "A description for 'cloudinary.api-secret'"
-        },
-        {
-            "name": "jwt.signature",
-            "type": "java.lang.String",
-            "description": "A description for 'jwt.signature'"
-        }
-    ]
-}
+{"properties": [
+  {
+    "name": "cloudinary.cloud-name",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.cloud-name'"
+  },
+  {
+    "name": "cloudinary.api-key",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-key'"
+  },
+  {
+    "name": "cloudinary.api-secret",
+    "type": "java.lang.String",
+    "description": "A description for 'cloudinary.api-secret'"
+  },
+  {
+    "name": "jwt.signature",
+    "type": "java.lang.String",
+    "description": "A description for 'jwt.signature'"
+  },
+  {
+    "name": "mapbox.access-token",
+    "type": "java.lang.String",
+    "description": "A description for 'mapbox.access-token'"
+  }
+]}

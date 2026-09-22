@@ -333,3 +333,29 @@ and add rooms to someone else's listing.
                           ↓
                   ListingRoomRepository
 ```
+
+## Listing module architecture
+
+```
+                    ListingController
+                           |
+                           v
+                   ListingService
+                           |
+          +----------------+----------------+
+          |                |                |
+          v                v                v
+    ListingRepo      MapboxService    ImageUploadService
+                           |                |
+                           v                v
+                      Mapbox API       Cloudinary
+                           |
+                           v
+                  GeocodingResult
+                           |
+                           v
+                  ListingGeometry
+                           |
+                           v
+                ListingGeometryRepo
+```

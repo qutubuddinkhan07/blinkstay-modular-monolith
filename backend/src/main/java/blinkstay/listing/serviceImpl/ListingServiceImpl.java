@@ -9,8 +9,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.listing.dtos.AddListingDto;
+import blinkstay.listing.dtos.GeocodingResult;
 import blinkstay.listing.dtos.ImageUploadResult;
 import blinkstay.listing.entities.Listing;
+import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.repository.ListingGeometryRepository;
@@ -18,6 +20,7 @@ import blinkstay.listing.repository.ListingImageRepository;
 import blinkstay.listing.repository.ListingRepository;
 import blinkstay.listing.service.ImageUploadService;
 import blinkstay.listing.service.ListingService;
+import blinkstay.listing.service.MapboxGeocodingService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +38,8 @@ public class ListingServiceImpl implements ListingService {
 
 	private final ListingGeometryRepository listingGeometryRepo;
 
+	private final MapboxGeocodingService mapboxGeocodingService;
+
 	@Qualifier("listingModelMapper")
 	private final ModelMapper modelMapper;
 
@@ -47,13 +52,24 @@ public class ListingServiceImpl implements ListingService {
 		List<String> uploadedPublicIds = new ArrayList<>();
 
 		try {
-			// 1. Map and save listing entity
+			// 1. Create Listing
 			Listing listing = modelMapper.addListingDtoToListing(addListingDto, managerId);
 			Listing savedListing = listingRepo.save(listing);
 
 			List<ListingImage> imageEntities = new ArrayList<>();
 
-			// 2. Process image uploads
+			// 2. Get coordinates from Mapbox
+			GeocodingResult geocodingResult = mapboxGeocodingService.getCoordinates(addListingDto.getLocation(),
+					addListingDto.getCountry());
+
+			// 3. Saving ListingGeometry
+			ListingGeometry geometry = ListingGeometry.builder().listingId(savedListing.getId())
+					.address(geocodingResult.getAddress()).longitude(geocodingResult.getLongitude())
+					.latitude(geocodingResult.getLatitude()).build();
+
+			listingGeometryRepo.save(geometry);
+
+			// 4. Uploading images
 			for (int i = 0; i < files.size(); i++) {
 				MultipartFile file = files.get(i);
 				if (file == null || file.isEmpty()) {
