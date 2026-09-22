@@ -15,8 +15,8 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.listing.dtos.AddListingDto;
-import blinkstay.listing.dtos.ListingApiResponse;
+import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.ListingApiResponse;
 import blinkstay.listing.service.ListingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
