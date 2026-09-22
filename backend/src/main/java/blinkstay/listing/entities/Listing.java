@@ -64,7 +64,7 @@ public class Listing {
 
 	@Enumerated(EnumType.STRING)
 	@Builder.Default
-	private ListingStatus status = ListingStatus.ACTIVE;
+	private ListingStatus status = ListingStatus.DRAFT;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)
