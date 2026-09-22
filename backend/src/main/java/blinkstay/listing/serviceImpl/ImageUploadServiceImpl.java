@@ -11,7 +11,7 @@ import com.cloudinary.Cloudinary;
 import com.cloudinary.Transformation;
 import com.cloudinary.utils.ObjectUtils;
 
-import blinkstay.listing.dtos.ImageUploadResult;
+import blinkstay.listing.dto.ImageUploadResult;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.service.ImageUploadService;
 import lombok.RequiredArgsConstructor;

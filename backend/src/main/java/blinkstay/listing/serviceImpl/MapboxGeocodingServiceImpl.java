@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
-import blinkstay.listing.dtos.GeocodingResult;
-import blinkstay.listing.dtos.MapboxFeature;
-import blinkstay.listing.dtos.MapboxResponse;
+import blinkstay.listing.dto.GeocodingResult;
+import blinkstay.listing.dto.MapboxFeature;
+import blinkstay.listing.dto.MapboxResponse;
 import blinkstay.listing.service.MapboxGeocodingService;
 import lombok.RequiredArgsConstructor;
 

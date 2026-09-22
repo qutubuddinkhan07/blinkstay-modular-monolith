@@ -1,37 +1,29 @@
 package blinkstay.listing.dto;
 
-import java.util.List;
+import java.util.UUID;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.room.dto.RoomSummaryDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @Builder
-public class ListingResponseDto {
+public class ListingSummaryDto {
 
+	private UUID id;
 	private String title;
-
 	private String location;
-
-	private String description;
-
-	private String country;
-
-	private List<String> amenities;
-
 	private ListingStatus status;
-
 	private ListingCategory category;
+	private String coverImage;
 
-	private String owner;
+	private RoomSummaryDto roomSummary;
 }

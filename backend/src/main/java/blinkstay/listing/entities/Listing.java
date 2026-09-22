@@ -20,6 +20,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
+import jakarta.persistence.Index;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
@@ -30,7 +31,7 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(name = "listings")
+@Table(name = "listings", indexes = { @Index(name = "idx_listings_managerId", columnList = "managerId") })
 @Getter
 @Setter
 @NoArgsConstructor

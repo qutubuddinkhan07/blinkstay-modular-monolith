@@ -4,7 +4,7 @@ import java.util.Map;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.listing.dtos.ImageUploadResult;
+import blinkstay.listing.dto.ImageUploadResult;
 
 public interface ImageUploadService {
 	ImageUploadResult uploadImage(MultipartFile file, String customPublicId);

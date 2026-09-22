@@ -1,16 +1,24 @@
 package blinkstay.listing.serviceImpl;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
-import blinkstay.listing.dtos.AddListingDto;
-import blinkstay.listing.dtos.GeocodingResult;
-import blinkstay.listing.dtos.ImageUploadResult;
+import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.GeocodingResult;
+import blinkstay.listing.dto.ImageUploadResult;
+import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
@@ -42,6 +50,33 @@ public class ListingServiceImpl implements ListingService {
 
 	@Qualifier("listingModelMapper")
 	private final ModelMapper modelMapper;
+
+	/**
+	 * Helper method to clean up orphan Cloudinary uploads
+	 */
+	private void rollbackUploadedImages(List<String> publicIds) {
+		for (String publicId : publicIds) {
+			try {
+				log.info("Rolling back Cloudinary image: {}", publicId);
+				imageUploadService.deleteImage(publicId);
+			} catch (Exception e) {
+				log.error("Failed to delete image from Cloudinary during rollback for publicId: {}", publicId, e);
+			}
+		}
+	}
+
+	// Helper methods
+	private Listing helperGetListingById(UUID listingId) {
+		Listing listing = listingRepo.findById(listingId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+						"No listing present with this id: " + listingId));
+
+		return listing;
+	}
+
+	/**
+	 * ---------------------------------------------------
+	 */
 
 	@Override
 	@Transactional
@@ -113,18 +148,62 @@ public class ListingServiceImpl implements ListingService {
 		}
 	}
 
-	/**
-	 * Helper method to clean up orphan Cloudinary uploads
-	 */
-	private void rollbackUploadedImages(List<String> publicIds) {
-		for (String publicId : publicIds) {
-			try {
-				log.info("Rolling back Cloudinary image: {}", publicId);
-				imageUploadService.deleteImage(publicId);
-			} catch (Exception e) {
-				log.error("Failed to delete image from Cloudinary during rollback for publicId: {}", publicId, e);
-			}
+	@Override
+	public boolean checkWhetherSameManager(UUID userId, UUID listingId) {
+
+		Listing listing = helperGetListingById(listingId);
+
+		if (!userId.equals(listing.getManagerId())) {
+			throw new ManagerNotOwnerException("You are not authorized to manage this listing");
 		}
+
+		return true;
 	}
 
+	@Override
+	public ListingDetailsResponseDto getListingById(UUID listingId) {
+		Listing listing = helperGetListingById(listingId);
+
+		ListingGeometry geometry = listingGeometryRepo.findByListingId(listingId).orElse(null);
+
+		List<ListingImage> images = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId);
+
+		ListingDetailsResponseDto listingDetailsResponseDto = modelMapper.listingDetailsMapper(listing, geometry,
+				images);
+
+		return listingDetailsResponseDto;
+	}
+
+	@Override
+	public List<ListingDetailsResponseDto> getAllListingsByManager(UUID managerId) {
+		List<Listing> listings = listingRepo.findAllByManagerId(managerId);
+
+		if (listings.isEmpty()) {
+			return Collections.emptyList();
+		}
+
+		// Extract all listing IDs
+		List<UUID> listingIds = listings.stream().map(Listing::getId).collect(Collectors.toList());
+
+		// Batch fetch geometries and map by listingId
+		Map<UUID, ListingGeometry> geometryMap = listingGeometryRepo.findByListingIdIn(listingIds).stream()
+				.collect(Collectors.toMap(ListingGeometry::getListingId, Function.identity()));
+
+		// Batch fetch images and group by listingId
+		Map<UUID, List<ListingImage>> imagesMap = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds)
+				.stream().collect(Collectors.groupingBy(ListingImage::getListingId));
+
+		// Map each listing using cached lookups (Only 3 DB queries total!!)
+		return listings.stream().map(listing -> {
+			ListingGeometry geometry = geometryMap.get(listing.getId());
+			List<ListingImage> images = imagesMap.getOrDefault(listing.getId(), Collections.emptyList());
+
+			return modelMapper.listingDetailsMapper(listing, geometry, images);
+		}).collect(Collectors.toList());
+	}
+
+	@Override
+	public List<Listing> getListingsByManagerId(UUID managerId) {
+		return listingRepo.findAllByManagerId(managerId);
+	}
 }

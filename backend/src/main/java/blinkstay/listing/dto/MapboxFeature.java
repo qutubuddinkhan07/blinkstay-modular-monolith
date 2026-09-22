@@ -1,4 +1,4 @@
-package blinkstay.listing.dtos;
+package blinkstay.listing.dto;
 
 import lombok.Getter;
 import lombok.Setter;

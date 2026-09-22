@@ -1,6 +1,4 @@
-package blinkstay.listing.dto;
-
-import java.math.BigDecimal;
+package blinkstay.room.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,8 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class GeocodingResult {
-	private String address;
-	private BigDecimal latitude;
-	private BigDecimal longitude;
+public class RoomSummaryDto {
+	private int totalRooms;
+	private int availableRooms;
 }

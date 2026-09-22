@@ -35,7 +35,7 @@ public class UserDumping implements CommandLineRunner {
 		String hotelManagerEmail = "hinata123@example.com";
 		String normalEmail = "boruto123@example.com";
 
-		Set<UserRole> adminRole = Set.of(UserRole.USER, UserRole.ADMIN);
+		Set<UserRole> adminRole = Set.of(UserRole.USER, UserRole.ADMIN, UserRole.HOTEL_MANAGER);
 		Set<UserRole> hotelManagerRole = Set.of(UserRole.USER, UserRole.HOTEL_MANAGER);
 		Set<UserRole> normalRole = Set.of(UserRole.USER);
 

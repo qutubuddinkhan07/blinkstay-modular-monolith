@@ -1,13 +1,18 @@
 package blinkstay.listing.mapper;
 
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
-import blinkstay.listing.dtos.AddListingDto;
-import blinkstay.listing.dtos.ImageUploadResult;
+import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.GeometryDto;
+import blinkstay.listing.dto.ImageDto;
+import blinkstay.listing.dto.ImageUploadResult;
+import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
+import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
 
 @Component("listingModelMapper")
@@ -35,4 +40,24 @@ public class ModelMapper {
 		return listingImage;
 	}
 
+	public GeometryDto geometryToGeometryDto(ListingGeometry geometry) {
+		return GeometryDto.builder().address(geometry.getAddress()).latitude(geometry.getLatitude())
+				.longitude(geometry.getLongitude()).build();
+	}
+
+	private List<ImageDto> listingImageToImageDto(List<ListingImage> images) {
+		return images.stream().map(
+				image -> ImageDto.builder().imageUrl(image.getImageUrl()).displayOrder(image.getDisplayOrder()).build())
+				.toList();
+	}
+
+	public ListingDetailsResponseDto listingDetailsMapper(Listing listing, ListingGeometry geometry,
+			List<ListingImage> images) {
+		return ListingDetailsResponseDto.builder().id(listing.getId()).title(listing.getTitle())
+				.location(listing.getLocation()).description(listing.getDescription()).country(listing.getCountry())
+				.amenities(listing.getAmenities()).status(listing.getStatus()).category(listing.getCategory())
+				.geometry(geometry == null ? null : geometryToGeometryDto(geometry))
+				.images(listingImageToImageDto(images)).createdAt(listing.getCreatedAt())
+				.updatedAt(listing.getUpdatedAt()).build();
+	}
 }

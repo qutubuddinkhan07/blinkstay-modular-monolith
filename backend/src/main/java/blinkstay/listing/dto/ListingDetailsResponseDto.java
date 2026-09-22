@@ -1,6 +1,8 @@
 package blinkstay.listing.dto;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
@@ -9,15 +11,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @Builder
-public class ListingResponseDto {
+public class ListingDetailsResponseDto {
+	private UUID id;
 
 	private String title;
 
@@ -33,5 +34,11 @@ public class ListingResponseDto {
 
 	private ListingCategory category;
 
-	private String owner;
+	private GeometryDto geometry;
+
+	private List<ImageDto> images;
+
+	private LocalDateTime createdAt;
+
+	private LocalDateTime updatedAt;
 }

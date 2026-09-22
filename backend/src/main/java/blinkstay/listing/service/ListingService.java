@@ -5,8 +5,19 @@ import java.util.UUID;
 
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.listing.dtos.AddListingDto;
+import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.ListingDetailsResponseDto;
+import blinkstay.listing.entities.Listing;
 
 public interface ListingService {
 	String createListing(UUID managerId, AddListingDto addListingDto, List<MultipartFile> images);
+
+	ListingDetailsResponseDto getListingById(UUID listingId);
+
+	List<ListingDetailsResponseDto> getAllListingsByManager(UUID managerId);
+
+	List<Listing> getListingsByManagerId(UUID managerId);
+
+	// for checking from room service
+	boolean checkWhetherSameManager(UUID userId, UUID listingId);
 }

@@ -1,4 +1,4 @@
-package blinkstay.listing.dtos;
+package blinkstay.listing.dto;
 
 import java.util.List;
 
