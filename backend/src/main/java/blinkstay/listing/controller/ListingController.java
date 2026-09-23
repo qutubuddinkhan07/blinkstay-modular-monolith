@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -34,6 +36,7 @@ import lombok.RequiredArgsConstructor;
 @SecurityRequirement(name = "Bearer Authentication")
 @PreAuthorize("hasAuthority('HOTEL_MANAGER')")
 @RequiredArgsConstructor
+@Validated
 public class ListingController {
 	private final ListingService listingService;
 
@@ -41,7 +44,7 @@ public class ListingController {
 	@PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ListingApiResponse<String>> createListing(@AuthenticationPrincipal UserDetails userDetails,
 			@Parameter(description = "Listing details in JSON format", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddListingDto.class))) @Valid @RequestPart("listing") AddListingDto addListingDto,
-			@RequestPart("images") List<MultipartFile> images) {
+			@NotEmpty(message = "At least one image is required") @RequestPart("images") List<MultipartFile> images) {
 
 		// Validate that at least 1 image for (or minimum required) is provided
 		if (images == null || images.isEmpty() || images.stream().allMatch(MultipartFile::isEmpty)) {
