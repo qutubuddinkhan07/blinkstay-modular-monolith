@@ -6,6 +6,7 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
 
@@ -22,4 +23,10 @@ public interface ListingService {
 	boolean checkWhetherSameManager(UUID userId, UUID listingId);
 
 	String listingPublishService(UUID userId, UUID listingId);
+
+	String updateListing(UUID userId, UUID listingId, AddListingDto dto);
+
+	List<ImageDto> addListingImages(UUID userId, UUID listingId, List<MultipartFile> files);
+
+	void deleteListingImage(UUID userId, UUID listingId, UUID imageId);
 }

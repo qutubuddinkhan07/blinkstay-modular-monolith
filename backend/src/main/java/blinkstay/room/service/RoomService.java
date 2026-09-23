@@ -17,4 +17,6 @@ public interface RoomService {
 	String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto);
 
 	List<RoomResponseDto> getRoomsByListingId(UUID listingId);
+
+	String deleteRoom(UUID roomId);
 }

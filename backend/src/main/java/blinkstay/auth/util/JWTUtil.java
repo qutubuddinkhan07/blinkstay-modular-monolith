@@ -27,10 +27,16 @@ public class JWTUtil {
 		secret_key = Keys.hmacShaKeyFor(jwtSignature.getBytes(StandardCharsets.UTF_8));
 	}
 
+	/**
+	 * 
+	 * Target Duration Milliseconds Expression Total Milliseconds 15 Minutes 1000 *
+	 * 60 * 15 900,000 1 Hour (Current) 1000 * 60 * 60 3,600,000 1 Day (24 Hours)
+	 * 1000 * 60 * 60 * 24 86,400,000 7 Days 1000 * 60 * 60 * 24 * 7 604,800,000
+	 */
 	// Passing user.getId().toString() as the subject here
 	public String generateToken(String userIdStr, List<String> roles) {
 		String token = Jwts.builder().subject(userIdStr).claim("roles", roles).issuedAt(new Date())
-				.expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60)).signWith(secret_key).compact();
+				.expiration(new Date(System.currentTimeMillis() + 1000 * 60 * 60 * 24)).signWith(secret_key).compact();
 
 		return token;
 	}

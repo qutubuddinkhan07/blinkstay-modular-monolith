@@ -75,4 +75,13 @@ public class RoomServiceImpl implements RoomService {
 		return modelMapper.listingRoomToRoomResponseDto(rooms);
 	}
 
+	@Override
+	public String deleteRoom(UUID roomId) {
+		ListingRoom listingRoom = roomRepo.findById(roomId)
+				.orElseThrow(() -> new RuntimeException("No room found with " + roomId));
+		roomRepo.deleteById(roomId);
+
+		return "Room with id: " + roomId + " deleted";
+	}
+
 }

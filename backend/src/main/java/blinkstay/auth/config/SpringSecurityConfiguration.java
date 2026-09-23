@@ -8,6 +8,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -22,6 +23,7 @@ import blinkstay.auth.filter.JWTFilter;
 import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
+@EnableMethodSecurity
 public class SpringSecurityConfiguration {
 	@Autowired
 	private JWTFilter jwtFilter;
@@ -37,7 +39,7 @@ public class SpringSecurityConfiguration {
 						.permitAll()
 
 						// Hotel manager to create listings
-						.requestMatchers("/api/v3/listing").hasAnyAuthority("HOTEL_MANAGER", "ADMIN")
+						.requestMatchers("/api/v3/listings/**").hasAnyAuthority("HOTEL_MANAGER", "ADMIN")
 						.requestMatchers("/api/v2/user/**").hasAnyAuthority("USER", "HOTEL_MANAGER", "ADMIN")
 						.anyRequest().authenticated())
 				.exceptionHandling(ex -> ex

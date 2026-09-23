@@ -4,6 +4,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -157,6 +158,16 @@ public class GlobalExceptionHandler {
 				.message("A required value was missing or null: " + ex.getMessage()).data(null).build();
 
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+	}
+
+	@ExceptionHandler(BadRequestException.class)
+	public ResponseEntity<ApiResponse<String>> handleBadRequestException(BadRequestException ex) {
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(ex.getMessage()) // Safe
+																												// user-facing
+																												// message
+				.data(null).build();
+
+		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
 	}
 
 	@ExceptionHandler(RuntimeException.class)

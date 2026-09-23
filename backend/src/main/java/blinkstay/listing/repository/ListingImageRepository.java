@@ -15,4 +15,6 @@ public interface ListingImageRepository extends JpaRepository<ListingImage, UUID
 	List<ListingImage> findByListingIdInOrderByDisplayOrderAsc(List<UUID> listingIds);
 
 	Optional<ListingImage> findFirstByListingIdOrderByDisplayOrderAsc(UUID listingId);
+
+	Integer countByListingId(UUID listingId);
 }

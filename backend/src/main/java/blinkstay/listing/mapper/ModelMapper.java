@@ -45,10 +45,15 @@ public class ModelMapper {
 				.longitude(geometry.getLongitude()).build();
 	}
 
-	private List<ImageDto> listingImageToImageDto(List<ListingImage> images) {
+	private List<ImageDto> listingImagesToImageDto(List<ListingImage> images) {
 		return images.stream().map(
 				image -> ImageDto.builder().imageUrl(image.getImageUrl()).displayOrder(image.getDisplayOrder()).build())
 				.toList();
+	}
+
+	public ImageDto listingImageToImageDto(ListingImage listingImage) {
+		return ImageDto.builder().id(listingImage.getId()).imageUrl(listingImage.getImageUrl())
+				.publicId(listingImage.getPublicId()).displayOrder(listingImage.getDisplayOrder()).build();
 	}
 
 	public ListingDetailsResponseDto listingDetailsMapper(Listing listing, ListingGeometry geometry,
@@ -57,7 +62,7 @@ public class ModelMapper {
 				.location(listing.getLocation()).description(listing.getDescription()).country(listing.getCountry())
 				.amenities(listing.getAmenities()).status(listing.getStatus()).category(listing.getCategory())
 				.geometry(geometry == null ? null : geometryToGeometryDto(geometry))
-				.images(listingImageToImageDto(images)).createdAt(listing.getCreatedAt())
+				.images(listingImagesToImageDto(images)).createdAt(listing.getCreatedAt())
 				.updatedAt(listing.getUpdatedAt()).build();
 	}
 }

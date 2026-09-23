@@ -67,4 +67,21 @@ public class RoomController {
 
 		return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
 	}
+
+	public ResponseEntity<RoomApiResponse<String>> deleteRoomById(@AuthenticationPrincipal UserDetails userDetails,
+			@PathVariable("listingId") UUID listingId, @PathVariable("roomId") UUID roomId) {
+		UUID userId = UUID.fromString(userDetails.getUsername());
+
+		// Authorization check
+		listingService.checkWhetherSameManager(userId, listingId);
+
+		// Room operation
+		String response = roomService.deleteRoom(roomId);
+
+		RoomApiResponse<String> apiResponse = RoomApiResponse.<String>builder().success(true).message("Room updated")
+				.data(response).build();
+
+		return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+	}
+
 }

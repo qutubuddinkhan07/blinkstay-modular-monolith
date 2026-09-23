@@ -17,6 +17,7 @@ import org.springframework.web.server.ResponseStatusException;
 import blinkstay.common.exception.ManagerNotOwnerException;
 import blinkstay.listing.dto.AddListingDto;
 import blinkstay.listing.dto.GeocodingResult;
+import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ImageUploadResult;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
@@ -240,12 +241,13 @@ public class ListingServiceImpl implements ListingService {
 	@Override
 	public String listingPublishService(UUID userId, UUID listingId) {
 		checkWhetherSameManager(userId, listingId);
-		if (!roomService.checkDoesListingHaveRooms(listingId)) {
-			throw new RuntimeException("Listing cannot be published because it has no rooms");
-		}
 
 		Listing listing = listingRepo.findById(listingId)
 				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
+
+		if (!roomService.checkDoesListingHaveRooms(listingId)) {
+			throw new RuntimeException("Listing cannot be published because it has no rooms");
+		}
 
 		if (listing.getStatus() == ListingStatus.PUBLISHED) {
 			throw new RuntimeException("Listing already published");
@@ -256,5 +258,113 @@ public class ListingServiceImpl implements ListingService {
 		listingRepo.save(listing);
 
 		return listing.getTitle() + " having id: " + listing.getId() + " PUBLISHED";
+	}
+
+	@Override
+	public String updateListing(UUID managerId, UUID listingId, AddListingDto dto) {
+		Listing listing = listingRepo.findById(listingId)
+				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
+
+		listing.setTitle(dto.getTitle());
+		listing.setLocation(dto.getLocation());
+		listing.setDescription(dto.getDescription());
+		listing.setCountry(dto.getCountry());
+		listing.setAmenities(dto.getAmenities());
+		listing.setCategory(dto.getCategory());
+
+		log.info("Updating listing for user: {}", managerId);
+
+		try {
+			// 1. Create Listing
+			Listing savedListing = listingRepo.save(listing);
+
+			// 2. Get coordinates from Mapbox
+			GeocodingResult geocodingResult = mapboxGeocodingService.getCoordinates(dto.getLocation(),
+					dto.getCountry());
+
+			// 3. Saving ListingGeometry
+			ListingGeometry geometry = ListingGeometry.builder().listingId(savedListing.getId())
+					.address(geocodingResult.getAddress()).longitude(geocodingResult.getLongitude())
+					.latitude(geocodingResult.getLatitude()).build();
+
+			listingGeometryRepo.save(geometry);
+
+			return savedListing.getId().toString();
+
+		} catch (Exception ex) {
+			log.error("Failed to update listing for managerId {}. Listing id {}.", managerId, listingId, ex);
+			throw ex;
+		}
+	}
+
+	@Override
+	public List<ImageDto> addListingImages(UUID userId, UUID listingId, List<MultipartFile> files) {
+		checkWhetherSameManager(userId, listingId);
+
+		// to check whether the listing exists or not
+		helperGetListingById(listingId);
+
+		// Get current number of images
+		int currentImageCount = listingImageRepo.countByListingId(listingId);
+
+		List<ListingImage> imageEntities = new ArrayList<>();
+
+		List<String> uploadedPublicIds = new ArrayList<>();
+
+		try {
+			for (int i = 0; i < files.size(); i++) {
+				MultipartFile file = files.get(i);
+
+				if (file == null || file.isEmpty()) {
+					continue;
+				}
+
+				int displayOrder = currentImageCount + i + 1;
+
+				String publicId = "listing_id" + listingId + "_" + System.currentTimeMillis() + "_" + displayOrder;
+
+				ImageUploadResult uploadResult = imageUploadService.uploadImage(file, publicId);
+
+				if (uploadResult != null && uploadResult.getPublicId() != null) {
+					uploadedPublicIds.add(uploadResult.getPublicId());
+				}
+
+				ListingImage listingImage = modelMapper.imageUploadResultToListingImage(uploadResult, listingId,
+						displayOrder);
+
+				imageEntities.add(listingImage);
+			}
+
+			if (imageEntities.isEmpty()) {
+				throw new IllegalArgumentException("No valid images were provided");
+			}
+
+			List<ListingImage> saveImages = listingImageRepo.saveAll(imageEntities);
+
+			return saveImages.stream().map(modelMapper::listingImageToImageDto).collect(Collectors.toList());
+		} catch (Exception ex) {
+
+			rollbackUploadedImages(uploadedPublicIds);
+
+			throw ex;
+		}
+	}
+
+	@Override
+	public void deleteListingImage(UUID userId, UUID listingId, UUID imageId) {
+		checkWhetherSameManager(userId, listingId);
+
+		ListingImage image = listingImageRepo.findById(imageId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Images not found: " + imageId));
+
+		if (!image.getListingId().equals(listingId)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image does not belong to this listing.");
+		}
+
+		// Delete from Cloudinary
+		imageUploadService.deleteImage(image.getPublicId());
+
+		// Delete from database
+		listingImageRepo.delete(image);
 	}
 }
