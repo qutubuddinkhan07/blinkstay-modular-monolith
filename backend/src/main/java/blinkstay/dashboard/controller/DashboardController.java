@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 import blinkstay.dashboard.dto.ManagerDashboardDto;
 import blinkstay.dashboard.service.ManagerDashboardService;
 import blinkstay.listing.dto.ListingApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 
@@ -24,6 +25,7 @@ import lombok.RequiredArgsConstructor;
 public class DashboardController {
 	private final ManagerDashboardService managerDashboardService;
 
+	@Operation(summary = "To get the listings, rooms details")
 	@GetMapping("/my-dashboard")
 	public ResponseEntity<ListingApiResponse<ManagerDashboardDto>> getManagerDashboard(
 			@AuthenticationPrincipal UserDetails userDetails) {
