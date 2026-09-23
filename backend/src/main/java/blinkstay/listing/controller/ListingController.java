@@ -11,6 +11,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -33,14 +34,14 @@ import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequestMapping("/api/v3/listings")
-@SecurityRequirement(name = "Bearer Authentication")
-@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
 @RequiredArgsConstructor
 @Validated
 public class ListingController {
 	private final ListingService listingService;
 
 	@Operation(summary = "Create a new listing with images")
+	@SecurityRequirement(name = "Bearer Authentication")
+	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
 	@PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<ListingApiResponse<String>> createListing(@AuthenticationPrincipal UserDetails userDetails,
 			@Parameter(description = "Listing details in JSON format", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddListingDto.class))) @Valid @RequestPart("listing") AddListingDto addListingDto,
@@ -70,7 +71,22 @@ public class ListingController {
 		return ResponseEntity.ok(response);
 	}
 
+	@PatchMapping("/publish/{listingId}")
+	@SecurityRequirement(name = "Bearer Authentication")
+	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+	public ResponseEntity<ListingApiResponse<String>> toPublishListing(@AuthenticationPrincipal UserDetails userDetails,
+			@PathVariable("listingId") UUID listingId) {
+		UUID managerId = UUID.fromString(userDetails.getUsername());
+
+		String serviceResponse = listingService.listingPublishService(managerId, listingId);
+		ListingApiResponse<String> apiResponse = ListingApiResponse.<String>builder().success(true)
+				.message("listing publishing").data(serviceResponse).build();
+
+		return ResponseEntity.ok(apiResponse);
+	}
+
 	@GetMapping("/my-listings")
+	@SecurityRequirement(name = "Bearer Authentication")
 	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
 	public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
 			@AuthenticationPrincipal UserDetails userDetails) {
@@ -86,6 +102,7 @@ public class ListingController {
 	}
 
 	@GetMapping("/manager/{managerId}")
+	@SecurityRequirement(name = "Bearer Authentication")
 	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
 			@PathVariable("managerId") UUID userId) {

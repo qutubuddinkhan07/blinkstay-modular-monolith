@@ -22,6 +22,7 @@ import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
+import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.repository.ListingGeometryRepository;
 import blinkstay.listing.repository.ListingImageRepository;
@@ -29,6 +30,9 @@ import blinkstay.listing.repository.ListingRepository;
 import blinkstay.listing.service.ImageUploadService;
 import blinkstay.listing.service.ListingService;
 import blinkstay.listing.service.MapboxGeocodingService;
+import blinkstay.room.dto.RoomResponseDto;
+import blinkstay.room.dto.RoomSummaryDto;
+import blinkstay.room.service.RoomService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -50,6 +54,9 @@ public class ListingServiceImpl implements ListingService {
 
 	@Qualifier("listingModelMapper")
 	private final ModelMapper modelMapper;
+
+	// contacting room service
+	private final RoomService roomService;
 
 	/**
 	 * Helper method to clean up orphan Cloudinary uploads
@@ -162,20 +169,26 @@ public class ListingServiceImpl implements ListingService {
 
 	@Override
 	public ListingDetailsResponseDto getListingById(UUID listingId) {
+
 		Listing listing = helperGetListingById(listingId);
 
 		ListingGeometry geometry = listingGeometryRepo.findByListingId(listingId).orElse(null);
 
 		List<ListingImage> images = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId);
 
-		ListingDetailsResponseDto listingDetailsResponseDto = modelMapper.listingDetailsMapper(listing, geometry,
-				images);
+		// Get complete room details
+		List<RoomResponseDto> rooms = fetchRoomsDetails(listingId);
 
-		return listingDetailsResponseDto;
+		ListingDetailsResponseDto response = modelMapper.listingDetailsMapper(listing, geometry, images);
+
+		response.setRooms(rooms);
+
+		return response;
 	}
 
 	@Override
 	public List<ListingDetailsResponseDto> getAllListingsByManager(UUID managerId) {
+
 		List<Listing> listings = listingRepo.findAllByManagerId(managerId);
 
 		if (listings.isEmpty()) {
@@ -185,25 +198,63 @@ public class ListingServiceImpl implements ListingService {
 		// Extract all listing IDs
 		List<UUID> listingIds = listings.stream().map(Listing::getId).collect(Collectors.toList());
 
-		// Batch fetch geometries and map by listingId
+		// Batch fetch geometries
 		Map<UUID, ListingGeometry> geometryMap = listingGeometryRepo.findByListingIdIn(listingIds).stream()
 				.collect(Collectors.toMap(ListingGeometry::getListingId, Function.identity()));
 
-		// Batch fetch images and group by listingId
+		// Batch fetch images
 		Map<UUID, List<ListingImage>> imagesMap = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds)
 				.stream().collect(Collectors.groupingBy(ListingImage::getListingId));
 
-		// Map each listing using cached lookups (Only 3 DB queries total!!)
+		// Create response for each listing
 		return listings.stream().map(listing -> {
-			ListingGeometry geometry = geometryMap.get(listing.getId());
-			List<ListingImage> images = imagesMap.getOrDefault(listing.getId(), Collections.emptyList());
 
-			return modelMapper.listingDetailsMapper(listing, geometry, images);
+			UUID listingId = listing.getId();
+
+			ListingGeometry geometry = geometryMap.get(listingId);
+
+			List<ListingImage> images = imagesMap.getOrDefault(listingId, Collections.emptyList());
+
+			// Get room summary
+			RoomSummaryDto roomSummary = roomService.getRoomSummary(listingId);
+
+			// Map listing details
+			ListingDetailsResponseDto response = modelMapper.listingDetailsMapper(listing, geometry, images);
+
+			// Add room summary
+			response.setRoomSummary(roomSummary);
+
+			return response;
 		}).collect(Collectors.toList());
+	}
+
+	private List<RoomResponseDto> fetchRoomsDetails(UUID listingId) {
+		return roomService.getRoomsByListingId(listingId);
 	}
 
 	@Override
 	public List<Listing> getListingsByManagerId(UUID managerId) {
 		return listingRepo.findAllByManagerId(managerId);
+	}
+
+	@Override
+	public String listingPublishService(UUID userId, UUID listingId) {
+		checkWhetherSameManager(userId, listingId);
+		if (!roomService.checkDoesListingHaveRooms(listingId)) {
+			throw new RuntimeException("Listing cannot be published because it has no rooms");
+		}
+
+		Listing listing = listingRepo.findById(listingId)
+				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
+
+		if (listing.getStatus() == ListingStatus.PUBLISHED) {
+			throw new RuntimeException("Listing already published");
+		}
+
+		listing.setStatus(ListingStatus.PUBLISHED);
+
+		listingRepo.save(listing);
+
+		return listing.getTitle() + " having id: " + listing.getId() + " PUBLISHED";
 	}
 }

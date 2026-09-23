@@ -159,11 +159,24 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
 	}
 
+	@ExceptionHandler(RuntimeException.class)
+	public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
+		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
+				: "A runtime error occurred processing your request.";
+
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
+				.build();
+
+		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+	}
+
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<String>> handleGeneralException(Exception ex) {
+		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
+				: "An unexpected error occurred";
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false)
-				.message("An unexpected error occurred").data(null).build();
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
+				.build();
 
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
 	}

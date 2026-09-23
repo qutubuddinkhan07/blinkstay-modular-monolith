@@ -38,6 +38,11 @@ class Listing {
     - managerId: UUID
     - createdAt: LocalDateTime
     - updatedAt: LocalDateTime
+    + createListing()
+    + checkWhetherSameManager()
+    + publishListing()
+    + getListing()
+    + updateListing()
 }
 
 enum ListingStatus {
@@ -97,6 +102,11 @@ class ListingRoom {
     - price: BigDecimal
     - totalRooms: Integer
     - availableRooms: Integer
+    + createRoom()
+    + getRoomSummary()
+    + updateRoom()
+    + deleteRoom()
+    + checkDoesListingHaveRooms()
 }
 
 enum RoomCategory {

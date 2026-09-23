@@ -6,6 +6,8 @@ import java.util.UUID;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.room.dto.RoomResponseDto;
+import blinkstay.room.dto.RoomSummaryDto;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,6 +39,10 @@ public class ListingDetailsResponseDto {
 	private GeometryDto geometry;
 
 	private List<ImageDto> images;
+
+	private List<RoomResponseDto> rooms;
+
+	private RoomSummaryDto roomSummary;
 
 	private LocalDateTime createdAt;
 

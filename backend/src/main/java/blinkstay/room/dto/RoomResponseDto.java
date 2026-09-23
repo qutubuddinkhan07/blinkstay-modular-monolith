@@ -18,6 +18,8 @@ import lombok.ToString;
 @ToString
 @Builder
 public class RoomResponseDto {
+	private UUID roomId;
+
 	private UUID listingId;
 
 	private RoomCategory roomType;

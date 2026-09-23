@@ -20,4 +20,6 @@ public interface ListingService {
 
 	// for checking from room service
 	boolean checkWhetherSameManager(UUID userId, UUID listingId);
+
+	String listingPublishService(UUID userId, UUID listingId);
 }
