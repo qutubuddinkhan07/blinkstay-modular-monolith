@@ -9,6 +9,11 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,6 +25,7 @@ import blinkstay.listing.dto.GeocodingResult;
 import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ImageUploadResult;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
+import blinkstay.listing.dto.PublishedListingDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
@@ -366,5 +372,71 @@ public class ListingServiceImpl implements ListingService {
 
 		// Delete from database
 		listingImageRepo.delete(image);
+	}
+
+	@Override
+	public Page<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
+			String country) {
+		sortBy = validateSortFilter(sortBy);
+
+		Sort.Direction sortDirection = direction.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
+
+		Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
+
+		Page<Listing> listingPage;
+
+		if (country != null && !country.isBlank()) {
+			listingPage = listingRepo.findByStatusAndCountry(ListingStatus.PUBLISHED, country, pageable);
+
+		} else {
+			listingPage = listingRepo.findByStatus(ListingStatus.PUBLISHED, pageable);
+		}
+
+		List<Listing> listings = listingPage.getContent();
+
+		if (listings.isEmpty()) {
+			return new PageImpl<>(List.of(), pageable, listingPage.getTotalElements());
+		}
+
+		List<UUID> listingIds = listings.stream().map(Listing::getId).toList();
+
+		List<ListingImage> images = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds);
+
+		List<ListingGeometry> geometries = listingGeometryRepo.findByListingIdIn(listingIds);
+
+		Map<UUID, String> coverImages = images.stream().collect(Collectors.toMap(ListingImage::getListingId,
+				ListingImage::getImageUrl, (existing, replacement) -> existing));
+
+		Map<UUID, ListingGeometry> geometryMap = geometries.stream()
+				.collect(Collectors.toMap(ListingGeometry::getListingId, geometry -> geometry));
+
+		List<PublishedListingDto> dtoList = listings.stream().map(listing -> {
+
+			ListingGeometry geometry = geometryMap.get(listing.getId());
+
+			return PublishedListingDto.builder().id(listing.getId()).title(listing.getTitle())
+					.location(listing.getLocation()).country(listing.getCountry()).category(listing.getCategory())
+					.amenities(listing.getAmenities()).coverImageUrl(coverImages.get(listing.getId()))
+					.address(geometry != null ? geometry.getAddress() : null)
+					.latitude(geometry != null ? geometry.getLatitude() : null)
+					.longitude(geometry != null ? geometry.getLongitude() : null).build();
+		}).toList();
+
+		return new PageImpl<>(dtoList, pageable, listingPage.getTotalElements());
+	}
+
+	private String validateSortFilter(String sortBy) {
+		if (sortBy == null || sortBy.isBlank()) {
+			return "createdAt";
+		}
+
+		return switch (sortBy.toLowerCase()) {
+		case "title" -> "title";
+		case "country" -> "country";
+		case "location" -> "location";
+		case "createdat" -> "createdAt";
+		case "updatedat" -> "updatedAt";
+		default -> "createdAt";
+		};
 	}
 }

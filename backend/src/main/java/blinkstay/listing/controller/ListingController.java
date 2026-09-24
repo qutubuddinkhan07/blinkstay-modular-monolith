@@ -3,6 +3,7 @@ package blinkstay.listing.controller;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -25,6 +27,7 @@ import blinkstay.listing.dto.AddListingDto;
 import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ListingApiResponse;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
+import blinkstay.listing.dto.PublishedListingDto;
 import blinkstay.listing.service.ListingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,6 +44,23 @@ import lombok.RequiredArgsConstructor;
 @Validated
 public class ListingController {
 	private final ListingService listingService;
+
+//	@GetMapping("/published")
+	@GetMapping("/all")
+	public ResponseEntity<Page<PublishedListingDto>> getPublishedListings(
+
+			@RequestParam(defaultValue = "0") int page,
+
+			@RequestParam(defaultValue = "10") int size,
+
+			@RequestParam(defaultValue = "createdAt") String sortBy,
+
+			@RequestParam(defaultValue = "desc") String direction,
+
+			@RequestParam(required = false) String country) {
+
+		return ResponseEntity.ok(listingService.getPublishedListings(page, size, sortBy, direction, country));
+	}
 
 	@Operation(summary = "Create a new listing with images")
 	@SecurityRequirement(name = "Bearer Authentication")

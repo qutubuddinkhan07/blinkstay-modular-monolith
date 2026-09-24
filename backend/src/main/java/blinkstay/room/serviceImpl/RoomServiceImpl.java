@@ -1,5 +1,7 @@
 package blinkstay.room.serviceImpl;
 
+import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
@@ -13,6 +15,8 @@ import blinkstay.room.entities.ListingRoom;
 import blinkstay.room.mapper.ModelMapper;
 import blinkstay.room.repository.RoomRepository;
 import blinkstay.room.service.RoomService;
+import blinkstay.seed.SeedRoomMapper;
+import blinkstay.seed.dto.SeedRoom;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -82,6 +86,28 @@ public class RoomServiceImpl implements RoomService {
 		roomRepo.deleteById(roomId);
 
 		return "Room with id: " + roomId + " deleted";
+	}
+
+	@Override
+	public void createSeedRooms(UUID listingId, List<SeedRoom> rooms, BigDecimal basePrice) {
+
+		List<ListingRoom> entities = new ArrayList<>();
+
+		for (SeedRoom seedRoom : rooms) {
+
+			BigDecimal adjustment = seedRoom.getPriceAdjustment() == null ? BigDecimal.ZERO
+					: seedRoom.getPriceAdjustment();
+
+			BigDecimal actualPrice = basePrice.add(adjustment);
+
+			ListingRoom room = ListingRoom.builder().listingId(listingId)
+					.roomType(SeedRoomMapper.toRoomCategory(seedRoom.getType())).price(actualPrice)
+					.totalRooms(seedRoom.getTotalRooms()).availableRooms(seedRoom.getAvailableRooms()).build();
+
+			entities.add(room);
+		}
+
+		roomRepo.saveAll(entities);
 	}
 
 }

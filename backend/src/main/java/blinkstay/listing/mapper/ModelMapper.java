@@ -46,9 +46,8 @@ public class ModelMapper {
 	}
 
 	private List<ImageDto> listingImagesToImageDto(List<ListingImage> images) {
-		return images.stream().map(
-				image -> ImageDto.builder().imageUrl(image.getImageUrl()).displayOrder(image.getDisplayOrder()).build())
-				.toList();
+		return images.stream().map(image -> ImageDto.builder().id(image.getId()).imageUrl(image.getImageUrl())
+				.displayOrder(image.getDisplayOrder()).build()).toList();
 	}
 
 	public ImageDto listingImageToImageDto(ListingImage listingImage) {
