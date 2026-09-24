@@ -295,4 +295,9 @@ public class UserServiceImpl implements UserService {
 		userRepository.saveAll(users);
 	}
 
+	@Override
+	public List<UUID> getApprovedHotelManagerIds() {
+		return userRepository.findBUserIdsByRole(UserRole.HOTEL_MANAGER);
+	}
+
 }

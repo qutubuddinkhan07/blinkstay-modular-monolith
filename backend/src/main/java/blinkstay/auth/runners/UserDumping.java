@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.Set;
 
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import blinkstay.auth.entities.User;
@@ -16,6 +17,7 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Order(1)
 public class UserDumping implements CommandLineRunner {
 	private final UserRepository userRepo;
 	private final PasswordGenerator passwordGenerator;

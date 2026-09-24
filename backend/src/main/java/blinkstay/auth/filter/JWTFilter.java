@@ -81,7 +81,7 @@ public class JWTFilter extends OncePerRequestFilter {
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 		String path = request.getRequestURI();
 		return path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
-				|| path.startsWith("/api/v2/user/verify-otp");
+				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all");
 	}
 
 	private void writeError(HttpServletResponse response, String message) throws IOException {

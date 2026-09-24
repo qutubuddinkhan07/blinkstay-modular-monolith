@@ -40,4 +40,6 @@ public interface UserService {
 
 	// To make a user Hotel_Manager
 //	String userToHotelManager(Long userId, String email);
+
+	List<UUID> getApprovedHotelManagerIds();
 }
