@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
@@ -30,6 +31,9 @@ import tools.jackson.databind.ObjectMapper;
 @RequiredArgsConstructor
 public class SeedDataService {
 
+	@Value("${blinkstay.seed.enabled:false}")
+	private boolean seedEnabled;
+
 	private final ObjectMapper objectMapper;
 
 	private final ListingRepository listingRepository;
@@ -48,6 +52,9 @@ public class SeedDataService {
 
 	@Transactional
 	public void seed() {
+		if (!seedEnabled) {
+			return;
+		}
 
 		// Don't seed if data already exists
 		if (listingRepository.count() > 0) {

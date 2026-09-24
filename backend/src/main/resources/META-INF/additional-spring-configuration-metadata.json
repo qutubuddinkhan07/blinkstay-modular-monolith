@@ -23,5 +23,10 @@
     "name": "mapbox.access-token",
     "type": "java.lang.String",
     "description": "A description for 'mapbox.access-token'"
+  },
+  {
+    "name": "blinkstay.seed.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'blinkstay.seed.enabled'"
   }
 ]}
