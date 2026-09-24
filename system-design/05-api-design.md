@@ -359,3 +359,50 @@ and add rooms to someone else's listing.
                            v
                 ListingGeometryRepo
 ```
+
+## Listing module searching APIs
+
+Default
+
+```
+GET /api/v4/listings/published
+```
+
+Equivalent to:
+
+```
+page=0
+size=10
+sortBy=createdAt
+direction=desc
+```
+
+Latest listings
+
+```
+GET /api/v4/listings/published?page=0&size=10&sortBy=createdAt&direction=desc
+```
+
+Oldest listings
+
+```
+GET /api/v4/listings/published?page=0&size=10&sortBy=createdAt&direction=asc
+```
+
+India
+
+```
+GET /api/v4/listings/published?page=0&size=10&country=India
+```
+
+India + newest
+
+```
+GET /api/v4/listings/published?page=0&size=10&country=India&sortBy=createdAt&direction=desc
+```
+
+India + title ascending
+
+```
+GET /api/v4/listings/published?page=0&size=10&country=India&sortBy=title&direction=asc
+```
