@@ -15,8 +15,8 @@ public class SwaggerConfig {
 	public OpenAPI customOpenAPI() {
 
 		return new OpenAPI()
-				.info(new Info().title("Product Inventory System API").version("1.0")
-						.description("REST APIs for Product Inventory System"))
+				.info(new Info().title("Blinkstay System API").version("1.0")
+						.description("REST APIs for Blinkstay System"))
 
 				// Define Bearer Authentication
 				.schemaRequirement(SECURITY_SCHEME_NAME, new SecurityScheme().name(SECURITY_SCHEME_NAME)
