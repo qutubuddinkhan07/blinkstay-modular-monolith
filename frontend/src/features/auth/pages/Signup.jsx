@@ -4,6 +4,8 @@ import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { registerInit, verifyOtp } from "../authService";
 import { handleApiError } from "../../../api/errors/handleApiError";
+import { notify } from "../../../utils/notify";
+import Logo from "../../../components/common/Logo";
 
 /* ---------- Icons (inline, shared visual language with Login) ---------- */
 
@@ -182,7 +184,7 @@ const Signup = () => {
           ...prev,
           profilePicture: "File size must be less than 5MB",
         }));
-        toast.error("File size must be less than 5MB");
+        notify.error("File size must be less than 5MB");
         return;
       }
 
@@ -201,7 +203,7 @@ const Signup = () => {
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
-      toast.error("Please fix the errors in the form");
+      notify.error("Please fix the errors in the form");
       return;
     }
 
@@ -225,12 +227,12 @@ const Signup = () => {
         }),
       );
 
-      toast.success("OTP sent to your email!");
+      notify.success("OTP sent to your email!");
       setShowOtpModal(true);
     } catch (err) {
       const errorMsg = handleApiError(err);
       setErrors({ api: errorMsg });
-      toast.error(errorMsg);
+      notify.error(errorMsg);
     } finally {
       setIsSubmitting(false);
     }
@@ -239,7 +241,7 @@ const Signup = () => {
   const handleVerifyOtp = async () => {
     if (!otp.trim()) {
       setOtpError("Please enter the OTP");
-      toast.error("Please enter the OTP");
+      notify.error("Please enter the OTP");
       return;
     }
 
@@ -249,12 +251,12 @@ const Signup = () => {
       await verifyOtp(formData.email, otp.trim());
 
       setShowOtpModal(false);
-      toast.success("Account verified successfully! Please login.");
+      notify.success("Account verified successfully! Please login.");
       navigate("/login");
     } catch (err) {
       const errorMsg = handleApiError(err);
       setOtpError(errorMsg);
-      toast.error(errorMsg);
+      notify.error(errorMsg);
     } finally {
       setIsVerifying(false);
     }
@@ -283,25 +285,6 @@ const Signup = () => {
         "--toastify-color-progress-error": theme.danger,
       }}
     >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
-        .font-display { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
-        .font-body { font-family: 'Manrope', sans-serif; }
-      `}</style>
-
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="colored"
-      />
-
       {/* ambient glow */}
       <div
         className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30 transition-colors duration-500"
@@ -313,20 +296,7 @@ const Signup = () => {
       />
 
       {/* Blinkstay logo, top-left */}
-      <div className="absolute top-6 left-6 z-10 flex items-center gap-2.5">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center font-display font-semibold text-lg transition-colors duration-500"
-          style={{ backgroundColor: theme.primary, color: "#f8f9fc" }}
-        >
-          B
-        </div>
-        <span
-          className="font-display text-lg tracking-tight transition-colors duration-500"
-          style={{ color: theme.text }}
-        >
-          Blinkstay
-        </span>
-      </div>
+      <Logo isDark={isDark} />
 
       {/* dark mode toggle */}
       <button

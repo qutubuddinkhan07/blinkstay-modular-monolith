@@ -1,3 +1,4 @@
+import { notify } from "../utils/notify";
 import axiosInstance from "./axiosInstance";
 
 const publicEndpoints = [

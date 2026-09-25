@@ -3,6 +3,7 @@ import { useNavigate, Link } from "react-router-dom";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import { login } from "../authService";
 import { notify } from "../../../utils/notify";
+import Logo from "../../../components/common/Logo";
 
 /* ---------- Icons (inline, no extra dependency) ---------- */
 
@@ -143,12 +144,6 @@ const Login = () => {
       className="min-h-screen flex items-center justify-center p-6 relative overflow-hidden transition-colors duration-500"
       style={{ backgroundColor: theme.bg }}
     >
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Manrope:wght@400;500;600;700&display=swap');
-        .font-display { font-family: 'Fraunces', serif; font-optical-sizing: auto; }
-        .font-body { font-family: 'Manrope', sans-serif; }
-      `}</style>
-
       {/* ambient glow, swaps role with theme */}
       <div
         className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30 transition-colors duration-500"
@@ -160,20 +155,7 @@ const Login = () => {
       />
 
       {/* Blinkstay logo, top-left */}
-      <div className="absolute top-6 left-6 z-10 flex items-center gap-2.5">
-        <div
-          className="w-9 h-9 rounded-xl flex items-center justify-center font-display font-semibold text-lg transition-colors duration-500"
-          style={{ backgroundColor: theme.primary, color: "#f8f9fc" }}
-        >
-          B
-        </div>
-        <span
-          className="font-display text-lg tracking-tight transition-colors duration-500"
-          style={{ color: theme.text }}
-        >
-          Blinkstay
-        </span>
-      </div>
+      <Logo isDark={isDark} />
 
       {/* dark mode toggle */}
       <button
@@ -302,7 +284,7 @@ const Login = () => {
             )}
           </div>
 
-          <div className="flex items-center justify-between">
+          {/* <div className="flex items-center justify-between">
             <label
               className="flex items-center gap-2 text-sm cursor-pointer"
               style={{ color: theme.subtext }}
@@ -314,7 +296,7 @@ const Login = () => {
               />
               Remember me
             </label>
-          </div>
+          </div> */}
 
           {errors.api && (
             <p className="text-sm text-center" style={{ color: theme.danger }}>
@@ -343,7 +325,7 @@ const Login = () => {
           className="text-center text-sm mt-6 font-body"
           style={{ color: theme.subtext }}
         >
-          Don't have an account?{" "}
+          Don't have an account?
           <Link
             to="/signup"
             className="font-semibold hover:underline"
@@ -360,7 +342,7 @@ const Login = () => {
             color: theme.subtext,
           }}
         >
-          Test credentials: demo@example.com / password123
+          Test credentials: boruto123@example.com / password-123456789
         </div>
       </div>
     </div>

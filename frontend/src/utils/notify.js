@@ -7,6 +7,7 @@ const defaultOptions = {
   closeOnClick: true,
   pauseOnHover: true,
   draggable: true,
+  theme: "colored",
 };
 
 export const notify = {
