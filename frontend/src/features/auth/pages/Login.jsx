@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import { login } from "../authService";
+import { notify } from "../../../utils/notify";
 
 /* ---------- Icons (inline, no extra dependency) ---------- */
 
@@ -113,6 +114,7 @@ const Login = () => {
       try {
         const res = await login(formData.email, formData.password);
         localStorage.setItem("token", res.data.data);
+        notify.success("Login successful!");
         navigate("/");
       } catch (error) {
         setErrors({ api: handleApiError(error, "login") });
