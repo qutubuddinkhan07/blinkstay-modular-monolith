@@ -6,6 +6,7 @@ const publicEndpoints = [
   "/api/v1/auth/register",
   "/api/v2/user/register-init",
   "/api/v2/user/verify-otp",
+  "/api/v3/listings/all",
 ];
 
 axiosInstance.interceptors.request.use(
