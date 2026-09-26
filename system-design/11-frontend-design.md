@@ -175,3 +175,41 @@ export const registerInit = (formData) =>
 export const verifyOtp = (data) =>
   axiosInstance.post("/api/v2/user/verify-otp", data);
 ```
+
+# Error Handling
+
+```
+| Situation                    | Component              |
+| ---------------------------- | ---------------------- |
+| Backend/API unavailable      | `ListingHome` error UI |
+| URL doesn't exist            | `PageNotFound`         |
+| Unexpected React/route error | `ErrorPage`            |
+
+```
+
+Structure is somehere like this:
+
+```
+src/
+├── components/
+│   ├── ErrorPage.jsx
+│   └── PageNotFound.jsx
+│
+├── features/
+│   ├── auth/
+│   │   └── pages/
+│   │       ├── Login.jsx
+│   │       └── Signup.jsx
+│   │
+│   └── listings/
+│       └── ListingHome.jsx
+│
+└── routes/
+    └── routes.jsx
+```
+
+handleApiError → understands HTTP/API errors.
+ListingHome → decides what to show.
+ErrorPage → catches unexpected React Router errors.
+PageNotFound → handles unknown URLs.
+
