@@ -10,3 +10,35 @@
 @utility font-body {
   font-family: "Manrope", sans-serif;
 }
+
+@theme {
+  --color-bg: #f8f9fc;
+  --color-surface: #ffffff;
+  --color-input: #f8f9fc;
+  --color-text: #002642;
+  --color-subtext: #5b6b78;
+  --color-primary: #710019;
+  --color-primary-hover: #8a0020;
+  --color-border: #e3e1e6;
+  --color-danger: #ff2768;
+}
+
+[data-theme="dark"] {
+  --color-bg: #002642;
+  --color-surface: #03314f;
+  --color-input: #04263d;
+  --color-text: #f8f9fc;
+  --color-subtext: #a9c1d1;
+  --color-primary: #ff2768;
+  --color-primary-hover: #e01f59;
+  --color-border: #0d4568;
+  --color-danger: #ff2768;
+}
+
+/* toastify reads these directly, no per-page overrides needed anymore */
+:root {
+  --toastify-color-success: var(--color-primary);
+  --toastify-color-error: var(--color-danger);
+  --toastify-color-progress-success: var(--color-primary);
+  --toastify-color-progress-error: var(--color-danger);
+}
