@@ -2,120 +2,26 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import {
+  FiEye,
+  FiEyeOff,
+  FiMoon,
+  FiSun,
+  FiCamera,
+  FiUser,
+  FiMail,
+} from "react-icons/fi";
 import { registerInit, verifyOtp } from "../authService";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import { notify } from "../../../utils/notify";
 import Logo from "../../../components/common/Logo";
-
-/* ---------- Icons (inline, shared visual language with Login) ---------- */
-
-const EyeIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
-    <circle cx="12" cy="12" r="3" />
-  </svg>
-);
-
-const EyeOffIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.5 18.5 0 0 1 5.06-5.94" />
-    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
-    <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
-    <line x1="1" y1="1" x2="23" y2="23" />
-  </svg>
-);
-
-const MoonIcon = ({ className }) => (
-  <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-    <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z" />
-  </svg>
-);
-
-const SunIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="1.8"
-    strokeLinecap="round"
-    className={className}
-  >
-    <circle cx="12" cy="12" r="4" fill="currentColor" stroke="none" />
-    <line x1="12" y1="1.5" x2="12" y2="4" />
-    <line x1="12" y1="20" x2="12" y2="22.5" />
-    <line x1="4.2" y1="4.2" x2="6" y2="6" />
-    <line x1="18" y1="18" x2="19.8" y2="19.8" />
-    <line x1="1.5" y1="12" x2="4" y2="12" />
-    <line x1="20" y1="12" x2="22.5" y2="12" />
-    <line x1="4.2" y1="19.8" x2="6" y2="18" />
-    <line x1="18" y1="6" x2="19.8" y2="4.2" />
-  </svg>
-);
-
-const CameraIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-    <path d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
-
-const PersonIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-  </svg>
-);
-
-const MailIcon = ({ className }) => (
-  <svg
-    viewBox="0 0 24 24"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    className={className}
-  >
-    <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-  </svg>
-);
+import { useTheme } from "../../../context/ThemeContext";
 
 /* ---------- Signup ---------- */
 
 const Signup = () => {
   const navigate = useNavigate();
-  const [isDark, setIsDark] = useState(false);
+  const { isDark, toggleTheme } = useTheme();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -262,38 +168,11 @@ const Signup = () => {
     }
   };
 
-  const theme = {
-    bg: isDark ? "#002642" : "#f8f9fc",
-    card: isDark ? "#03314f" : "#ffffff",
-    text: isDark ? "#f8f9fc" : "#002642",
-    subtext: isDark ? "#a9c1d1" : "#5b6b78",
-    primary: isDark ? "#ff2768" : "#710019",
-    primaryHover: isDark ? "#e01f59" : "#8a0020",
-    border: isDark ? "#0d4568" : "#e3e1e6",
-    inputBg: isDark ? "#04263d" : "#f8f9fc",
-    danger: "#ff2768",
-  };
-
   return (
-    <div
-      className="min-h-screen flex items-center justify-center p-6 py-12 relative overflow-hidden transition-colors duration-500"
-      style={{
-        backgroundColor: theme.bg,
-        "--toastify-color-success": theme.primary,
-        "--toastify-color-error": theme.danger,
-        "--toastify-color-progress-success": theme.primary,
-        "--toastify-color-progress-error": theme.danger,
-      }}
-    >
+    <div className="min-h-screen flex items-center justify-center p-6 py-12 relative overflow-hidden transition-colors duration-500 bg-bg">
       {/* ambient glow */}
-      <div
-        className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30 transition-colors duration-500"
-        style={{ backgroundColor: isDark ? "#ff2768" : "#710019" }}
-      />
-      <div
-        className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 transition-colors duration-500"
-        style={{ backgroundColor: isDark ? "#710019" : "#ff2768" }}
-      />
+      <div className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30 transition-colors duration-500 bg-primary" />
+      <div className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 transition-colors duration-500 bg-danger" />
 
       {/* Blinkstay logo, top-left */}
       <Logo isDark={isDark} />
@@ -301,41 +180,28 @@ const Signup = () => {
       {/* dark mode toggle */}
       <button
         type="button"
-        onClick={() => setIsDark((d) => !d)}
+        onClick={toggleTheme}
         aria-label="Toggle dark mode"
-        className="absolute top-6 right-6 flex items-center w-14 h-8 rounded-full p-1 transition-colors duration-300 z-10"
-        style={{ backgroundColor: isDark ? "#04263d" : "#e9e4e8" }}
+        className="absolute top-6 right-6 flex items-center w-14 h-8 rounded-full p-1 transition-colors duration-300 z-10 bg-border"
       >
         <span
-          className="flex items-center justify-center w-6 h-6 rounded-full shadow-md transition-transform duration-300"
-          style={{
-            backgroundColor: isDark ? "#ff2768" : "#710019",
-            transform: isDark ? "translateX(24px)" : "translateX(0)",
-          }}
+          className="flex items-center justify-center w-6 h-6 rounded-full shadow-md transition-transform duration-300 bg-primary"
+          style={{ transform: isDark ? "translateX(24px)" : "translateX(0)" }}
         >
           {isDark ? (
-            <MoonIcon className="w-3.5 h-3.5 text-white" />
+            <FiMoon className="w-3.5 h-3.5 text-white" />
           ) : (
-            <SunIcon className="w-3.5 h-3.5 text-white" />
+            <FiSun className="w-3.5 h-3.5 text-white" />
           )}
         </span>
       </button>
 
-      <div
-        className="relative z-10 rounded-3xl shadow-2xl max-w-md w-full p-8 sm:p-10 transition-colors duration-500"
-        style={{
-          backgroundColor: theme.card,
-          border: `1px solid ${theme.border}`,
-        }}
-      >
+      <div className="relative z-10 rounded-3xl shadow-2xl max-w-md w-full p-8 sm:p-10 transition-colors duration-500 bg-surface border border-border">
         <div className="mb-8">
-          <h1
-            className="font-display text-3xl sm:text-4xl mb-2"
-            style={{ color: theme.text }}
-          >
+          <h1 className="font-display text-3xl sm:text-4xl mb-2 text-text">
             Create your account
           </h1>
-          <p className="font-body text-sm" style={{ color: theme.subtext }}>
+          <p className="font-body text-sm text-subtext">
             Join Blinkstay and get started in a minute.
           </p>
         </div>
@@ -345,13 +211,11 @@ const Signup = () => {
           <div className="flex justify-center">
             <div className="relative">
               <div
-                className="w-24 h-24 rounded-full flex items-center justify-center overflow-hidden transition-colors duration-500"
-                style={{
-                  backgroundColor: theme.inputBg,
-                  boxShadow: errors.profilePicture
-                    ? `0 0 0 2px ${theme.danger}`
-                    : `0 0 0 1px ${theme.border}`,
-                }}
+                className={`w-24 h-24 rounded-full flex items-center justify-center overflow-hidden transition-colors duration-500 bg-input ${
+                  errors.profilePicture
+                    ? "ring-2 ring-danger"
+                    : "ring-1 ring-border"
+                }`}
               >
                 {previewUrl ? (
                   <img
@@ -360,17 +224,11 @@ const Signup = () => {
                     className="w-full h-full object-cover"
                   />
                 ) : (
-                  <PersonIcon
-                    className="w-11 h-11"
-                    style={{ color: theme.subtext }}
-                  />
+                  <FiUser className="w-11 h-11 text-subtext" />
                 )}
               </div>
-              <label
-                className="absolute bottom-0 right-0 rounded-full p-1.5 cursor-pointer transition-colors duration-200"
-                style={{ backgroundColor: theme.primary }}
-              >
-                <CameraIcon className="w-4 h-4 text-white" />
+              <label className="absolute bottom-0 right-0 rounded-full p-1.5 cursor-pointer transition-colors duration-200 bg-primary">
+                <FiCamera className="w-4 h-4 text-white" />
                 <input
                   type="file"
                   accept="image/*"
@@ -381,32 +239,20 @@ const Signup = () => {
             </div>
           </div>
           {errors.profilePicture && (
-            <p className="text-xs text-center" style={{ color: theme.danger }}>
+            <p className="text-xs text-center text-danger">
               {errors.profilePicture}
             </p>
           )}
 
           {errors.api && (
-            <div
-              className="text-sm rounded-lg px-4 py-3"
-              style={{
-                backgroundColor: isDark
-                  ? "rgba(255,39,104,0.1)"
-                  : "rgba(113,0,25,0.06)",
-                border: `1px solid ${theme.danger}`,
-                color: isDark ? theme.danger : theme.primary,
-              }}
-            >
+            <div className="text-sm rounded-lg px-4 py-3 bg-danger/10 border border-danger text-danger">
               {errors.api}
             </div>
           )}
 
           {/* Username */}
           <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: theme.text }}
-            >
+            <label className="block text-sm font-medium mb-1.5 text-text">
               Username
             </label>
             <input
@@ -415,27 +261,18 @@ const Signup = () => {
               value={formData.username}
               onChange={handleChange}
               placeholder="Choose a username"
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2"
-              style={{
-                backgroundColor: theme.inputBg,
-                color: theme.text,
-                border: `1px solid ${errors.username ? theme.danger : theme.border}`,
-                "--tw-ring-color": `${theme.primary}55`,
-              }}
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                errors.username ? "border-danger" : "border-border"
+              }`}
             />
             {errors.username && (
-              <p className="text-xs mt-1.5" style={{ color: theme.danger }}>
-                {errors.username}
-              </p>
+              <p className="text-xs mt-1.5 text-danger">{errors.username}</p>
             )}
           </div>
 
           {/* Email */}
           <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: theme.text }}
-            >
+            <label className="block text-sm font-medium mb-1.5 text-text">
               Email address
             </label>
             <input
@@ -444,27 +281,18 @@ const Signup = () => {
               value={formData.email}
               onChange={handleChange}
               placeholder="you@example.com"
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2"
-              style={{
-                backgroundColor: theme.inputBg,
-                color: theme.text,
-                border: `1px solid ${errors.email ? theme.danger : theme.border}`,
-                "--tw-ring-color": `${theme.primary}55`,
-              }}
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                errors.email ? "border-danger" : "border-border"
+              }`}
             />
             {errors.email && (
-              <p className="text-xs mt-1.5" style={{ color: theme.danger }}>
-                {errors.email}
-              </p>
+              <p className="text-xs mt-1.5 text-danger">{errors.email}</p>
             )}
           </div>
 
           {/* Password */}
           <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: theme.text }}
-            >
+            <label className="block text-sm font-medium mb-1.5 text-text">
               Password
             </label>
             <div className="relative">
@@ -474,41 +302,31 @@ const Signup = () => {
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Create a password"
-                className="w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2"
-                style={{
-                  backgroundColor: theme.inputBg,
-                  color: theme.text,
-                  border: `1px solid ${errors.password ? theme.danger : theme.border}`,
-                  "--tw-ring-color": `${theme.primary}55`,
-                }}
+                className={`w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                  errors.password ? "border-danger" : "border-border"
+                }`}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? "Hide password" : "Show password"}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-                style={{ color: theme.subtext }}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-subtext"
               >
                 {showPassword ? (
-                  <EyeOffIcon className="w-4.5 h-4.5" />
+                  <FiEyeOff className="w-4.5 h-4.5" />
                 ) : (
-                  <EyeIcon className="w-4.5 h-4.5" />
+                  <FiEye className="w-4.5 h-4.5" />
                 )}
               </button>
             </div>
             {errors.password && (
-              <p className="text-xs mt-1.5" style={{ color: theme.danger }}>
-                {errors.password}
-              </p>
+              <p className="text-xs mt-1.5 text-danger">{errors.password}</p>
             )}
           </div>
 
           {/* Confirm Password */}
           <div>
-            <label
-              className="block text-sm font-medium mb-1.5"
-              style={{ color: theme.text }}
-            >
+            <label className="block text-sm font-medium mb-1.5 text-text">
               Confirm password
             </label>
             <input
@@ -517,16 +335,12 @@ const Signup = () => {
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm your password"
-              className="w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2"
-              style={{
-                backgroundColor: theme.inputBg,
-                color: theme.text,
-                border: `1px solid ${errors.confirmPassword ? theme.danger : theme.border}`,
-                "--tw-ring-color": `${theme.primary}55`,
-              }}
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                errors.confirmPassword ? "border-danger" : "border-border"
+              }`}
             />
             {errors.confirmPassword && (
-              <p className="text-xs mt-1.5" style={{ color: theme.danger }}>
+              <p className="text-xs mt-1.5 text-danger">
                 {errors.confirmPassword}
               </p>
             )}
@@ -535,41 +349,23 @@ const Signup = () => {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-            style={{ backgroundColor: theme.primary, color: "#f8f9fc" }}
-            onMouseEnter={(e) => {
-              if (!isSubmitting)
-                e.currentTarget.style.backgroundColor = theme.primaryHover;
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.backgroundColor = theme.primary;
-            }}
+            className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 !bg-primary hover:!bg-primary-hover text-white cursor-pointer"
           >
             {isSubmitting ? "Sending OTP…" : "Sign up"}
           </button>
         </form>
 
-        <p
-          className="text-center text-sm mt-6 font-body"
-          style={{ color: theme.subtext }}
-        >
+        <p className="text-center text-sm mt-6 font-body text-subtext">
           Already have an account?{" "}
           <Link
             to="/login"
-            className="font-semibold hover:underline"
-            style={{ color: theme.primary }}
+            className="font-semibold hover:underline text-primary"
           >
             Log in
           </Link>
         </p>
 
-        <div
-          className="mt-6 pt-5 text-center text-xs font-body"
-          style={{
-            borderTop: `1px solid ${theme.border}`,
-            color: theme.subtext,
-          }}
-        >
+        <div className="mt-6 pt-5 text-center text-xs font-body border-t border-border text-subtext">
           By signing up, you agree to our Terms of Service and Privacy Policy
         </div>
       </div>
@@ -577,36 +373,17 @@ const Signup = () => {
       {/* OTP Modal */}
       {showOtpModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div
-            className="rounded-3xl shadow-2xl w-full max-w-sm p-8 font-body transition-colors duration-500"
-            style={{
-              backgroundColor: theme.card,
-              border: `1px solid ${theme.border}`,
-            }}
-          >
+          <div className="rounded-3xl shadow-2xl w-full max-w-sm p-8 font-body transition-colors duration-500 bg-surface border border-border">
             <div className="text-center mb-6">
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4"
-                style={{
-                  backgroundColor: isDark
-                    ? "rgba(255,39,104,0.12)"
-                    : "rgba(113,0,25,0.08)",
-                }}
-              >
-                <MailIcon
-                  className="w-8 h-8"
-                  style={{ color: theme.primary }}
-                />
+              <div className="w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4 bg-primary/10">
+                <FiMail className="w-8 h-8 text-primary" />
               </div>
-              <h3
-                className="font-display text-2xl mb-1"
-                style={{ color: theme.text }}
-              >
+              <h3 className="font-display text-2xl mb-1 text-text">
                 Verify your email
               </h3>
-              <p className="text-sm" style={{ color: theme.subtext }}>
+              <p className="text-sm text-subtext">
                 We sent a code to{" "}
-                <span className="font-semibold" style={{ color: theme.text }}>
+                <span className="font-semibold text-text">
                   {formData.email}
                 </span>{" "}
                 valid for 3 minutes
@@ -615,10 +392,7 @@ const Signup = () => {
 
             <div className="space-y-4">
               <div>
-                <label
-                  className="block text-sm font-medium mb-1.5"
-                  style={{ color: theme.text }}
-                >
+                <label className="block text-sm font-medium mb-1.5 text-text">
                   Enter OTP
                 </label>
                 <input
@@ -630,20 +404,13 @@ const Signup = () => {
                   }}
                   maxLength={6}
                   placeholder="······"
-                  className="w-full px-4 py-3 rounded-lg text-center text-xl tracking-[0.5em] font-mono outline-none transition-all duration-200 focus:ring-2"
-                  style={{
-                    backgroundColor: theme.inputBg,
-                    color: theme.text,
-                    border: `1px solid ${otpError ? theme.danger : theme.border}`,
-                    "--tw-ring-color": `${theme.primary}55`,
-                  }}
+                  className={`w-full px-4 py-3 rounded-lg text-center text-xl tracking-[0.5em] font-mono outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                    otpError ? "border-danger" : "border-border"
+                  }`}
                   onKeyDown={(e) => e.key === "Enter" && handleVerifyOtp()}
                 />
                 {otpError && (
-                  <p
-                    className="text-xs mt-1.5 text-center"
-                    style={{ color: theme.danger }}
-                  >
+                  <p className="text-xs mt-1.5 text-center text-danger">
                     {otpError}
                   </p>
                 )}
@@ -652,23 +419,14 @@ const Signup = () => {
               <button
                 onClick={handleVerifyOtp}
                 disabled={isVerifying}
-                className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-                style={{ backgroundColor: theme.primary, color: "#f8f9fc" }}
-                onMouseEnter={(e) => {
-                  if (!isVerifying)
-                    e.currentTarget.style.backgroundColor = theme.primaryHover;
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.backgroundColor = theme.primary;
-                }}
+                className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-primary hover:bg-primary-hover text-white"
               >
                 {isVerifying ? "Verifying…" : "Verify & create account"}
               </button>
 
               <button
                 onClick={() => setShowOtpModal(false)}
-                className="w-full text-sm py-1 hover:underline transition-colors"
-                style={{ color: theme.subtext }}
+                className="w-full text-sm py-1 hover:underline transition-colors text-subtext"
               >
                 Go back
               </button>

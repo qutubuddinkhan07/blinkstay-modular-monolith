@@ -1,6 +1,6 @@
 export const handleApiError = (error, context = "") => {
   if (!error.response) {
-    return error.message || "Network error. Please check your connection.";
+    return 'Unable to connect Blinkstay. Please try again later.'
   }
 
   const status = error.response.status;

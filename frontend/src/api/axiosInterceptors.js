@@ -1,4 +1,3 @@
-import { notify } from "../utils/notify";
 import axiosInstance from "./axiosInstance";
 
 const publicEndpoints = [
@@ -13,7 +12,9 @@ axiosInstance.interceptors.request.use(
   (config) => {
     console.log("REQUEST INTERCEPTOR:", config.method, config.url);
 
-    const isPublicEndpoint = publicEndpoints.includes(config.url);
+    const requestPath = config.url?.split("?")[0]; // extract the url
+
+    const isPublicEndpoint = publicEndpoints.includes(requestPath);
 
     if (!isPublicEndpoint) {
       const token = localStorage.getItem("token");
@@ -38,7 +39,18 @@ axiosInstance.interceptors.response.use(
     return response;
   },
   (err) => {
-    console.log("RESPONSE ERROR INTERCEPTOR:", err.response?.status);
+    if (!err.response) {
+      console.error(
+        "RESPONSE ERROR INTERCEPTOR: No response from server.",
+        err.message,
+      );
+    } else {
+      console.error(
+        "RESPONSE ERROR INTERCEPTOR:",
+        err.response.status,
+        err.config?.url,
+      );
+    }
 
     if (err.response?.status === 401) {
       console.log("Authentication failed");
