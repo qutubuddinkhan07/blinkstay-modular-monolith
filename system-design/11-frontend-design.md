@@ -213,3 +213,25 @@ ListingHome → decides what to show.
 ErrorPage → catches unexpected React Router errors.
 PageNotFound → handles unknown URLs.
 
+# Navbar Design
+
+```
+                    BLINKSTAY
+                        │
+        ┌───────────────┼────────────────┐
+        │               │                │
+      Navbar          Pages           Footer
+        │
+        ├── Public links
+        ├── Auth links
+        ├── Role-specific links
+        ├── Theme
+        ├── Notifications
+        └── User profile
+                │
+                ▼
+            AuthContext
+                │
+                ▼
+              user
+```
