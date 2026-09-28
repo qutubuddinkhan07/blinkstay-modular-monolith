@@ -22,7 +22,7 @@ public class AuthController {
 	@PostMapping("/login")
 	public ResponseEntity<ApiResponse<String>> authenticateUsernamePasswordController(@RequestBody LoginUserDto dto) {
 		String serviceResponse = authService.authUsernameAndPasswordService(dto.getUsername(), dto.getPassword());
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("User authentication")
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("Login Successful!")
 				.data(serviceResponse).build();
 
 		return ResponseEntity.ok(apiResponse);
@@ -32,7 +32,7 @@ public class AuthController {
 	@PreAuthorize("isAuthenticated()")
 	public ResponseEntity<ApiResponse<String>> logoutController(HttpServletRequest request) {
 		String serviceResponse = authService.logoutService(request);
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("logout service")
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("Logout Successful!")
 				.data(serviceResponse).build();
 
 		return ResponseEntity.ok(apiResponse);
