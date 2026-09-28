@@ -9,7 +9,9 @@ import Layout from "../components/layouts/Layout";
 
 const Signup = lazy(() => import("../features/auth/pages/Signup"));
 const Login = lazy(() => import("../features/auth/pages/Login"));
-const ListingHome = lazy(() => import("../features/listings/ListingHome"));
+const ExplorePage = lazy(
+  () => import("../features/listings/pages/ExplorePage"),
+);
 const ErrorPage = lazy(() => import("../components/common/ErrorPage"));
 const PageNotFound = lazy(() => import("../components/common/PageNotFound"));
 
@@ -25,15 +27,15 @@ const route = createBrowserRouter([
         children: [
           {
             index: true,
-            element: <ListingHome />,
+            element: <ExplorePage />,
           },
           {
             path: "/explore",
-            element: <ListingHome />,
+            element: <ExplorePage />,
           },
           {
             path: "/about",
-            element: <ListingHome />,
+            element: <ExplorePage />,
           },
           // Add more pages here later (e.g. listing details, user profile)
           // to give them the same Navbar automatically.
