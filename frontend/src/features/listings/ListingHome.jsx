@@ -64,7 +64,7 @@ const ListingHome = () => {
   }
 
   return (
-    <div>
+    <div className="min-h-screen w-full px-10 py-8">
       <h2>Get all published listings</h2>
 
       <ul>

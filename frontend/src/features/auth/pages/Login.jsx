@@ -2,15 +2,15 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { FiEye, FiEyeOff, FiMoon, FiSun } from "react-icons/fi";
 import { handleApiError } from "../../../api/errors/handleApiError";
-import { login } from "../authService";
-import { notify } from "../../../utils/notify";
 import Logo from "../../../components/common/Logo";
 import { useTheme } from "../../../context/ThemeContext";
+import { useAuth } from "../../../context/AuthContext";
 
 /* ---------- Login ---------- */
 
 const Login = () => {
   const navigate = useNavigate();
+  const { loginUser } = useAuth(); // to handle login
   const { isDark, toggleTheme } = useTheme();
   const [formData, setFormData] = useState({
     email: "",
@@ -54,12 +54,13 @@ const Login = () => {
       setIsLoading(true);
       setErrors({});
       try {
-        const res = await login(formData.email, formData.password);
-        localStorage.setItem("token", res.data.data);
-        notify.success("Login successful!");
-        navigate("/");
-      } catch (error) {
-        setErrors({ api: handleApiError(error, "login") });
+        const result = await loginUser(formData.email, formData.password);
+
+        if (result.success) {
+          navigate("/");
+        } else {
+          setErrors({ api: handleApiError(result.error, "login") });
+        }
       } finally {
         setIsLoading(false);
       }
@@ -75,7 +76,9 @@ const Login = () => {
       <div className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 transition-colors duration-500 bg-danger" />
 
       {/* Blinkstay logo, top-left */}
-      <Logo isDark={isDark} />
+      <Link to={"/"}>
+        <Logo isDark={isDark} positioning={"absolute top-6 left-6 z-10"} />
+      </Link>
 
       {/* dark mode toggle */}
       <button

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { toast, ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import {
   FiEye,
@@ -175,7 +174,9 @@ const Signup = () => {
       <div className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 transition-colors duration-500 bg-danger" />
 
       {/* Blinkstay logo, top-left */}
-      <Logo isDark={isDark} />
+      <Link to={"/"}>
+        <Logo isDark={isDark} positioning={"absolute top-6 left-6 z-10"} />
+      </Link>
 
       {/* dark mode toggle */}
       <button

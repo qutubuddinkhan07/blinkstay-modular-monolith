@@ -4,16 +4,19 @@ import { ToastContainer } from "react-toastify";
 import { Suspense } from "react";
 import Loading from "./components/common/Loading";
 import { ThemeProvider } from "./context/ThemeContext";
+import { AuthProvider } from "./context/AuthContext";
 
 const App = () => {
   return (
     <>
-      <ThemeProvider>
-        <Suspense fallback={<Loading />}>
-          <RouterProvider router={route} />
-        </Suspense>
-        <ToastContainer />
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider>
+          <Suspense fallback={<Loading />}>
+            <RouterProvider router={route} />
+          </Suspense>
+          <ToastContainer />
+        </ThemeProvider>
+      </AuthProvider>
     </>
   );
 };

@@ -27,13 +27,17 @@ const route = createBrowserRouter([
             index: true,
             element: <ListingHome />,
           },
+          {
+            path: "/explore",
+            element: <ListingHome />,
+          },
+          {
+            path: "/about",
+            element: <ListingHome />,
+          },
           // Add more pages here later (e.g. listing details, user profile)
           // to give them the same Navbar automatically.
         ],
-      },
-      {
-        index: true,
-        element: <ListingHome />,
       },
       {
         path: "login",
