@@ -235,3 +235,55 @@ PageNotFound → handles unknown URLs.
                 ▼
               user
 ```
+
+# Footer Design
+
+```
+┌──────────────────────────────────────────────────────────────────────┐
+│                                                                      │
+│ BlinkStay                                                            │
+│ Find a place that feels like home.                                   │
+│                                                                      │
+│ Explore          Company          Support          Follow            │
+│ ───────          ───────          ───────          ──────            │
+│ Stays            About            Help Center      Instagram         │
+│ Destinations     Careers          Contact Us       LinkedIn          │
+│                  Blog             FAQs              GitHub            │
+│                                                                      │
+├──────────────────────────────────────────────────────────────────────┤
+│ © 2026 BlinkStay          Privacy   Terms   Cookies                 │
+└──────────────────────────────────────────────────────────────────────┘
+```
+
+## After Login flow
+
+Should you fetch /me immediately after login?
+
+```
+
+                    LOGIN
+                      │
+                      ▼
+             POST /auth/login
+                      │
+                      ▼
+                  JWT token
+                      │
+          ┌───────────┴───────────┐
+          ▼                       ▼
+    localStorage              AuthContext
+      token                     token
+                                  │
+                                  ▼
+                            GET /user/me
+                                  │
+                                  ▼
+                              User DTO
+                                  │
+                                  ▼
+                           AuthContext.user
+                                  │
+                    ┌─────────────┴─────────────┐
+                    ▼                           ▼
+                 Navbar                     Dashboard
+```
