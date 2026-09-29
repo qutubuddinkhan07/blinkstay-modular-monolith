@@ -9,7 +9,8 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 
 @Configuration
 public class SwaggerConfig {
-	private static final String SECURITY_SCHEME_NAME = "Bearer Authentication";
+
+	private static final String SECURITY_SCHEME_NAME = "Cookie Authentication";
 
 	@Bean
 	public OpenAPI customOpenAPI() {
@@ -18,8 +19,9 @@ public class SwaggerConfig {
 				.info(new Info().title("Blinkstay System API").version("1.0")
 						.description("REST APIs for Blinkstay System"))
 
-				// Define Bearer Authentication
-				.schemaRequirement(SECURITY_SCHEME_NAME, new SecurityScheme().name(SECURITY_SCHEME_NAME)
-						.type(SecurityScheme.Type.HTTP).scheme("bearer").bearerFormat("JWT"));
+				.schemaRequirement(SECURITY_SCHEME_NAME,
+						new SecurityScheme().name("BLINKSTAY_TOKEN").type(SecurityScheme.Type.APIKEY)
+								.in(SecurityScheme.In.COOKIE)
+								.description("JWT authentication using the BLINKSTAY_TOKEN HttpOnly cookie"));
 	}
 }

@@ -11,6 +11,7 @@ import blinkstay.auth.dtos.ApiResponse;
 import blinkstay.auth.dtos.LoginUserDto;
 import blinkstay.auth.service.AuthService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 
 @RestController
@@ -20,18 +21,21 @@ public class AuthController {
 	private final AuthService authService;
 
 	@PostMapping("/login")
-	public ResponseEntity<ApiResponse<String>> authenticateUsernamePasswordController(@RequestBody LoginUserDto dto) {
-		String serviceResponse = authService.authUsernameAndPasswordService(dto.getUsername(), dto.getPassword());
+	public ResponseEntity<ApiResponse<String>> authenticateUsernamePasswordController(@RequestBody LoginUserDto dto,
+			HttpServletResponse response) {
+		authService.authUsernameAndPasswordService(dto.getUsername(), dto.getPassword(), response);
+
 		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("Login Successful!")
-				.data(serviceResponse).build();
+				.data(null).build();
 
 		return ResponseEntity.ok(apiResponse);
 	}
 
 	@PostMapping("/logout")
 	@PreAuthorize("isAuthenticated()")
-	public ResponseEntity<ApiResponse<String>> logoutController(HttpServletRequest request) {
-		String serviceResponse = authService.logoutService(request);
+	public ResponseEntity<ApiResponse<String>> logoutController(HttpServletRequest request,
+			HttpServletResponse response) {
+		String serviceResponse = authService.logoutService(request, response);
 		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("Logout Successful!")
 				.data(serviceResponse).build();
 

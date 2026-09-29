@@ -2,7 +2,7 @@ package blinkstay.auth.filter;
 
 import java.io.IOException;
 
-import org.springframework.http.HttpHeaders;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -18,6 +18,7 @@ import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,9 @@ import lombok.RequiredArgsConstructor;
 @Component
 @RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
+	@Value("${app.cookie.name}")
+	private String authCookieName;
+
 	private final JWTUtil jwtUtil;
 
 	private final CustomUserDetailsDaoService userDetailsService;
@@ -34,30 +38,38 @@ public class JWTFilter extends OncePerRequestFilter {
 	@Override
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
-		String authHeader = request.getHeader(HttpHeaders.AUTHORIZATION);
 
 		System.out.println("JWT FILTER");
 		System.out.println("Request: " + request.getRequestURI());
-		System.out.println("Authorization: " + request.getHeader("Authorization"));
 
-		// Skip filter if no Bearer token (public endpoint)
-		if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+		String jwt = extractTokenFromCookies(request);
+
+		/*
+		 * No authentication cookie.
+		 *
+		 * We DO NOT immediately return 401 here.
+		 *
+		 * Public endpoints must continue through the filter chain. Protected endpoints
+		 * will eventually be rejected by Spring Security.
+		 */
+
+		if (jwt == null || jwt.isBlank()) {
 			filterChain.doFilter(request, response);
 			return;
 		}
 
-		String jwt = authHeader.substring(7);
-
 		try {
 			// 1. Extract UUID string from JWT subject
 			String userIdStr = jwtUtil.extractUserId(jwt);
+
+			// 2. Check whether token has been revoked
 
 			if (blockedTokenService.checkIfPresent(jwt)) {
 				writeError(response, "Token has been revoked/logged out");
 				return;
 			}
 
-			// 2. Fetch UserDetails by UUID string
+			// 3. Build Spring Security authentication
 			if (userIdStr != null && SecurityContextHolder.getContext().getAuthentication() == null) {
 				UserDetails userDetails = userDetailsService.loadUserByUsername(userIdStr);
 
@@ -77,11 +89,28 @@ public class JWTFilter extends OncePerRequestFilter {
 		}
 	}
 
+	private String extractTokenFromCookies(HttpServletRequest request) {
+		Cookie[] cookies = request.getCookies();
+
+		if (cookies == null) {
+			return null;
+		}
+
+		for (Cookie cookie : cookies) {
+			if (authCookieName.equals(cookie.getName())) {
+				return cookie.getValue();
+			}
+		}
+
+		return null;
+	}
+
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
 		String path = request.getRequestURI();
 		return path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
-				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all");
+				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all")
+				|| path.startsWith("/api/v1/auth/csrf");
 	}
 
 	private void writeError(HttpServletResponse response, String message) throws IOException {
