@@ -39,8 +39,9 @@ public class JWTFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 
-		System.out.println("JWT FILTER");
-		System.out.println("Request: " + request.getRequestURI());
+		System.out.println("========== JWT FILTER EXECUTED ==========");
+		System.out.println("Method: " + request.getMethod());
+		System.out.println("URI: " + request.getRequestURI());
 
 		String jwt = extractTokenFromCookies(request);
 
@@ -107,10 +108,19 @@ public class JWTFilter extends OncePerRequestFilter {
 
 	@Override
 	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
+		System.out.println("******** SHOULD NOT FILTER ********");
+		System.out.println("Method: " + request.getMethod());
+		System.out.println("URI: " + request.getRequestURI());
+
 		String path = request.getRequestURI();
-		return path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
-				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all")
-				|| path.startsWith("/api/v1/auth/csrf");
+
+		boolean skip = path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
+				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all");
+
+		System.out.println("JWT shouldNotFilter: " + skip);
+		System.out.println("JWT path: " + path);
+
+		return skip;
 	}
 
 	private void writeError(HttpServletResponse response, String message) throws IOException {

@@ -1,5 +1,6 @@
 package blinkstay.auth.controller;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -10,8 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CsrfConstroller {
 
 	@GetMapping("/csrf")
-	public void csrf(CsrfToken csrfToken) {
-		// Accessing the token causes Spring Security
-		// to generate/send the CSRF cookie.
+	public ResponseEntity<?> csrf(CsrfToken csrfToken) {
+		return ResponseEntity.ok(csrfToken);
 	}
 }
