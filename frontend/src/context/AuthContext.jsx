@@ -1,23 +1,49 @@
-import { Children, createContext, useContext, useState } from "react";
+import {
+  Children,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
 import * as authService from "../features/auth/authService";
 import { notify } from "../utils/notify";
+import axiosInstance from "../api/axiosInstance";
+import { Navigate } from "react-router-dom";
 
 const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
-  const [token, setToken] = useState(() => {
-    return localStorage.getItem("token");
-  });
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const isAuthenticated = Boolean(token);
+  // Session Re-hydration: Check authentication status on app start/refresh
+  useEffect(() => {
+    const initializeAuth = async () => {
+      try {
+        // First re-hydrate CSRF token
+        await axiosInstance.get("/api/v1/auth/csrf");
+
+        // Fetch active user details (using BLINKSTAY_TOKEN cookie sent automatically)
+        const response = await axiosInstance.get("/api/v2/user/me");
+        setUser(response.data.data);
+      } catch (error) {
+        // User is not authenticated or cookie has expired
+        setUser(null);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+  }, []);
 
   const loginUser = async (email, password) => {
     try {
       const response = await authService.login(email, password);
-      const newToken = response.data.data;
 
-      localStorage.setItem("token", newToken);
-      setToken(newToken);
+      // Fetch profile details immediately after successful login
+      const profileResponse = await axiosInstance.get("/api/v2/user/me");
+      setUser(profileResponse.data?.data || profileResponse.data);
 
       notify.success(response.data?.message || "Login successful!");
 
@@ -44,19 +70,23 @@ export const AuthProvider = ({ children }) => {
 
       notify.info("Your session has ended.");
     } finally {
-      localStorage.removeItem("token");
-      setToken(null);
+      setUser(null);
     }
   };
 
   const value = {
-    token,
-    isAuthenticated,
+    user,
+    isAuthenticated: Boolean(user),
+    loading,
     loginUser,
     logout,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+      {!loading && children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {

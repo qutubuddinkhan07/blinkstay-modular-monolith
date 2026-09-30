@@ -1,4 +1,5 @@
 import axiosInstance from "./axiosInstance";
+import Cookies from "js-cookie";
 
 const publicEndpoints = [
   "/api/v1/auth/login",
@@ -12,17 +13,28 @@ axiosInstance.interceptors.request.use(
   (config) => {
     console.log("REQUEST INTERCEPTOR:", config.method, config.url);
 
-    const requestPath = config.url?.split("?")[0]; // extract the url
+    // const requestPath = config.url?.split("?")[0]; // extract the url
 
-    const isPublicEndpoint = publicEndpoints.includes(requestPath);
+    // const isPublicEndpoint = publicEndpoints.includes(requestPath);
 
-    if (!isPublicEndpoint) {
-      const token = localStorage.getItem("token");
+    // if (!isPublicEndpoint) {
+    //   const token = localStorage.getItem("token");
 
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
-        console.log("JWT attached");
-      }
+    //   if (token) {
+    //     config.headers.Authorization = `Bearer ${token}`;
+    //     console.log("JWT attached");
+    //   }
+    // }
+
+    //! Read the non-HttpOnly CSRF cookie set by Spring Security
+    const csrfToken = Cookies.get("XSRF-TOKEN");
+
+    if (
+      csrfToken &&
+      ["post", "put", "delete", "patch"].includes(config.method?.toLowerCase())
+    ) {
+      console.log("csrfToken ", csrfToken);
+      config.headers["X-XSRF-TOKEN"] = csrfToken;
     }
 
     return config;

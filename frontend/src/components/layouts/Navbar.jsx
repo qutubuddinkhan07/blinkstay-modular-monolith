@@ -1,12 +1,13 @@
 import React, { useState } from "react";
 import Logo from "../common/Logo";
 import { useTheme } from "../../context/ThemeContext";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, replace, useNavigate } from "react-router-dom";
 import { FaMoon } from "react-icons/fa";
 import { IoSunny } from "react-icons/io5";
 import { useAuth } from "../../context/AuthContext";
 
 const Navbar = () => {
+  const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
 
   const nav_list = [
@@ -25,6 +26,11 @@ const Navbar = () => {
   ];
 
   const { isAuthenticated, logout } = useAuth();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/explore", { replace: true });
+  };
 
   return (
     <nav className="h-[78px] bg-surface w-full sticky top-0 left-0 z-50 flex items-center shadow-md px-8">
@@ -71,7 +77,7 @@ const Navbar = () => {
         {isAuthenticated ? (
           <button
             type="button"
-            onClick={logout}
+            onClick={handleLogout}
             className="text-white px-4 py-2 rounded-lg bg-primary hover:bg-primary/80 cursor-pointer transition-colors duration-300"
           >
             Logout

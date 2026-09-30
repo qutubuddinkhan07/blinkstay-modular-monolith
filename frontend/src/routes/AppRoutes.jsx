@@ -6,6 +6,7 @@ import { createBrowserRouter } from "react-router-dom";
 // import PageNotFound from "../components/common/PageNotFound";
 import { lazy } from "react";
 import Layout from "../components/layouts/Layout";
+import ProtectedRoute from "./ProtectedRoute";
 
 const Signup = lazy(() => import("../features/auth/pages/Signup"));
 const Login = lazy(() => import("../features/auth/pages/Login"));
@@ -14,6 +15,13 @@ const ExplorePage = lazy(
 );
 const ErrorPage = lazy(() => import("../components/common/ErrorPage"));
 const PageNotFound = lazy(() => import("../components/common/PageNotFound"));
+
+//! Protected pages (FUTURE & CURRENT)
+const ProfilePage = lazy(() => import("../features/auth/pages/ProfilePage"));
+const CreateListing = lazy(
+  () => import("../features/listings/pages/CreateListing"),
+);
+const MyListings = lazy(() => import("../features/listings/pages/MyListings"));
 
 const route = createBrowserRouter([
   {
@@ -25,6 +33,9 @@ const route = createBrowserRouter([
         // whichever child below matches, with Navbar + Outlet.
         element: <Layout />,
         children: [
+          //? -----------------------------------------------------------
+          //? PUBLIC ROUTES (Anyone can view)
+          //? -----------------------------------------------------------
           {
             index: true,
             element: <ExplorePage />,
@@ -37,10 +48,31 @@ const route = createBrowserRouter([
             path: "/about",
             element: <ExplorePage />,
           },
-          // Add more pages here later (e.g. listing details, user profile)
-          // to give them the same Navbar automatically.
+
+          //? -----------------------------------------------------------
+          //? PROTECTED ROUTES (Requires active BLINKSTAY_TOKEN cookie)
+          //? -----------------------------------------------------------
+          {
+            element: <ProtectedRoute />, //! All children inside this object are guarded
+            children: [
+              {
+                path: "/profile",
+                element: <ProfilePage />,
+              },
+              {
+                path: "/my-listings",
+                element: <MyListings />,
+              },
+              {
+                path: "/create-listing",
+                element: <CreateListing />,
+              },
+            ],
+          },
         ],
       },
+
+      // Unprotected standalone pages (without Navbar/Layout)
       {
         path: "login",
         element: <Login />,

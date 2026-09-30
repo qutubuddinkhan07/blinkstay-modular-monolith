@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useLocation } from "react-router-dom";
 import { FiEye, FiEyeOff, FiMoon, FiSun } from "react-icons/fi";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import Logo from "../../../components/common/Logo";
@@ -10,6 +10,7 @@ import { useAuth } from "../../../context/AuthContext";
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginUser } = useAuth(); // to handle login
   const { isDark, toggleTheme } = useTheme();
   const [formData, setFormData] = useState({
@@ -47,6 +48,7 @@ const Login = () => {
     }
   };
 
+  const from = location.state?.from?.pathname || "/profile";
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();
@@ -57,7 +59,7 @@ const Login = () => {
         const result = await loginUser(formData.email, formData.password);
 
         if (result.success) {
-          navigate("/");
+          navigate(from, { replace: true }); //Navigate after login complete
         } else {
           setErrors({ api: handleApiError(result.error, "login") });
         }
@@ -185,7 +187,7 @@ const Login = () => {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full cursor-pointer py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed !bg-primary hover:!bg-primary-hover text-white"
+            className="w-full cursor-pointer py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-primary! hover:bg-primary-hover! text-white"
           >
             {isLoading ? "Logging in…" : "Log in"}
           </button>
