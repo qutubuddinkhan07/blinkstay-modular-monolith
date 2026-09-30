@@ -15,7 +15,6 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
-import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -31,12 +30,6 @@ public class SpringSecurityConfiguration {
 
 	@Bean
 	public SecurityFilterChain configureSecurityFilterChain(HttpSecurity http) throws Exception {
-
-		// Explicitly handle SPA double-submit CSRF token
-		CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
-		// Set to null so the raw token string is compared directly against the cookie
-		// header
-		requestHandler.setCsrfRequestAttributeName(null);
 
 		http
 				// CSRF PROTECTION
