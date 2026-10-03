@@ -111,9 +111,14 @@ const Listing = () => {
 
       <section className="mt-12 border-t border-neutral-200 pt-8">
         <h2 className="mb-2 text-xl font-semibold">Where you'll be</h2>
-        <p className="mb-5 text-neutral-600">{MyListings.location}</p>
+        <p className="mb-5 text-neutral-600">{listing.location}</p>
 
-        <ListingMap />
+        <ListingMap
+          latitude={listing.geometry?.latitude}
+          longitude={listing.geometry?.longitude}
+          title={listing.title}
+          address={listing.geometry?.address}
+        />
       </section>
     </div>
   );

@@ -7,6 +7,7 @@ import { createBrowserRouter } from "react-router-dom";
 import { lazy } from "react";
 import Layout from "../components/layouts/Layout";
 import ProtectedRoute from "./ProtectedRoute";
+// import Listing from "../features/listings/pages/Listing";
 
 const Signup = lazy(() => import("../features/auth/pages/Signup"));
 const Login = lazy(() => import("../features/auth/pages/Login"));
@@ -22,6 +23,7 @@ const CreateListing = lazy(
   () => import("../features/listings/pages/CreateListing"),
 );
 const MyListings = lazy(() => import("../features/listings/pages/MyListings"));
+const Listing = lazy(() => import("../features/listings/pages/Listing"));
 
 const route = createBrowserRouter([
   {
@@ -45,8 +47,12 @@ const route = createBrowserRouter([
             element: <ExplorePage />,
           },
           {
-            path: "/about",
-            element: <ExplorePage />,
+            path: "/listings/:id",
+            element: <Listing />,
+          },
+          {
+            path: "/listings/:id",
+            element: <Listing />,
           },
 
           //? -----------------------------------------------------------

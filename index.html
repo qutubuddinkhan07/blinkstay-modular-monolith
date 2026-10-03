@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Pure JS Bulk Downloader</title>
+    <!-- Lightweight CDN scripts to handle ZIP creation in the browser -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        max-width: 600px;
+        margin: 40px auto;
+        padding: 20px;
+      }
+      textarea {
+        width: 100%;
+        height: 200px;
+        margin-bottom: 15px;
+        padding: 10px;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        font-size: 16px;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+      #status {
+        margin-top: 15px;
+        font-weight: bold;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Bulk Image Downloader (Client-Side ZIP)</h2>
+    <p>Paste raw JSON or image URLs below:</p>
+
+    <textarea id="urlInput" placeholder="Paste JSON or URLs here..."></textarea>
+    <button onclick="downloadAsZip()">Download as ZIP</button>
+    <div id="status"></div>
+
+    <script>
+      async function downloadAsZip() {
+        const text = document.getElementById("urlInput").value;
+        const status = document.getElementById("status");
+
+        // Extract URLs via Regex from JSON or raw text
+        const urlRegex = /(https?:\/\/[^\s"']+)/g;
+        const matches = text.match(urlRegex) || [];
+        const urls = [...new Set(matches)];
+
+        if (urls.length === 0) {
+          alert("No valid URLs found.");
+          return;
+        }
+
+        status.innerText = "Processing files...";
+        const zip = new JSZip();
+
+        let downloadedCount = 0;
+
+        for (let i = 0; i < urls.length; i++) {
+          const url = urls[i];
+          status.innerText = `Downloading image ${i + 1} of ${urls.length}...`;
+
+          try {
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("HTTP error " + response.status);
+
+            const blob = await response.blob();
+
+            // Detect extension or default to .avif/.jpg
+            let ext = url.substring(url.lastIndexOf("."));
+            if (ext.length > 5 || !ext.startsWith(".")) ext = ".avif";
+
+            zip.file(`image_${i + 1}${ext}`, blob);
+            downloadedCount++;
+          } catch (err) {
+            console.error(`Failed to fetch ${url}:`, err);
+          }
+        }
+
+        if (downloadedCount === 0) {
+          status.innerText = "Error: Blocked by CORS. Try Option 2 below.";
+          return;
+        }
+
+        status.innerText = "Generating ZIP file...";
+        const zipBlob = await zip.generateAsync({ type: "blob" });
+        saveAs(zipBlob, "cloudinary_images.zip");
+        status.innerText = "Download complete!";
+      }
+    </script>
+  </body>
+</html>

@@ -19,22 +19,36 @@ export const AuthProvider = ({ children }) => {
   // Session Re-hydration: Check authentication status on app start/refresh
   useEffect(() => {
     const initializeAuth = async () => {
+      let ignore = false;
+
       try {
         // First re-hydrate CSRF token
         await axiosInstance.get("/api/v1/auth/csrf");
-
-        // Fetch active user details (using BLINKSTAY_TOKEN cookie sent automatically)
-        const response = await axiosInstance.get("/api/v2/user/me");
-        setUser(response.data.data);
       } catch (error) {
-        // User is not authenticated or cookie has expired
-        setUser(null);
-      } finally {
-        setLoading(false);
+        console.error("CSRF fetch failed", e);
       }
+
+      // Only ask the server if this browser has logged in before
+      if (localStorage.getItem("hasSession") === "1") {
+        try {
+          // Fetch active user details (using BLINKSTAY_TOKEN cookie sent automatically)
+          const response = await axiosInstance.get("/api/v2/user/me");
+          if (!ignore) setUser(response.data.data);
+        } catch (error) {
+          // User is not authenticated or cookie has expired
+          localStorage.removeItem("hasSession"); // cookie expired
+          if (!ignore) setUser(null);
+        }
+      }
+
+      if (!ignore) setLoading(false);
     };
 
     initializeAuth();
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   const loginUser = async (email, password) => {
@@ -44,6 +58,7 @@ export const AuthProvider = ({ children }) => {
       // Fetch profile details immediately after successful login
       const profileResponse = await axiosInstance.get("/api/v2/user/me");
       setUser(profileResponse.data?.data || profileResponse.data);
+      localStorage.setItem("hasSession", "1"); // acts as a flag
 
       notify.success(response.data?.message || "Login successful!");
 
