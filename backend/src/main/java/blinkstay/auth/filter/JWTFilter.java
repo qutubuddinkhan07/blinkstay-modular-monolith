@@ -115,7 +115,7 @@ public class JWTFilter extends OncePerRequestFilter {
 		String path = request.getRequestURI();
 
 		boolean skip = path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
-				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v3/listings/all");
+				|| path.startsWith("/api/v2/user/verify-otp");
 
 		System.out.println("JWT shouldNotFilter: " + skip);
 		System.out.println("JWT path: " + path);

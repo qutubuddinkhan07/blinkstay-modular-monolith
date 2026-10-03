@@ -49,9 +49,17 @@ public class SpringSecurityConfiguration {
 
 						// Public requests
 						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v2/user/register-init",
-								"/api/v2/user/verify-otp", "/api/v3/listings/all", "/swagger-ui/**", "/swagger-ui.html",
+								"/api/v2/user/verify-otp", "/api/v3/listings/:id", "/swagger-ui/**", "/swagger-ui.html",
 								"/v3/api-docs/**")
 						.permitAll()
+
+						.requestMatchers(HttpMethod.GET, "/api/v3/listings/all").permitAll()
+
+						// Must come BEFORE the {listingId} rule, otherwise "my-listings"
+						// would be treated as a listing id
+						.requestMatchers(HttpMethod.GET, "/api/v3/listings/my-listings").hasAuthority("HOTEL_MANAGER")
+
+						.requestMatchers(HttpMethod.GET, "/api/v3/listings/{listingId}").permitAll()
 
 						// Listings authorization
 						.requestMatchers("/api/v3/listings/**").hasAnyAuthority("HOTEL_MANAGER", "ADMIN")
