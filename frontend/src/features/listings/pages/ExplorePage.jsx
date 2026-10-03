@@ -4,6 +4,7 @@ import { handleApiError } from "../../../api/errors/handleApiError";
 import Card from "../components/Card";
 import SkeletonCard from "../components/SkeletonCard";
 import Pagination from "../components/Pagination";
+import { Link } from "react-router-dom";
 
 const PAGE_SIZE = 10;
 
@@ -38,10 +39,12 @@ const ExplorePage = () => {
   };
 
   useEffect(() => {
-    setTimeout(() => {
+    const timer = setTimeout(() => {
       fetchData();
       window.scrollTo({ top: 0, behavior: "smooth" });
     }, 2000);
+
+    return () => clearTimeout(timer);
   }, [page, country]);
 
   if (error.api) {
@@ -73,7 +76,11 @@ const ExplorePage = () => {
           ? Array.from({ length: PAGE_SIZE }, (_, i) => (
               <SkeletonCard key={i} />
             ))
-          : listings.map((item) => <Card key={item.id} listing={item} />)}
+          : listings.map((item) => (
+              <Link to={`/listings/${item.id}`} key={item.id}>
+                <Card listing={item} />
+              </Link>
+            ))}
       </div>
 
       {!loading && listings.length === 0 && (

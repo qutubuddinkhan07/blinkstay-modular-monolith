@@ -13,3 +13,7 @@ export const fetchListings = ({ page, size, sortBy, direction, country }) => {
     },
   });
 };
+
+export const fetchListingById = (id) => {
+  return axiosInstance.get(`${LISTING_URL}/${id}`);
+};
