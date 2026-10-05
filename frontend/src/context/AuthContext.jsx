@@ -25,7 +25,7 @@ export const AuthProvider = ({ children }) => {
         // First re-hydrate CSRF token
         await axiosInstance.get("/api/v1/auth/csrf");
       } catch (error) {
-        console.error("CSRF fetch failed", e);
+        console.error("CSRF fetch failed", error);
       }
 
       // Only ask the server if this browser has logged in before

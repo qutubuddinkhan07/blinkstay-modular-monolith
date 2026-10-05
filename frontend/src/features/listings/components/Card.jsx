@@ -19,7 +19,6 @@ const MAX_AMENITIES = 3;
 
 const Card = ({ listing }) => {
   const {
-    id,
     address,
     amenities,
     category,
@@ -29,49 +28,51 @@ const Card = ({ listing }) => {
     location,
   } = listing;
 
-  const place = [toText(location) || "toText(address), toText(country)"]
-    .filter(Boolean)
-    .join(", ");
+  // Use `location` if present, otherwise fall back to address + country
+  const place =
+    toText(location) ||
+    [toText(address), toText(country)].filter(Boolean).join(", ");
 
   const amenityList = Array.isArray(amenities) ? amenities.map(toText) : [];
   const shown = amenityList.slice(0, MAX_AMENITIES);
   const extra = amenityList.length - shown.length;
 
   return (
-    <article className="group flex h-full w-full flex-col overflow-hidden rounded-2xl bg-white border border-gray-200 transition-shadow hover:shadow-lg">
+    <article className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-text/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
       {/* Fixed image height so every card matches */}
-      <div className="relative h-48 w-full shrik-0 overflow-hidden bg-gray-100">
+      <div className="relative h-48 w-full shrink-0 overflow-hidden bg-bg">
         {coverImageUrl ? (
           <img
             src={coverImageUrl}
             alt={title}
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            decoding="async"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
           />
         ) : (
-          <div className="flex h-full items-center justify-center text-sm text-gray-400">
-            No Image
+          <div className="flex h-full items-center justify-center text-sm text-subtext">
+            No image
           </div>
         )}
 
         {category && (
-          <span className="absolute left-3 top-3 max-w-[70%] truncate rounded-full bg-white/90 px-3 py-1 font-medium text-gray-800 shadow-sm backdrop-blur">
+          <span className="absolute left-3 top-3 max-w-[70%] truncate rounded-full border border-border bg-surface/90 px-3 py-1 text-xs font-medium text-text shadow-sm backdrop-blur">
             {toText(category)}
           </span>
         )}
       </div>
 
-      {/* Body: fiexd height, content is clamped instead of growing */}
+      {/* Body: fixed height, content is clamped instead of growing */}
       <div className="flex h-36 flex-col gap-1.5 p-4">
         <h3
           title={title}
-          className="line-clamp-2 min-h-[2.73rem] text-base font-semibold leading-snug text-gray-900"
+          className="line-clamp-2 min-h-[2.73rem] font-display text-base font-medium leading-snug text-text"
         >
           {title}
         </h3>
 
         <p
-          className="flex items-center gap-1 truncate text-sm text-gray-500"
+          className="flex items-center gap-1 truncate text-sm text-subtext"
           title={place}
         >
           <svg
@@ -94,14 +95,14 @@ const Card = ({ listing }) => {
           {shown.map((a, i) => (
             <span
               key={`${a}-${i}`}
-              className="max-w-[7rem] truncate rounded-md bg-gray-100 px-2 py-0.5 text-xs text-gray-600"
+              className="max-w-[7rem] truncate rounded-md border border-border bg-bg px-2 py-0.5 text-xs text-subtext"
               title={a}
             >
               {a.toUpperCase()}
             </span>
           ))}
           {extra > 0 && (
-            <span className="shrink-0 text-xs font-medium text-[#e01f59]">
+            <span className="shrink-0 text-xs font-semibold text-primary">
               +{extra} more
             </span>
           )}
