@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import mapboxgl from "mapbox-gl";
 import axios from "axios";
-import { notify } from "../../../../utils/notify"; // adjust to where your util lives
 import "mapbox-gl/dist/mapbox-gl.css";
 import { useTheme } from "../../../../context/ThemeContext"; // adjust to your folder depth
 import { cardClass, labelClass, inputClass } from "./formStyles";
+import { notify } from "../../../../utils/notify";
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -19,7 +19,13 @@ const getPrimaryColor = () =>
     .getPropertyValue("--color-primary")
     .trim() || "#710019";
 
-const ListingLocationPicker = ({ value, onLocationSelect }) => {
+const ListingLocationPicker = ({
+  value,
+  onLocationSelect,
+  initialCoordinates, // { latitude, longitude } saved on the listing (edit page)
+  initialAddress, // saved geometry.address, used if coordinates are missing
+  country, // used only to improve the fallback lookup
+}) => {
   const { isDark } = useTheme();
   const styleUrl = isDark ? MAP_STYLES.dark : MAP_STYLES.light;
 
@@ -29,30 +35,97 @@ const ListingLocationPicker = ({ value, onLocationSelect }) => {
   const styleRef = useRef(styleUrl);
   const debounceRef = useRef(null);
   const requestIdRef = useRef(0);
+  // What the form looked like when the picker first mounted
+  const mountRef = useRef({
+    value,
+    country,
+    coords: initialCoordinates,
+    address: initialAddress,
+  });
 
   const [search, setSearch] = useState(value || "");
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // Drops (or moves) the single marker on the map
+  const placeMarker = useCallback((longitude, latitude) => {
+    if (!mapRef.current) return;
+
+    markerRef.current?.remove();
+    markerRef.current = new mapboxgl.Marker({ color: getPrimaryColor() })
+      .setLngLat([longitude, latitude])
+      .addTo(mapRef.current);
+  }, []);
+
   /* Create the map once */
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
+    const start = mountRef.current.coords;
+
     const map = new mapboxgl.Map({
       container: mapContainerRef.current,
       style: styleRef.current,
-      center: [78.9629, 20.5937],
-      zoom: 4,
+      center: start ? [start.longitude, start.latitude] : [78.9629, 20.5937],
+      zoom: start ? 12 : 4,
     });
 
     map.addControl(new mapboxgl.NavigationControl(), "top-right");
     mapRef.current = map;
 
+    // Edit page: show the saved position right away
+    if (start) placeMarker(start.longitude, start.latitude);
+
     return () => {
       clearTimeout(debounceRef.current);
       map.remove();
     };
-  }, []);
+  }, [placeMarker]);
+
+  /* Edit page with no saved coordinates: look them up from the address (or "location, country") */
+  useEffect(() => {
+    const {
+      value: savedLocation,
+      country: savedCountry,
+      coords,
+      address,
+    } = mountRef.current;
+    if (coords || (!address && !savedLocation)) return;
+
+    let cancelled = false;
+    // A saved address is more precise than the bare place name
+    const query =
+      address || [savedLocation, savedCountry].filter(Boolean).join(", ");
+
+    axios
+      .get(
+        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+          query,
+        )}.json`,
+        {
+          params: {
+            access_token: mapboxgl.accessToken,
+            limit: 1,
+            language: "en",
+          },
+        },
+      )
+      .then((res) => {
+        const place = res.data.features?.[0];
+        if (!place || cancelled || !mapRef.current) return;
+
+        const [longitude, latitude] = place.center;
+        mapRef.current.jumpTo({ center: [longitude, latitude], zoom: 12 });
+        placeMarker(longitude, latitude);
+      })
+      .catch((error) =>
+        console.error("Could not locate the saved listing:", error),
+      );
+
+    return () => {
+      cancelled = true;
+    };
+  }, [placeMarker]);
 
   /* Swap the map style when the theme changes (markers are DOM, so they stay) */
   useEffect(() => {
@@ -148,11 +221,7 @@ const ListingLocationPicker = ({ value, onLocationSelect }) => {
         essential: true,
       });
 
-      markerRef.current?.remove();
-
-      markerRef.current = new mapboxgl.Marker({ color: getPrimaryColor() })
-        .setLngLat([longitude, latitude])
-        .addTo(mapRef.current);
+      placeMarker(longitude, latitude);
     }
   };
 

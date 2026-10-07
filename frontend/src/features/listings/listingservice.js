@@ -1,3 +1,4 @@
+import axios from "axios";
 import axiosInstance from "../../api/axiosInstance";
 
 const LISTING_URL = "/api/v3/listings";
@@ -35,4 +36,35 @@ export const createListing = async (listing, images) => {
   const response = await axiosInstance.post(`${LISTING_URL}/create`, formData);
 
   return response.data;
+};
+
+// GET /my-listings (HOTEL_MANAGER only) -> res.data.data is array
+export const fetchMyListings = () => {
+  return axiosInstance.get(`${LISTING_URL}/my-listings`);
+};
+
+// PUT /{id} body = AddListingDto as JSON
+export const updateListing = (id, listing) => {
+  return axiosInstance.put(`${LISTING_URL}/${id}`, listing);
+};
+
+// POST /{id}/images multipart, part name 'images' -> res.data.data is ImageDto[]
+export const addListingImages = (id, images) => {
+  const formData = new FormData();
+
+  images.forEach((image) => {
+    formData.append("image", image);
+  });
+
+  return axiosInstance.post(`${LISTING_URL}/${id}/images`, formData);
+};
+
+// DELETE /{id}/images/{imageId}
+export const deleteListingImage = (id, imageId) => {
+  return axiosInstance.delete(`${LISTING_URL}/${id}/images/${imageId}`);
+};
+
+// POST /{id}/publish
+export const publishListing = (id) => {
+  return axiosInstance.post(`${LISTING_URL}/${id}/publish`);
 };

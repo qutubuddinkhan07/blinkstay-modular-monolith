@@ -4,34 +4,44 @@ import Layout from "../components/layouts/Layout";
 import ProtectedRoute from "./ProtectedRoute";
 import Loading from "../components/common/Loading";
 
-// 1. Declare Loadable FIRST before invoking it below
 const Loadable = (Component) => (props) => (
   <Suspense fallback={<Loading />}>
     <Component {...props} />
   </Suspense>
 );
 
-// 2. Wrap all lazy-loaded pages consistently
+// Public
 const Signup = Loadable(lazy(() => import("../features/auth/pages/Signup")));
 const Login = Loadable(lazy(() => import("../features/auth/pages/Login")));
 const ExplorePage = Loadable(
   lazy(() => import("../features/listings/pages/ExplorePage")),
 );
-const ErrorPage = lazy(() => import("../components/common/ErrorPage"));
-const PageNotFound = lazy(() => import("../components/common/PageNotFound"));
 const Listing = Loadable(
   lazy(() => import("../features/listings/pages/Listing")),
 );
 
-//! Protected pages (FUTURE & CURRENT)
+// Wrapped too: a lazy component rendered without <Suspense> can break navigation
+const ErrorPage = Loadable(
+  lazy(() => import("../components/common/ErrorPage")),
+);
+const PageNotFound = Loadable(
+  lazy(() => import("../components/common/PageNotFound")),
+);
+
+// Logged-in users
 const ProfilePage = Loadable(
   lazy(() => import("../features/auth/pages/ProfilePage")),
+);
+
+// Hotel manager / admin
+const MyListings = Loadable(
+  lazy(() => import("../features/listings/pages/MyListings")),
 );
 const CreateListing = Loadable(
   lazy(() => import("../features/listings/pages/CreateListing")),
 );
-const MyListings = Loadable(
-  lazy(() => import("../features/listings/pages/MyListings")),
+const EditListing = Loadable(
+  lazy(() => import("../features/listings/pages/EditListing")),
 );
 
 const route = createBrowserRouter([
@@ -64,22 +74,49 @@ const route = createBrowserRouter([
           //? PROTECTED ROUTES (Requires active BLINKSTAY_TOKEN cookie)
           //? -----------------------------------------------------------
           {
-            element: <ProtectedRoute />, //! All children inside this object are guarded
+            element: <ProtectedRoute />,
             children: [
               {
                 path: "/profile",
                 element: <ProfilePage />,
               },
-              {
-                path: "/my-listings",
-                element: <MyListings />,
-              },
+            ],
+          },
+
+          //? HOTEL MANAGER or ADMIN
+          {
+            element: (
+              <ProtectedRoute allowedRoles={["HOTEL_MANAGER", "ADMIN"]} />
+            ),
+            children: [
               {
                 path: "/create-listing",
                 element: <CreateListing />,
               },
+              // param is named listingId because EditListing reads useParams().listingId
+              {
+                path: "listings/:listingId/edit",
+                element: <EditListing />,
+              },
             ],
           },
+
+          //? HOTEL MANAGER only (GET /my-listings is manager-only in the backend)
+          {
+            element: <ProtectedRoute allowedRoles={["HOTEL_MANAGER"]} />,
+            children: [
+              {
+                path: "/my-listings",
+                element: <MyListings />,
+              },
+            ],
+          },
+
+          //? ADMIN only (add admin pages here later)
+          // {
+          //   element: <ProtectedRoute allowedRoles={["ADMIN"]} />,
+          //   children: [{ path: "/admin", element: <AdminDashboard /> }],
+          // },
         ],
       },
 

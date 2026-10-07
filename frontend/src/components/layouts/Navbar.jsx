@@ -36,10 +36,11 @@ const NAV_LIST = [
   { name: "about", link: "/about" },
 ];
 
-// Which account links each role gets. Change the `to` paths to match your routes.
-const ROLE_SECTIONS = [
+// Account links shown in the avatar menu / mobile panel.
+// A link with `roles` only shows for users who have at least one of them.
+// Some of these pages aren't built yet, so they will show your 404 page until you add the routes.
+const ACCOUNT_SECTIONS = [
   {
-    role: "USER",
     title: "My account",
     links: [
       { label: "My profile", to: "/profile", icon: FiUser },
@@ -48,20 +49,38 @@ const ROLE_SECTIONS = [
     ],
   },
   {
-    role: "HOTEL_MANAGER",
     title: "Hotel management",
     links: [
-      { label: "My hotels", to: "/manager/hotels", icon: FiHome },
-      { label: "Add a hotel", to: "/manager/hotels/new", icon: FiPlusSquare },
-      { label: "Reservations", to: "/manager/reservations", icon: FiCalendar },
+      {
+        label: "My listings",
+        to: "/my-listings",
+        icon: FiHome,
+        roles: ["HOTEL_MANAGER"], // GET /my-listings is manager-only on the backend
+      },
+      {
+        label: "Add a listing",
+        to: "/create-listing",
+        icon: FiPlusSquare,
+        roles: ["HOTEL_MANAGER", "ADMIN"],
+      },
+      {
+        label: "Reservations",
+        to: "/manager/reservations",
+        icon: FiCalendar,
+        roles: ["HOTEL_MANAGER"],
+      },
     ],
   },
   {
-    role: "ADMIN",
     title: "Administration",
     links: [
-      { label: "Dashboard", to: "/admin", icon: FiGrid },
-      { label: "Manage users", to: "/admin/users", icon: FiUsers },
+      { label: "Dashboard", to: "/admin", icon: FiGrid, roles: ["ADMIN"] },
+      {
+        label: "Manage users",
+        to: "/admin/users",
+        icon: FiUsers,
+        roles: ["ADMIN"],
+      },
     ],
   },
 ];
@@ -167,7 +186,7 @@ const ThemeToggle = ({ isDark, onToggle, className = "" }) => (
 const AccountSections = ({ sections, onNavigate }) => (
   <div className="divide-y divide-border">
     {sections.map((section) => (
-      <div key={section.role} className="py-2">
+      <div key={section.title} className="py-2">
         <p className="px-3 pb-1 text-xs font-semibold text-subtext">
           {section.title}
         </p>
@@ -213,7 +232,12 @@ const Navbar = () => {
   const lastY = useRef(0);
 
   const roles = user?.roles ?? [];
-  const sections = ROLE_SECTIONS.filter((s) => roles.includes(s.role));
+  const sections = ACCOUNT_SECTIONS.map((section) => ({
+    ...section,
+    links: section.links.filter(
+      (link) => !link.roles || link.roles.some((r) => roles.includes(r)),
+    ),
+  })).filter((section) => section.links.length > 0);
 
   /* Don't hide the bar while a menu is open */
   useEffect(() => {
