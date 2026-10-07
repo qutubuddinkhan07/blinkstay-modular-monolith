@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { fetchListings } from "../listingservice";
+import { fetchListings } from "../listingService";
 import { handleApiError } from "../../../api/errors/handleApiError";
-import Card from "../components/Card";
-import SkeletonCard from "../components/SkeletonCard";
-import Pagination from "../components/Pagination";
+import Card from "../components/explore-page/Card";
+import SkeletonCard from "../components/explore-page/SkeletonCard";
+import Pagination from "../components/explore-page/pagination/Pagination";
 
 const PAGE_SIZE = 10;
 

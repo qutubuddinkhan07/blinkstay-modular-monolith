@@ -1,29 +1,38 @@
 import { createBrowserRouter } from "react-router-dom";
-// import Signup from "../features/auth/pages/Signup";
-// import Login from "../features/auth/pages/Login";
-// import ListingHome from "../features/listings/ListingHome";
-// import ErrorPage from "../components/common/ErrorPage";
-// import PageNotFound from "../components/common/PageNotFound";
-import { lazy } from "react";
+import { lazy, Suspense } from "react";
 import Layout from "../components/layouts/Layout";
 import ProtectedRoute from "./ProtectedRoute";
-// import Listing from "../features/listings/pages/Listing";
+import Loading from "../components/common/Loading";
 
-const Signup = lazy(() => import("../features/auth/pages/Signup"));
-const Login = lazy(() => import("../features/auth/pages/Login"));
-const ExplorePage = lazy(
-  () => import("../features/listings/pages/ExplorePage"),
+// 1. Declare Loadable FIRST before invoking it below
+const Loadable = (Component) => (props) => (
+  <Suspense fallback={<Loading />}>
+    <Component {...props} />
+  </Suspense>
+);
+
+// 2. Wrap all lazy-loaded pages consistently
+const Signup = Loadable(lazy(() => import("../features/auth/pages/Signup")));
+const Login = Loadable(lazy(() => import("../features/auth/pages/Login")));
+const ExplorePage = Loadable(
+  lazy(() => import("../features/listings/pages/ExplorePage")),
 );
 const ErrorPage = lazy(() => import("../components/common/ErrorPage"));
 const PageNotFound = lazy(() => import("../components/common/PageNotFound"));
+const Listing = Loadable(
+  lazy(() => import("../features/listings/pages/Listing")),
+);
 
 //! Protected pages (FUTURE & CURRENT)
-const ProfilePage = lazy(() => import("../features/auth/pages/ProfilePage"));
-const CreateListing = lazy(
-  () => import("../features/listings/pages/CreateListing"),
+const ProfilePage = Loadable(
+  lazy(() => import("../features/auth/pages/ProfilePage")),
 );
-const MyListings = lazy(() => import("../features/listings/pages/MyListings"));
-const Listing = lazy(() => import("../features/listings/pages/Listing"));
+const CreateListing = Loadable(
+  lazy(() => import("../features/listings/pages/CreateListing")),
+);
+const MyListings = Loadable(
+  lazy(() => import("../features/listings/pages/MyListings")),
+);
 
 const route = createBrowserRouter([
   {
@@ -45,10 +54,6 @@ const route = createBrowserRouter([
           {
             path: "/explore",
             element: <ExplorePage />,
-          },
-          {
-            path: "/listings/:id",
-            element: <Listing />,
           },
           {
             path: "/listings/:id",

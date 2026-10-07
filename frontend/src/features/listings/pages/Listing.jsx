@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import Loading from "../../../components/common/Loading";
-import { fetchListingById } from "../listingservice";
+import { fetchListingById } from "../listingService";
 import { handleApiError } from "../../../api/errors/handleApiError";
-import ListingGallery from "../components/ListingGallery";
-import BookingCard from "../components/BookingCard";
-import ListingMap from "../components/ListingMap";
+import ListingGallery from "../components/listing/ListingGallery";
+import BookingCard from "../components/booking/BookingCard";
+import ListingMap from "../components/listing/ListingMap";
 
 // 'room-service" -> "Room service", "wifi" -> "Wifi"
 const prettyAmenity = (a) => {
