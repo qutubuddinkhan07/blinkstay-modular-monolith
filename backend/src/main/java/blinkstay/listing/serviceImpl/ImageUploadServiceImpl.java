@@ -35,7 +35,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 
 			Map<String, Object> uploadParams = new HashMap<>();
 			uploadParams.put("folder", "blinkstay_listings");
-			uploadParams.put("allowed_formats", new String[] { "jpg", "png", "jpeg", "gif" });
+			uploadParams.put("allowed_formats", new String[] { "jpg", "png", "jpeg", "gif", "avif" });
 
 			if (customPublicId != null && !customPublicId.isEmpty()) {
 				uploadParams.put("public_id", customPublicId);
