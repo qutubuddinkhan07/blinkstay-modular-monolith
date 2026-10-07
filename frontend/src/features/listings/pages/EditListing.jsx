@@ -10,9 +10,6 @@ import {
   publishListing,
   deleteListing,
 } from "../listingService";
-import EditListingForm from "../components/edit-listing/EditListingForm";
-import UnsavedChangesDialog from "../components/edit-listing/UnsavedChangesDialog";
-import DeleteListingDialog from "../components/edit-listing/DeleteListingDialog";
 import { focusRing } from "../components/create-listing/formStyles";
 import { notify } from "../../../utils/notify";
 import {
@@ -20,6 +17,9 @@ import {
   normalizeListing,
   toFormData,
 } from "../components/edit-listings/listingMappers";
+import UnsavedChangesDialog from "../components/edit-listings/UnsavedChangesDialog";
+import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
+import EditListingForm from "../components/edit-listings/EditListingForm";
 
 const pageClass =
   "min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300";
