@@ -68,3 +68,8 @@ export const deleteListingImage = (id, imageId) => {
 export const publishListing = (id) => {
   return axiosInstance.post(`${LISTING_URL}/${id}/publish`);
 };
+
+// DELETE /{id} (owner or admin)
+export const deleteListing = (id) => {
+  return axiosInstance.delete(`${LISTING_URL}/${id}`);
+};

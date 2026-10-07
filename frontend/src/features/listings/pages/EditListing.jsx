@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { Link, useBlocker, useParams } from "react-router-dom";
+import { useEffect, useRef, useState } from "react";
+import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import {
@@ -8,7 +8,11 @@ import {
   addListingImages,
   deleteListingImage,
   publishListing,
+  deleteListing,
 } from "../listingService";
+import EditListingForm from "../components/edit-listing/EditListingForm";
+import UnsavedChangesDialog from "../components/edit-listing/UnsavedChangesDialog";
+import DeleteListingDialog from "../components/edit-listing/DeleteListingDialog";
 import { focusRing } from "../components/create-listing/formStyles";
 import { notify } from "../../../utils/notify";
 import {
@@ -16,14 +20,13 @@ import {
   normalizeListing,
   toFormData,
 } from "../components/edit-listings/listingMappers";
-import EditListingForm from "../components/edit-listings/EditListingForm";
-import UnsavedChangesDialog from "../components/edit-listings/UnsavedChangesDialog";
 
 const pageClass =
   "min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300";
 
 const EditListing = () => {
   const { listingId } = useParams();
+  const navigate = useNavigate();
 
   const [listing, setListing] = useState(null);
   const [formData, setFormData] = useState(null);
@@ -35,6 +38,9 @@ const EditListing = () => {
 
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const skipBlockRef = useRef(false); // lets us leave after a delete without the "unsaved" prompt
 
   /* ---------- Load ---------- */
   useEffect(() => {
@@ -86,7 +92,9 @@ const EditListing = () => {
      The beforeunload effect above only covers refresh / closing the tab. */
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty && currentLocation.pathname !== nextLocation.pathname,
+      !skipBlockRef.current &&
+      dirty &&
+      currentLocation.pathname !== nextLocation.pathname,
   );
 
   /* ---------- Form handlers ---------- */
@@ -180,6 +188,23 @@ const EditListing = () => {
       notify.error(err.response?.data?.message || "Failed to publish listing.");
     } finally {
       setPublishing(false);
+    }
+  };
+
+  /* ---------- Delete ---------- */
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteListing(listingId);
+
+      notify.success("Listing deleted.");
+      skipBlockRef.current = true;
+      navigate("/my-listings", { replace: true });
+    } catch (err) {
+      console.error("Delete listing error:", err);
+      notify.error(err.response?.data?.message || "Failed to delete listing.");
+      setDeleting(false);
+      setShowDelete(false);
     }
   };
 
@@ -290,6 +315,33 @@ const EditListing = () => {
           onDeleteImage={handleDeleteImage}
           onSubmit={handleSubmit}
         />
+
+        {/* Danger zone: far from Save, so it can't be hit by accident */}
+        <section className="mt-12 rounded-2xl border border-danger/40 bg-surface p-6">
+          <h2 className="font-display text-xl font-medium text-text">
+            Delete listing
+          </h2>
+          <p className="mt-2 text-sm text-subtext">
+            Permanently removes this listing and all of its images. This can't
+            be undone.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowDelete(true)}
+            className={`mt-4 cursor-pointer rounded-lg border border-danger px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 ${focusRing}`}
+          >
+            Delete listing
+          </button>
+        </section>
+
+        {showDelete && (
+          <DeleteListingDialog
+            title={listing.title}
+            deleting={deleting}
+            onCancel={() => setShowDelete(false)}
+            onConfirm={handleDelete}
+          />
+        )}
       </div>
     </div>
   );

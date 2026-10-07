@@ -1,12 +1,19 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { handleApiError } from "../../../api/errors/handleApiError";
-import { fetchMyListings, publishListing } from "../listingService";
+import {
+  fetchMyListings,
+  publishListing,
+  deleteListing,
+} from "../listingService";
 import { focusRing } from "../components/create-listing/formStyles";
+import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
 import { notify } from "../../../utils/notify";
 import { normalizeListing } from "../components/edit-listings/listingMappers";
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
+
+const dangerBtn = `cursor-pointer rounded-lg border border-danger/50 bg-bg px-3 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
 const MyListings = () => {
   const [listings, setListings] = useState([]);
@@ -14,6 +21,8 @@ const MyListings = () => {
   const [error, setError] = useState(null);
   const [reloadKey, setReloadKey] = useState(0);
   const [publishingId, setPublishingId] = useState(null);
+  const [toDelete, setToDelete] = useState(null); // listing waiting for confirmation
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let ignore = false;
@@ -58,6 +67,22 @@ const MyListings = () => {
       notify.error(err.response?.data?.message || "Failed to publish listing.");
     } finally {
       setPublishingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteListing(toDelete.id);
+
+      setListings((prev) => prev.filter((l) => l.id !== toDelete.id));
+      notify.success("Listing deleted.");
+      setToDelete(null);
+    } catch (err) {
+      console.error("Delete error:", err);
+      notify.error(err.response?.data?.message || "Failed to delete listing.");
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -177,10 +202,26 @@ const MyListings = () => {
                       {publishingId === l.id ? "Publishing..." : "Publish"}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => setToDelete(l)}
+                    className={dangerBtn}
+                  >
+                    Delete
+                  </button>
                 </div>
               </li>
             ))}
           </ul>
+        )}
+
+        {toDelete && (
+          <DeleteListingDialog
+            title={toDelete.title}
+            deleting={deleting}
+            onCancel={() => setToDelete(null)}
+            onConfirm={handleDelete}
+          />
         )}
       </div>
     </div>
