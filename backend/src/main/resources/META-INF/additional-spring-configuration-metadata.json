@@ -33,5 +33,15 @@
     "name": "app.cookie.secure",
     "type": "java.lang.String",
     "description": "A description for 'app.cookie.secure'"
+  },
+  {
+    "name": "listing.cloudinary-cleanup.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'listing.cloudinary-cleanup.enabled'"
+  },
+  {
+    "name": "auth.cloudinary-cleanup.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'auth.cloudinary-cleanup.enabled'"
   }
 ]}

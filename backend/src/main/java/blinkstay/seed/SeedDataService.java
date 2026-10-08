@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 
+import blinkstay.listing.constants.ImagePublicIds;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
@@ -144,13 +145,15 @@ public class SeedDataService {
 
 			SeedImage image = images.get(i);
 
+			String publicId = ImagePublicIds.SEED_PREFIX + listingId + "_" + (i + 1);
+
 			ListingImage entity = ListingImage.builder()
 
 					.listingId(listingId)
 
 					.imageUrl(image.getUrl())
 
-					.publicId(image.getFilename())
+					.publicId(publicId)
 
 					.displayOrder(i)
 

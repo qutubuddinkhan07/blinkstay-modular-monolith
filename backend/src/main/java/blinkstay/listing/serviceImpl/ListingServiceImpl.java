@@ -4,6 +4,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -19,12 +21,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.listing.constants.ImagePublicIds;
 import blinkstay.listing.dto.AddListingDto;
 import blinkstay.listing.dto.GeocodingResult;
 import blinkstay.listing.dto.ImageDto;
@@ -46,7 +50,6 @@ import blinkstay.listing.service.MapboxGeocodingService;
 import blinkstay.room.dto.RoomResponseDto;
 import blinkstay.room.dto.RoomSummaryDto;
 import blinkstay.room.service.RoomService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -87,11 +90,26 @@ public class ListingServiceImpl implements ListingService {
 
 	// Helper methods
 	private Listing helperGetListingById(UUID listingId) {
-		Listing listing = listingRepo.findById(listingId)
-				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-						"No listing present with this id: " + listingId));
+		return listingRepo.findById(listingId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+				"No listing present with this id: " + listingId));
+	}
 
-		return listing;
+	/**
+	 * Runs the action after the DB commit. If there is no active transaction it
+	 * runs right away instead of throwing "Transaction synchronization is not
+	 * active".
+	 */
+	private void runAfterCommit(Runnable action) {
+		if (TransactionSynchronizationManager.isSynchronizationActive()) {
+			TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+				@Override
+				public void afterCommit() {
+					action.run();
+				}
+			});
+		} else {
+			action.run();
+		}
 	}
 
 	/**
@@ -131,7 +149,7 @@ public class ListingServiceImpl implements ListingService {
 					continue;
 				}
 
-				// Generate unique public_id (fixed space in string formatting)
+				// Generate unique public_id
 				String publicId = "listing_" + savedListing.getId() + "_" + System.currentTimeMillis() + "_" + (i + 1);
 
 				// Upload to Cloudinary
@@ -152,7 +170,7 @@ public class ListingServiceImpl implements ListingService {
 				throw new IllegalArgumentException("At least one valid image is required.");
 			}
 
-			// 3. Save images to DB
+			// 5. Save images to DB
 			listingImageRepo.saveAll(imageEntities);
 
 			return savedListing.getId().toString();
@@ -212,9 +230,10 @@ public class ListingServiceImpl implements ListingService {
 		// Extract all listing IDs
 		List<UUID> listingIds = listings.stream().map(Listing::getId).collect(Collectors.toList());
 
-		// Batch fetch geometries
+		// Batch fetch geometries (merge function: never crash on a duplicate row)
 		Map<UUID, ListingGeometry> geometryMap = listingGeometryRepo.findByListingIdIn(listingIds).stream()
-				.collect(Collectors.toMap(ListingGeometry::getListingId, Function.identity()));
+				.collect(Collectors.toMap(ListingGeometry::getListingId, Function.identity(),
+						(existing, replacement) -> existing));
 
 		// Batch fetch images
 		Map<UUID, List<ListingImage>> imagesMap = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds)
@@ -253,20 +272,22 @@ public class ListingServiceImpl implements ListingService {
 
 	// EVICT PUBLISHED LISTINGS FEED WHEN A NEW LISTING IS PUBLISHED
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
 			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public String listingPublishService(UUID userId, UUID listingId) {
 		checkWhetherSameManager(userId, listingId);
 
-		Listing listing = listingRepo.findById(listingId)
-				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
+		Listing listing = helperGetListingById(listingId); // 404 if missing
 
+		// Proper statuses (not RuntimeException -> 500) so the UI can show the reason
 		if (!roomService.checkDoesListingHaveRooms(listingId)) {
-			throw new RuntimeException("Listing cannot be published because it has no rooms");
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Listing cannot be published because it has no rooms");
 		}
 
 		if (listing.getStatus() == ListingStatus.PUBLISHED) {
-			throw new RuntimeException("Listing already published");
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing already published");
 		}
 
 		listing.setStatus(ListingStatus.PUBLISHED);
@@ -278,11 +299,25 @@ public class ListingServiceImpl implements ListingService {
 
 	// EVICT BOTH SINGLE LISTING CACHE AND SEARCH FEED CACHE ON UPDATE
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
 			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public String updateListing(UUID managerId, UUID listingId, AddListingDto dto) {
-		Listing listing = listingRepo.findById(listingId)
-				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
+		checkWhetherSameManager(managerId, listingId); // only the owner may edit
+		Listing listing = helperGetListingById(listingId); // 404 instead of a 500
+
+		log.info("Updating listing {} for user: {}", listingId, managerId);
+
+		Optional<ListingGeometry> existingGeometry = listingGeometryRepo.findByListingId(listingId);
+
+		boolean placeChanged = !Objects.equals(listing.getLocation(), dto.getLocation())
+				|| !Objects.equals(listing.getCountry(), dto.getCountry());
+
+		// Geocode FIRST: if Mapbox fails, nothing has been changed yet.
+		// Only call Mapbox when the place changed or there are no coordinates yet.
+		GeocodingResult geocoding = (placeChanged || existingGeometry.isEmpty())
+				? mapboxGeocodingService.getCoordinates(dto.getLocation(), dto.getCountry())
+				: null;
 
 		listing.setTitle(dto.getTitle());
 		listing.setLocation(dto.getLocation());
@@ -291,29 +326,21 @@ public class ListingServiceImpl implements ListingService {
 		listing.setAmenities(dto.getAmenities());
 		listing.setCategory(dto.getCategory());
 
-		log.info("Updating listing for user: {}", managerId);
+		listingRepo.save(listing);
 
-		try {
-			// 1. Create Listing
-			Listing savedListing = listingRepo.save(listing);
+		if (geocoding != null) {
+			// Update the existing row instead of inserting a second one
+			ListingGeometry geometry = existingGeometry
+					.orElseGet(() -> ListingGeometry.builder().listingId(listingId).build());
 
-			// 2. Get coordinates from Mapbox
-			GeocodingResult geocodingResult = mapboxGeocodingService.getCoordinates(dto.getLocation(),
-					dto.getCountry());
-
-			// 3. Saving ListingGeometry
-			ListingGeometry geometry = ListingGeometry.builder().listingId(savedListing.getId())
-					.address(geocodingResult.getAddress()).longitude(geocodingResult.getLongitude())
-					.latitude(geocodingResult.getLatitude()).build();
+			geometry.setAddress(geocoding.getAddress());
+			geometry.setLongitude(geocoding.getLongitude());
+			geometry.setLatitude(geocoding.getLatitude());
 
 			listingGeometryRepo.save(geometry);
-
-			return savedListing.getId().toString();
-
-		} catch (Exception ex) {
-			log.error("Failed to update listing for managerId {}. Listing id {}.", managerId, listingId, ex);
-			throw ex;
 		}
+
+		return listing.getId().toString();
 	}
 
 	// EVICT SINGLE LISTING CACHE WHEN IMAGES CHANGE
@@ -325,24 +352,23 @@ public class ListingServiceImpl implements ListingService {
 		// to check whether the listing exists or not
 		helperGetListingById(listingId);
 
-		// Get current number of images
-		int currentImageCount = listingImageRepo.countByListingId(listingId);
+		// Continue after the highest existing order (safe after deletes, no duplicates)
+		int nextOrder = listingImageRepo.findMaxDisplayOrder(listingId);
 
 		List<ListingImage> imageEntities = new ArrayList<>();
 
 		List<String> uploadedPublicIds = new ArrayList<>();
 
 		try {
-			for (int i = 0; i < files.size(); i++) {
-				MultipartFile file = files.get(i);
+			for (MultipartFile file : files) {
 
 				if (file == null || file.isEmpty()) {
 					continue;
 				}
 
-				int displayOrder = currentImageCount + i + 1;
+				nextOrder++;
 
-				String publicId = "listing_id" + listingId + "_" + System.currentTimeMillis() + "_" + displayOrder;
+				String publicId = "listing_" + listingId + "_" + System.currentTimeMillis() + "_" + nextOrder;
 
 				ImageUploadResult uploadResult = imageUploadService.uploadImage(file, publicId);
 
@@ -351,7 +377,7 @@ public class ListingServiceImpl implements ListingService {
 				}
 
 				ListingImage listingImage = modelMapper.imageUploadResultToListingImage(uploadResult, listingId,
-						displayOrder);
+						nextOrder);
 
 				imageEntities.add(listingImage);
 			}
@@ -384,15 +410,27 @@ public class ListingServiceImpl implements ListingService {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Image does not belong to this listing.");
 		}
 
-		// Delete from Cloudinary
-		imageUploadService.deleteImage(image.getPublicId());
+		if (listingImageRepo.countByListingId(listingId) <= 1) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A listing must keep at least one image.");
+		}
 
-		// Delete from database
+		// Delete the DB row FIRST: if the Cloudinary call fails afterwards, the worst
+		// case is an orphan file, never a listing with a broken image link
 		listingImageRepo.delete(image);
+
+		if (ImagePublicIds.isSeed(image)) {
+			// Seed images are shared files used by many listings: remove only this row
+			log.info("Image {} is a seed image: skipping Cloudinary delete", imageId);
+		} else {
+			try {
+				imageUploadService.deleteImage(image.getPublicId());
+			} catch (Exception e) {
+				log.error("Failed to delete Cloudinary image {} (DB row already removed)", image.getPublicId(), e);
+			}
+		}
 	}
 
 	// CACHE PUBLISHED LISTINGS PAGINATED FEED
-	// ListingServiceImpl
 	@Override
 	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + (#country != null ? #country : 'ALL')")
 	public PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
@@ -422,8 +460,9 @@ public class ListingServiceImpl implements ListingService {
 		Map<UUID, String> coverImages = images.stream().collect(Collectors.toMap(ListingImage::getListingId,
 				ListingImage::getImageUrl, (existing, replacement) -> existing));
 
-		Map<UUID, ListingGeometry> geometryMap = geometries.stream()
-				.collect(Collectors.toMap(ListingGeometry::getListingId, geometry -> geometry));
+		// merge function: never crash on a duplicate geometry row
+		Map<UUID, ListingGeometry> geometryMap = geometries.stream().collect(Collectors
+				.toMap(ListingGeometry::getListingId, geometry -> geometry, (existing, replacement) -> existing));
 
 		List<PublishedListingDto> dtoList = listings.stream().map(listing -> {
 			ListingGeometry geometry = geometryMap.get(listing.getId());
@@ -458,7 +497,7 @@ public class ListingServiceImpl implements ListingService {
 
 	@Override
 	@Transactional
-	@Caching(evict = { @CacheEvict(value = "listingId", key = "#listingId"),
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
 			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public void deleteListing(UUID userId, boolean isAdmin, UUID listingId) {
 		log.info("Deleting listing {} requested by {}", listingId, userId);
@@ -478,21 +517,19 @@ public class ListingServiceImpl implements ListingService {
 
 		// 3. Remember the Cloudinary ids before the rows disappear
 		List<ListingImage> images = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId);
-		List<String> publicIds = images.stream().map(ListingImage::getPublicId).filter(id -> id != null).toList();
 
-		// 4. Delete children first then listing
+		List<String> publicIds = images.stream().filter(img -> !ImagePublicIds.isSeed(img)) // never delete the shared
+																							// seed files
+				.map(ListingImage::getPublicId).filter(Objects::nonNull).toList();
+
+		// 4. Delete children first, then the listing
 		roomService.deleteRoomsByListingId(listingId);
 		listingImageRepo.deleteAll(images);
 		listingGeometryRepo.findByListingId(listingId).ifPresent(listingGeometryRepo::delete);
 		listingRepo.delete(listing);
 
 		// 5. Delete the Cloudinary files only AFTER the commit succeeds
-		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-			@Override
-			public void afterCommit() {
-				deleteImagesFromCloudinary(publicIds);
-			}
-		});
+		runAfterCommit(() -> deleteImagesFromCloudinary(publicIds));
 	}
 
 	private void deleteImagesFromCloudinary(List<String> publicIds) {
@@ -506,6 +543,7 @@ public class ListingServiceImpl implements ListingService {
 	}
 
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
 			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public void deleteRoomFromListing(UUID userId, UUID listingId, UUID roomId) {

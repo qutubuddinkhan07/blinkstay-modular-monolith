@@ -5,6 +5,8 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import blinkstay.listing.entities.ListingImage;
 
@@ -17,4 +19,7 @@ public interface ListingImageRepository extends JpaRepository<ListingImage, UUID
 	Optional<ListingImage> findFirstByListingIdOrderByDisplayOrderAsc(UUID listingId);
 
 	Integer countByListingId(UUID listingId);
+
+	@Query("select coalesce(max(i.displayOrder), 0) from ListingImage i where i.listingId = :listingId")
+	int findMaxDisplayOrder(@Param("listingId") UUID listingId);
 }
