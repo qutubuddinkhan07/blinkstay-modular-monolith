@@ -36,7 +36,7 @@ const DeleteListingDialog = ({ title, deleting, onCancel, onConfirm }) => {
         </h2>
         <p id="delete-desc" className="mt-2 text-sm text-subtext">
           <span className="font-medium text-text">{title}</span> and all of its
-          images will be permanently removed. This can't be undone.
+          rooms and images will be permanently removed. This can't be undone.
         </p>
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">

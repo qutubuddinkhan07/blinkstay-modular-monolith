@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useBlocker, useNavigate, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
+import { notify } from "../../../utils/notify";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import {
   fetchListingById,
@@ -10,16 +11,17 @@ import {
   publishListing,
   deleteListing,
 } from "../listingService";
-import { focusRing } from "../components/create-listing/formStyles";
-import { notify } from "../../../utils/notify";
+import { createRoom, updateRoom, deleteRoom } from "../roomService";
 import {
-  normalizeImage,
   normalizeListing,
+  normalizeImage,
   toFormData,
-} from "../components/edit-listings/listingMappers";
+} from "../listingMappers";
+import EditListingForm from "../components/edit-listings/EditListingForm";
 import UnsavedChangesDialog from "../components/edit-listings/UnsavedChangesDialog";
 import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
-import EditListingForm from "../components/edit-listings/EditListingForm";
+import RoomsManager from "../components/edit-listings/listing-rooms/RoomsManager";
+import { focusRing } from "../components/create-listing/formStyles";
 
 const pageClass =
   "min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300";
@@ -191,6 +193,72 @@ const EditListing = () => {
     }
   };
 
+  /* ---------- Rooms (each change saves on its own, like images) ---------- */
+
+  // Re-reads rooms + status from the server. Only `listing` is replaced, never
+  // `formData`, so unsaved edits in the form above are kept.
+  const syncListing = async () => {
+    try {
+      const res = await fetchListingById(listingId);
+      const fresh = normalizeListing(res.data.data);
+      setListing(fresh);
+      return fresh;
+    } catch (err) {
+      console.error("Could not refresh listing", err);
+      notify.warn(
+        "Saved, but couldn't refresh the page. Reload to see the latest.",
+      );
+      return null;
+    }
+  };
+
+  const handleCreateRoom = async (room) => {
+    try {
+      await createRoom(listingId, room);
+    } catch (err) {
+      console.error("Create room error:", err);
+      notify.error(err.response?.data?.message || "Failed to add room.");
+      return false;
+    }
+    await syncListing();
+    notify.success("Room added.");
+    return true;
+  };
+
+  const handleUpdateRoom = async (roomId, room) => {
+    try {
+      await updateRoom(listingId, roomId, room);
+    } catch (err) {
+      console.error("Update room error:", err);
+      notify.error(err.response?.data?.message || "Failed to update room.");
+      return false;
+    }
+    await syncListing();
+    notify.success("Room updated.");
+    return true;
+  };
+
+  const handleDeleteRoom = async (roomId) => {
+    const wasPublished = listing.isPublished;
+
+    try {
+      await deleteRoom(listingId, roomId);
+    } catch (err) {
+      console.error("Delete room error:", err);
+      notify.error(err.response?.data?.message || "Failed to delete room.");
+      return false;
+    }
+
+    const fresh = await syncListing();
+    notify.success("Room deleted.");
+
+    // The server moves a published listing back to draft when its last room goes
+    if (wasPublished && fresh && !fresh.isPublished) {
+      notify.info("That was the last room, so the listing is back to draft.");
+    }
+    return true;
+  };
+
   /* ---------- Delete ---------- */
   const handleDelete = async () => {
     try {
@@ -289,9 +357,13 @@ const EditListing = () => {
               <button
                 type="button"
                 onClick={handlePublish}
-                disabled={publishing || dirty}
+                disabled={publishing || dirty || listing.rooms.length === 0}
                 title={
-                  dirty ? "Save your changes before publishing" : undefined
+                  dirty
+                    ? "Save your changes before publishing"
+                    : listing.rooms.length === 0
+                      ? "Add at least one room before publishing"
+                      : undefined
                 }
                 className={`cursor-pointer rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-surface ${focusRing}`}
               >
@@ -316,14 +388,24 @@ const EditListing = () => {
           onSubmit={handleSubmit}
         />
 
+        <div className="mt-8">
+          <RoomsManager
+            rooms={listing.rooms}
+            isPublished={listing.isPublished}
+            onCreate={handleCreateRoom}
+            onUpdate={handleUpdateRoom}
+            onDelete={handleDeleteRoom}
+          />
+        </div>
+
         {/* Danger zone: far from Save, so it can't be hit by accident */}
         <section className="mt-12 rounded-2xl border border-danger/40 bg-surface p-6">
           <h2 className="font-display text-xl font-medium text-text">
             Delete listing
           </h2>
           <p className="mt-2 text-sm text-subtext">
-            Permanently removes this listing and all of its images. This can't
-            be undone.
+            Permanently removes this listing along with its rooms and images.
+            This can't be undone.
           </p>
           <button
             type="button"
