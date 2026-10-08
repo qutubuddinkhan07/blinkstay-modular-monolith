@@ -9,6 +9,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +28,7 @@ import blinkstay.listing.dto.GeocodingResult;
 import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ImageUploadResult;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
+import blinkstay.listing.dto.PagedResponse;
 import blinkstay.listing.dto.PublishedListingDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
@@ -175,6 +179,7 @@ public class ListingServiceImpl implements ListingService {
 	}
 
 	@Override
+	@Cacheable(value = "listingById", key = "#listingId")
 	public ListingDetailsResponseDto getListingById(UUID listingId) {
 
 		Listing listing = helperGetListingById(listingId);
@@ -244,7 +249,10 @@ public class ListingServiceImpl implements ListingService {
 		return listingRepo.findAllByManagerId(managerId);
 	}
 
+	// EVICT PUBLISHED LISTINGS FEED WHEN A NEW LISTING IS PUBLISHED
 	@Override
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public String listingPublishService(UUID userId, UUID listingId) {
 		checkWhetherSameManager(userId, listingId);
 
@@ -266,7 +274,10 @@ public class ListingServiceImpl implements ListingService {
 		return listing.getTitle() + " having id: " + listing.getId() + " PUBLISHED";
 	}
 
+	// EVICT BOTH SINGLE LISTING CACHE AND SEARCH FEED CACHE ON UPDATE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
 	public String updateListing(UUID managerId, UUID listingId, AddListingDto dto) {
 		Listing listing = listingRepo.findById(listingId)
 				.orElseThrow(() -> new RuntimeException("No listing exist with this id"));
@@ -303,7 +314,9 @@ public class ListingServiceImpl implements ListingService {
 		}
 	}
 
+	// EVICT SINGLE LISTING CACHE WHEN IMAGES CHANGE
 	@Override
+	@CacheEvict(value = "listingById", key = "#listingId")
 	public List<ImageDto> addListingImages(UUID userId, UUID listingId, List<MultipartFile> files) {
 		checkWhetherSameManager(userId, listingId);
 
@@ -356,7 +369,9 @@ public class ListingServiceImpl implements ListingService {
 		}
 	}
 
+	// EVICT SINGLE LISTING CACHE WHEN IMAGE IS DELETED
 	@Override
+	@CacheEvict(value = "listingById", key = "#listingId")
 	public void deleteListingImage(UUID userId, UUID listingId, UUID imageId) {
 		checkWhetherSameManager(userId, listingId);
 
@@ -374,20 +389,20 @@ public class ListingServiceImpl implements ListingService {
 		listingImageRepo.delete(image);
 	}
 
+	// CACHE PUBLISHED LISTINGS PAGINATED FEED
+	// ListingServiceImpl
 	@Override
-	public Page<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
+	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + (#country != null ? #country : 'ALL')")
+	public PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
 			String country) {
+
 		sortBy = validateSortFilter(sortBy);
-
 		Sort.Direction sortDirection = direction.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
-
 		Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
 
 		Page<Listing> listingPage;
-
 		if (country != null && !country.isBlank()) {
 			listingPage = listingRepo.findByStatusAndCountry(ListingStatus.PUBLISHED, country, pageable);
-
 		} else {
 			listingPage = listingRepo.findByStatus(ListingStatus.PUBLISHED, pageable);
 		}
@@ -395,13 +410,11 @@ public class ListingServiceImpl implements ListingService {
 		List<Listing> listings = listingPage.getContent();
 
 		if (listings.isEmpty()) {
-			return new PageImpl<>(List.of(), pageable, listingPage.getTotalElements());
+			return PagedResponse.from(new PageImpl<>(List.of(), pageable, listingPage.getTotalElements()));
 		}
 
 		List<UUID> listingIds = listings.stream().map(Listing::getId).toList();
-
 		List<ListingImage> images = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds);
-
 		List<ListingGeometry> geometries = listingGeometryRepo.findByListingIdIn(listingIds);
 
 		Map<UUID, String> coverImages = images.stream().collect(Collectors.toMap(ListingImage::getListingId,
@@ -411,7 +424,6 @@ public class ListingServiceImpl implements ListingService {
 				.collect(Collectors.toMap(ListingGeometry::getListingId, geometry -> geometry));
 
 		List<PublishedListingDto> dtoList = listings.stream().map(listing -> {
-
 			ListingGeometry geometry = geometryMap.get(listing.getId());
 
 			return PublishedListingDto.builder().id(listing.getId()).title(listing.getTitle())
@@ -422,7 +434,9 @@ public class ListingServiceImpl implements ListingService {
 					.longitude(geometry != null ? geometry.getLongitude() : null).build();
 		}).toList();
 
-		return new PageImpl<>(dtoList, pageable, listingPage.getTotalElements());
+		Page<PublishedListingDto> finalPage = new PageImpl<>(dtoList, pageable, listingPage.getTotalElements());
+
+		return PagedResponse.from(finalPage);
 	}
 
 	private String validateSortFilter(String sortBy) {

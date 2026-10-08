@@ -6,6 +6,7 @@ import java.time.ZoneId;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CachePut;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -100,9 +101,18 @@ public class AuthServiceImpl implements AuthService {
 
 		blockedTokenRepositry.save(token);
 
+		// Helper call to populate the cache immediately on logout
+		cacheBlockedToken(jwt);
+
 		clearAuthCookie(response);
 
 		return "Logout successful";
+	}
+
+	// Helper method to update cache on logout
+	@CachePut(value = "blockedTokens", key = "#token")
+	public Boolean cacheBlockedToken(String token) {
+		return true;
 	}
 
 	private String extractTokenFromCookies(HttpServletRequest request) {

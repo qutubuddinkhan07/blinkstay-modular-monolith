@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -19,6 +20,7 @@ public class CustomUserDetailsDaoService implements UserDetailsService {
 	private UserRepository userRepository;
 
 	@Override
+	@Cacheable(value = "users", key = "#identifier")
 	public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
 		User user = null;
 

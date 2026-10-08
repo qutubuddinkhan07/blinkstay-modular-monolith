@@ -10,6 +10,9 @@ import java.util.Set;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -69,14 +72,18 @@ public class UserServiceImpl implements UserService {
 		return user;
 	}
 
+	// CACHE USER LOOKUP BY ID
 	@Override
+	@Cacheable(value = "usersById", key = "userId")
 	public UserResponseDto getUserById(UUID userId) {
 		User user = helperGetUserId(userId);
 		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
 		return userResponseDto;
 	}
 
+	// CACHE USER LOOKUP BY EMAIL
 	@Override
+	@Cacheable(value = "usersByEmail", key = "#userEmail")
 	public UserResponseDto getUserByEmail(String userEmail) {
 		User user = userRepository.findByEmail(userEmail)
 				.orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -84,7 +91,10 @@ public class UserServiceImpl implements UserService {
 		return userResponseDto;
 	}
 
+	// EVICT CACHE ON SOFT DELETE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", allEntries = true) })
 	public String deleteUserByEmail(UUID userId) {
 		User user = helperGetUserId(userId);
 
@@ -189,8 +199,10 @@ public class UserServiceImpl implements UserService {
 		throw new RuntimeException("User image is not uploaded");
 	}
 
-	// UPDATE profile image (replace existing)
+	// EVICT CACHE ON PROFILE IMAGE UPDATE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto updateProfileImage(UUID userId, MultipartFile image) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -212,8 +224,10 @@ public class UserServiceImpl implements UserService {
 		return userResponseDto;
 	}
 
-	// REPLACE image (keep same public_id, URL remains same)
+	// EVICT CACHE ON PROFILE IMAGE REPLACE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto replaceProfileImage(UUID userId, MultipartFile newImage) {
 		User user = helperGetUserId(userId);
 
@@ -233,8 +247,10 @@ public class UserServiceImpl implements UserService {
 		return userResponseDto;
 	}
 
-	// UPDATE image using overwrite (more efficient)
+	// EVICT CACHE ON EFFICIENT PROFILE IMAGE UPDATE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto updateProfileImageEfficient(UUID userId, MultipartFile newImage) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -256,8 +272,10 @@ public class UserServiceImpl implements UserService {
 		return userResponseDto;
 	}
 
-	// DELETE user profile image
+	// EVICT CACHE ON IMAGE DELETE
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto deleteProfileImage(UUID userId) {
 		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
 
@@ -279,7 +297,10 @@ public class UserServiceImpl implements UserService {
 	}
 
 	// BULK DELETE - delete multiple user images
+	// EVICT CACHE IN BULK
 	@Override
+	@Caching(evict = { @CacheEvict(value = "usersById", allEntries = true),
+			@CacheEvict(value = "usersByEmail", allEntries = true) })
 	public void deleteMultipleUserImage(List<UUID> userIds) {
 		List<User> users = userRepository.findAllById(userIds);
 
@@ -295,7 +316,9 @@ public class UserServiceImpl implements UserService {
 		userRepository.saveAll(users);
 	}
 
+	// CACHE APPROVED HOTEL MANAGERS LIST
 	@Override
+	@Cacheable(value = "hotelManagerIds")
 	public List<UUID> getApprovedHotelManagerIds() {
 		return userRepository.findBUserIdsByRole(UserRole.HOTEL_MANAGER);
 	}
