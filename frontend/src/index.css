@@ -21,6 +21,9 @@
   --color-primary-hover: #8a0020;
   --color-border: #e3e1e6;
   --color-danger: #ff2768;
+
+  --color-on-primary: #ffffff;
+  --color-muted: #eef0f4;
 }
 
 [data-theme="dark"] {
@@ -33,6 +36,9 @@
   --color-primary-hover: #e01f59;
   --color-border: #0d4568;
   --color-danger: #ff2768;
+
+  --color-on-primary: #ffffff;
+  --color-muted: #063b5b;
 }
 
 /* toastify reads these directly, no per-page overrides needed anymore */

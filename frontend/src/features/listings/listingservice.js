@@ -53,7 +53,7 @@ export const addListingImages = (id, images) => {
   const formData = new FormData();
 
   images.forEach((image) => {
-    formData.append("image", image);
+    formData.append("images", image);
   });
 
   return axiosInstance.post(`${LISTING_URL}/${id}/images`, formData);

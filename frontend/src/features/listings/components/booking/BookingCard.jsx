@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import DateRangePicker from "../listing/Daterangepicker";
 
-const CURRENCY = "INR"; // change to match your backend
+const CURRENCY = "INR";
+
 const formatMoney = (n) =>
   new Intl.NumberFormat("en-IN", {
     style: "currency",
@@ -23,8 +24,13 @@ const nightsBetween = (a, b) =>
 
 const BookingCard = ({ rooms = [], onReserve }) => {
   const [open, setOpen] = useState(false);
-  const [dates, setDates] = useState({ checkIn: null, checkOut: null });
+  const [dates, setDates] = useState({
+    checkIn: null,
+    checkOut: null,
+  });
+
   const [roomId, setRoomId] = useState(rooms[0]?.roomId ?? "");
+
   const wrapperRef = useRef(null);
 
   // Close the picker on outside click or Escape
@@ -32,8 +38,9 @@ const BookingCard = ({ rooms = [], onReserve }) => {
     if (!open) return;
 
     const onDown = (e) => {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target))
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
         setOpen(false);
+      }
     };
 
     const onKey = (e) => e.key === "Escape" && setOpen(false);
@@ -51,49 +58,52 @@ const BookingCard = ({ rooms = [], onReserve }) => {
     () => rooms.find((r) => r.roomId === roomId) ?? rooms[0],
     [rooms, roomId],
   );
+
   const nights = nightsBetween(dates.checkIn, dates.checkOut);
+
   const total = room ? nights * room.price : 0;
 
   const fieldBtn =
-    "px-4 py-3 text-left transition-colors hover:bg-neutral-50 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-neutral-900";
+    "px-4 py-3 text-left text-text transition-colors hover:bg-input focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary";
 
   return (
     <aside className="lg:sticky lg:top-24 lg:self-start">
       <div
         ref={wrapperRef}
-        className="relative rounded-2xl border border-neutral-200 bg-white p-6 shadow-lg"
+        className="relative rounded-2xl border border-border bg-surface p-6 shadow-lg"
       >
-        <p className="text-neutral-600">
-          <span className="text-2xl font-semibold text-neutral-900">
+        <p className="text-subtext">
+          <span className="text-2xl font-semibold text-text">
             {room ? formatMoney(room.price) : "—"}
           </span>{" "}
           / night
         </p>
 
         {/* Date fields */}
-        <div className="mt-5 grid grid-cols-2 divide-x divide-neutral-300 overflow-hidden rounded-xl border border-neutral-300">
+        <div className="mt-5 grid grid-cols-2 divide-x divide-border overflow-hidden rounded-xl border border-border">
           <button
             type="button"
             onClick={() => setOpen(true)}
             className={fieldBtn}
           >
             <span className="block text-xs font-semibold">Check-in</span>
+
             <span
-              className={dates.checkIn ? "text-sm" : "text-sm text-neutral-500"}
+              className={dates.checkIn ? "text-sm" : "text-sm text-subtext"}
             >
               {formatDate(dates.checkIn)}
             </span>
           </button>
+
           <button
             type="button"
             onClick={() => setOpen(true)}
             className={fieldBtn}
           >
             <span className="block text-xs font-semibold">Check-out</span>
+
             <span
-              className={
-                dates.checkOut ? "text-sm" : "text-sm text-neutral-500"
-              }
+              className={dates.checkOut ? "text-sm" : "text-sm text-subtext"}
             >
               {formatDate(dates.checkOut)}
             </span>
@@ -104,13 +114,18 @@ const BookingCard = ({ rooms = [], onReserve }) => {
         {rooms.length > 0 && (
           <label className="mt-3 block">
             <span className="mb-1 block text-xs font-semibold">Room type</span>
+
             <select
               value={roomId}
               onChange={(e) => setRoomId(e.target.value)}
-              className="w-full rounded-xl border border-neutral-300 bg-white px-4 py-3 text-sm"
+              className="w-full rounded-xl border border-border bg-input px-4 py-3 text-sm text-text outline-none transition-colors focus:border-primary"
             >
               {rooms.map((r) => (
-                <option key={r.roomId} value={r.roomId}>
+                <option
+                  key={r.roomId}
+                  value={r.roomId}
+                  className="bg-surface text-text"
+                >
                   {r.roomType.charAt(0) + r.roomType.slice(1).toLowerCase()} ·{" "}
                   {formatMoney(r.price)}
                 </option>
@@ -122,8 +137,15 @@ const BookingCard = ({ rooms = [], onReserve }) => {
         <button
           type="button"
           disabled={!nights}
-          onClick={() => onReserve?.({ ...dates, room, nights, total })}
-          className="mt-4 w-full rounded-xl bg-[#e01f59] py-3 font-semibold text-white transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
+          onClick={() =>
+            onReserve?.({
+              ...dates,
+              room,
+              nights,
+              total,
+            })
+          }
+          className="mt-4 w-full rounded-xl bg-primary py-3 font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {nights ? "Reserve" : "Select dates"}
         </button>
@@ -131,26 +153,25 @@ const BookingCard = ({ rooms = [], onReserve }) => {
         {nights > 0 && room && (
           <dl className="mt-4 space-y-2 text-sm">
             <div className="flex justify-between">
-              <dt className="text-neutral-600">
+              <dt className="text-subtext">
                 {formatMoney(room.price)} × {nights} night
                 {nights > 1 ? "s" : ""}
               </dt>
-              <dd>{formatMoney(total)}</dd>
+
+              <dd className="text-text">{formatMoney(total)}</dd>
             </div>
-            <div className="flex justify-between border-t border-neutral-200 pt-3 font-semibold">
+
+            <div className="flex justify-between border-t border-border pt-3 font-semibold">
               <dt>Total</dt>
+
               <dd>{formatMoney(total)}</dd>
             </div>
           </dl>
         )}
 
-        {/*
-          Date picker panel. It is anchored to the card's right edge and grows
-          to the LEFT on large screens, so the card appears to enlarge over the
-          listing info. On small screens it simply fills the card width.
-        */}
+        {/* Date picker panel */}
         <div
-          className={`absolute right-0 top-[5.5rem] z-30 w-full origin-top-right rounded-2xl border border-neutral-200 bg-white p-6 shadow-2xl transition duration-200 lg:w-[44rem] ${
+          className={`absolute right-0 top-[5.5rem] z-30 w-full origin-top-right rounded-2xl border border-border bg-surface p-6 shadow-2xl transition duration-200 lg:w-[44rem] ${
             open
               ? "scale-100 opacity-100"
               : "pointer-events-none scale-95 opacity-0"
