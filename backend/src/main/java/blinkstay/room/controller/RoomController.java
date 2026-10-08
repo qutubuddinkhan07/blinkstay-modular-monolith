@@ -7,6 +7,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -51,7 +52,7 @@ public class RoomController {
 	}
 
 	@PutMapping("/{listingId}/rooms/{roomId}")
-	public ResponseEntity<RoomApiResponse<String>> createRoom(@AuthenticationPrincipal UserDetails userDetails,
+	public ResponseEntity<RoomApiResponse<String>> updateRoom(@AuthenticationPrincipal UserDetails userDetails,
 			@PathVariable UUID listingId, @PathVariable UUID roomId, @Valid @RequestBody AddRoomDto addRoomDto) {
 
 		UUID userId = UUID.fromString(userDetails.getUsername());
@@ -65,23 +66,20 @@ public class RoomController {
 		RoomApiResponse<String> apiResponse = RoomApiResponse.<String>builder().success(true).message("Room updated")
 				.data(response).build();
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+		return ResponseEntity.ok(apiResponse);
 	}
 
+	@DeleteMapping("/{listingId}/rooms/{roomId}")
 	public ResponseEntity<RoomApiResponse<String>> deleteRoomById(@AuthenticationPrincipal UserDetails userDetails,
 			@PathVariable("listingId") UUID listingId, @PathVariable("roomId") UUID roomId) {
 		UUID userId = UUID.fromString(userDetails.getUsername());
 
-		// Authorization check
-		listingService.checkWhetherSameManager(userId, listingId);
+		// Checks ownership, deletes the room, and moves the listing back to DRAFT
+		// if that was its last room
+		listingService.deleteRoomFromListing(userId, listingId, roomId);
 
-		// Room operation
-		String response = roomService.deleteRoom(roomId);
-
-		RoomApiResponse<String> apiResponse = RoomApiResponse.<String>builder().success(true).message("Room updated")
-				.data(response).build();
-
-		return ResponseEntity.status(HttpStatus.CREATED).body(apiResponse);
+		return ResponseEntity.ok(
+				RoomApiResponse.<String>builder().success(true).message("Room deleted").data("Room deleted").build());
 	}
 
 }

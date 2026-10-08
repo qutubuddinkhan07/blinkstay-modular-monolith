@@ -20,7 +20,9 @@ public interface RoomService {
 
 	List<RoomResponseDto> getRoomsByListingId(UUID listingId);
 
-	String deleteRoom(UUID roomId);
+	String deleteRoom(UUID listingId, UUID roomId);
+
+	void deleteRoomsByListingId(UUID listingId);
 
 	void createSeedRooms(UUID listingId, List<SeedRoom> rooms, BigDecimal basePrice);
 

@@ -74,7 +74,7 @@ public class UserServiceImpl implements UserService {
 
 	// CACHE USER LOOKUP BY ID
 	@Override
-	@Cacheable(value = "usersById", key = "userId")
+	@Cacheable(value = "usersById", key = "#userId")
 	public UserResponseDto getUserById(UUID userId) {
 		User user = helperGetUserId(userId);
 		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);

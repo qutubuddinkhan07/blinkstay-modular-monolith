@@ -16,6 +16,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,7 +25,9 @@ import lombok.Setter;
 import lombok.ToString;
 
 @Entity
-@Table(name = "listing_rooms", indexes = { @Index(name = "idx_listings_id", columnList = "listingId") })
+@Table(name = "listing_rooms", indexes = {
+		@Index(name = "idx_listings_id", columnList = "listingId") }, uniqueConstraints = @UniqueConstraint(name = "uk_listing_room_type", columnNames = {
+				"listing_id", "room_type" }))
 @Getter
 @Setter
 @NoArgsConstructor

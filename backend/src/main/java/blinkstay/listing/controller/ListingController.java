@@ -192,4 +192,26 @@ public class ListingController {
 
 		return ResponseEntity.ok(response);
 	}
+
+	@Operation(summary = "Delete listing")
+	@SecurityRequirement(name = "Bearer Authentication")
+	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+	@DeleteMapping("/{listingId}")
+	public ResponseEntity<ListingApiResponse<String>> deleteListing(@AuthenticationPrincipal UserDetails userDetails,
+			@PathVariable("listingId") UUID listingId) {
+
+		UUID userId = UUID.fromString(userDetails.getUsername());
+
+		// Admins may delete any listing; managers only their own
+		boolean isAdmin = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
+
+		// Ownership check (for non-admins), cleanup and delete all happen inside the
+		// service
+		listingService.deleteListing(userId, isAdmin, listingId);
+
+		ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
+				.message("Listing deleted successfully").data("Listing deleted").build();
+
+		return ResponseEntity.ok(response);
+	}
 }

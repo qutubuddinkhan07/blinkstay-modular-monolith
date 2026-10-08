@@ -6,7 +6,10 @@ import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.RoomResponseDto;
@@ -17,6 +20,7 @@ import blinkstay.room.repository.RoomRepository;
 import blinkstay.room.service.RoomService;
 import blinkstay.seed.SeedRoomMapper;
 import blinkstay.seed.dto.SeedRoom;
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -29,7 +33,12 @@ public class RoomServiceImpl implements RoomService {
 	private final ModelMapper modelMapper;
 
 	@Override
+	@CacheEvict(value = "listingById", key = "#listingId")
 	public String createRoom(UUID listingId, AddRoomDto addRoomDto) {
+		if (roomRepo.existsByListingIdAndRoomType(listingId, addRoomDto.getRoomType())) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"This listing already has a " + addRoomDto.getRoomType() + " room. Edit that room instead.");
+		}
 
 		ListingRoom listingRoom = modelMapper.addRoomToListingRoom(listingId, addRoomDto);
 
@@ -54,7 +63,12 @@ public class RoomServiceImpl implements RoomService {
 	}
 
 	@Override
+	@CacheEvict(value = "listingById", key = "#listingId")
 	public String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto) {
+		if (roomRepo.existsByListingIdAndRoomTypeAndIdNot(listingId, addRoomDto.getRoomType(), roomId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"This listing already has a " + addRoomDto.getRoomType() + " room.");
+		}
 		ListingRoom listingRoom = roomRepo.findById(roomId)
 				.orElseThrow(() -> new RuntimeException("No room found with " + roomId));
 		boolean sameListing = listingRoom.getListingId().equals(listingId);
@@ -80,12 +94,23 @@ public class RoomServiceImpl implements RoomService {
 	}
 
 	@Override
-	public String deleteRoom(UUID roomId) {
-		ListingRoom listingRoom = roomRepo.findById(roomId)
-				.orElseThrow(() -> new RuntimeException("No room found with " + roomId));
-		roomRepo.deleteById(roomId);
+	@CacheEvict(value = "listingId", key = "#listingId")
+	public String deleteRoom(UUID listingId, UUID roomId) {
+		ListingRoom room = roomRepo.findById(roomId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No room found with " + roomId));
 
+		if (!room.getListingId().equals(listingId)) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room does not belong to this listing.");
+		}
+
+		roomRepo.delete(room);
 		return "Room with id: " + roomId + " deleted";
+	}
+
+	@Override
+	@Transactional
+	public void deleteRoomsByListingId(UUID listinId) {
+		roomRepo.deleteByListingId(listinId);
 	}
 
 	@Override

@@ -6,9 +6,9 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.listing.dto.AddListingDto;
-import blinkstay.listing.dto.PagedResponse;
 import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
+import blinkstay.listing.dto.PagedResponse;
 import blinkstay.listing.dto.PublishedListingDto;
 import blinkstay.listing.entities.Listing;
 
@@ -34,4 +34,8 @@ public interface ListingService {
 
 	PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
 			String country);
+
+	void deleteListing(UUID userId, boolean isAdmin, UUID listingId);
+
+	void deleteRoomFromListing(UUID userId, UUID listingId, UUID roomId);
 }

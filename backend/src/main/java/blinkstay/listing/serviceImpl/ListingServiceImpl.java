@@ -19,6 +19,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -452,5 +454,72 @@ public class ListingServiceImpl implements ListingService {
 		case "updatedat" -> "updatedAt";
 		default -> "createdAt";
 		};
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingId", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public void deleteListing(UUID userId, boolean isAdmin, UUID listingId) {
+		log.info("Deleting listing {} requested by {}", listingId, userId);
+
+		Listing listing = helperGetListingById(listingId); // 404 if missing
+
+		// 1. Owner only (admins may delete any listing)
+		if (!isAdmin) {
+			checkWhetherSameManager(userId, listingId);
+		}
+
+		// 2. When reservations exist, block deleting a listing that has active ones:
+		// if (reservationService.hasActiveReservations(listingId)) {
+		// throw new ResponseStatusException(HttpStatus.CONFLICT,
+		// "This listing has active reservations");
+		// }
+
+		// 3. Remember the Cloudinary ids before the rows disappear
+		List<ListingImage> images = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId);
+		List<String> publicIds = images.stream().map(ListingImage::getPublicId).filter(id -> id != null).toList();
+
+		// 4. Delete children first then listing
+		roomService.deleteRoomsByListingId(listingId);
+		listingImageRepo.deleteAll(images);
+		listingGeometryRepo.findByListingId(listingId).ifPresent(listingGeometryRepo::delete);
+		listingRepo.delete(listing);
+
+		// 5. Delete the Cloudinary files only AFTER the commit succeeds
+		TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+			@Override
+			public void afterCommit() {
+				deleteImagesFromCloudinary(publicIds);
+			}
+		});
+	}
+
+	private void deleteImagesFromCloudinary(List<String> publicIds) {
+		for (String publicId : publicIds) {
+			try {
+				imageUploadService.deleteImage(publicId);
+			} catch (Exception e) {
+				log.error("Failed to delete Cloudinary image {} after listing delete", publicId, e);
+			}
+		}
+	}
+
+	@Override
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public void deleteRoomFromListing(UUID userId, UUID listingId, UUID roomId) {
+		checkWhetherSameManager(userId, listingId);
+		Listing listing = helperGetListingById(listingId);
+
+		roomService.deleteRoom(listingId, roomId);
+
+		// A published listing must always have at least one room (publishing requires
+		// it)
+		if (listing.getStatus() == ListingStatus.PUBLISHED && !roomService.checkDoesListingHaveRooms(listingId)) {
+			listing.setStatus(ListingStatus.DRAFT);
+			listingRepo.save(listing);
+			log.info("Listing {} moved back to DRAFT because its last room was deleted", listingId);
+		}
 	}
 }
