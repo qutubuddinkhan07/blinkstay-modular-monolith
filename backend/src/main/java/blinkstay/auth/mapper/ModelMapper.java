@@ -11,9 +11,9 @@ import blinkstay.auth.entities.User;
 public class ModelMapper {
 	public UserResponseDto userToUserResponseDto(User user) {
 		UserResponseDto userResponseDto = UserResponseDto.builder().id(user.getId().toString())
-				.username(user.getUsername()).email(user.getEmail()).roles(user.getRoles()).isActive(user.getIsActive())
-				.profileImgUrl(user.getProfileImgUrl()).createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt())
-				.build();
+				.username(user.getUsername()).email(user.getEmail()).phone(user.getPhone()).bio(user.getBio())
+				.roles(user.getRoles()).isActive(user.getIsActive()).profileImgUrl(user.getProfileImgUrl())
+				.createdAt(user.getCreatedAt()).updatedAt(user.getUpdatedAt()).build();
 
 		return userResponseDto;
 	}

@@ -136,19 +136,23 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 	public ImageUploadResult updateImage(MultipartFile newFile, String publicId) {
 		try {
 			Map<String, Object> uploadParams = new HashMap<>();
-
 			uploadParams.put("public_id", publicId);
 			uploadParams.put("overwrite", true);
 			uploadParams.put("folder", "blinkstay_user_profiles");
 			uploadParams.put("allowed_formats", new String[] { "jpg", "jpeg", "png", "gif" });
+			uploadParams.put("transformation",
+					new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
 
 			Map uploadResult = cloudinary.uploader().upload(newFile.getBytes(), uploadParams);
 
+			Object bytesObj = uploadResult.get("bytes");
+			long size = bytesObj instanceof Number n ? n.longValue() : 0L;
+
 			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-					.publicId((String) uploadResult.get("public_id")).size((Long) uploadResult.get("bytes"))
+					.publicId((String) uploadResult.get("public_id")).size(size)
 					.format((String) uploadResult.get("format")).build();
 		} catch (Exception e) {
-			throw new RuntimeException("Failed to update image: " + e.getMessage());
+			throw new RuntimeException("Failed to update image: " + e.getMessage(), e);
 		}
 	}
 

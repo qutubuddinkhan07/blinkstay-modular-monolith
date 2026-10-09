@@ -19,6 +19,8 @@ public class UserResponseDto {
 	private String id;
 	private String username;
 	private String email;
+	private String phone;
+	private String bio;
 	private Set<UserRole> roles;
 	private Boolean isActive;
 	private String profileImgUrl;

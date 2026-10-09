@@ -13,10 +13,12 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.auth.dtos.AddUserDto;
 import blinkstay.auth.dtos.ImageUploadResult;
@@ -205,6 +207,7 @@ public class UserServiceImpl implements UserService {
 
 	// EVICT CACHE ON PROFILE IMAGE UPDATE
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
 			@CacheEvict(value = "usersByEmail", allEntries = true) })
 	public UserResponseDto updateProfileImage(UUID userId, MultipartFile image) {
@@ -221,7 +224,7 @@ public class UserServiceImpl implements UserService {
 		String oldPublicId = user.getImagePublicId();
 
 		// Upload new image
-		String publicId = "user_" + userId + "_" + System.currentTimeMillis() + "_" + user.getEmail();
+		String publicId = "user_" + userId + "_" + System.currentTimeMillis();
 		ImageUploadResult result = imageUploadService.updateImage(image, publicId);
 
 		user.setProfileImgUrl(result.getUrl());
@@ -246,23 +249,25 @@ public class UserServiceImpl implements UserService {
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
 			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto deleteProfileImage(UUID userId) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
+		User user = helperGetUserId(userId); // throws UserNotFoundException
 
-		if (user.getImagePublicId() != null) {
-			// Delete from Cloudinary
-			Map<String, Object> result = imageUploadService.deleteImage(user.getImagePublicId());
-
-			if ("ok".equals(result.get("result"))) {
-				user.setProfileImgUrl(null);
-				user.setImagePublicId(null);
-				user = userRepository.save(user);
-			} else {
-				throw new RuntimeException("Failed to delete image from Cloudinary");
-			}
+		String publicId = user.getImagePublicId();
+		if (publicId == null || publicId.isBlank()) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "You don't have a profile image to delete");
 		}
 
-		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
-		return userResponseDto;// No image to delete
+		Map<String, Object> result = imageUploadService.deleteImage(publicId);
+		String outcome = String.valueOf(result.get("result"));
+
+		// "not found" means Cloudinary no longer has it, so clearing our record is
+		// correct
+		if (!"ok".equals(outcome) && !"not found".equals(outcome)) {
+			throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not delete the image, please try again");
+		}
+
+		user.setProfileImgUrl(null);
+		user.setImagePublicId(null);
+		return modelMapper.userToUserResponseDto(userRepository.save(user));
 	}
 
 	// BULK DELETE - delete multiple user images
@@ -317,7 +322,7 @@ public class UserServiceImpl implements UserService {
 	@Transactional
 	public void changePassword(UUID userId, String currentPassword, String newPassword) {
 		User user = helperGetUserId(userId);
-		if (!passwordEncoder.matches(currentPassword, newPassword)) {
+		if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
 			throw new IllegalArgumentException("Current password is incorrect");
 		}
 		user.setPassword(passwordEncoder.encode(newPassword));

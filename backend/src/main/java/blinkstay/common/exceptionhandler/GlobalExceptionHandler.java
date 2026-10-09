@@ -23,6 +23,8 @@ import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import blinkstay.auth.dtos.ApiResponse;
 import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.common.exception.UserAlreadyExistsException;
+import blinkstay.common.exception.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 
 @RestControllerAdvice
@@ -65,6 +67,18 @@ public class GlobalExceptionHandler {
 				.message("Validation failed").data(errors).build();
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+	}
+
+	@ExceptionHandler(UserNotFoundException.class)
+	public ResponseEntity<ApiResponse<String>> handleUserNotFound(UserNotFoundException ex) {
+		return ResponseEntity.status(HttpStatus.NOT_FOUND)
+				.body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
+	}
+
+	@ExceptionHandler(UserAlreadyExistsException.class)
+	public ResponseEntity<ApiResponse<String>> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT)
+				.body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
 	}
 
 	@ExceptionHandler({ ResponseStatusException.class, AuthorizationDeniedException.class,
