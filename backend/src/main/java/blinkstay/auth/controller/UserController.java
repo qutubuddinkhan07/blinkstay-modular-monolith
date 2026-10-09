@@ -8,11 +8,13 @@ import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,13 +27,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.auth.dtos.AddUserDto;
 import blinkstay.auth.dtos.ApiResponse;
+import blinkstay.auth.dtos.ChangePasswordDto;
 import blinkstay.auth.dtos.EmailOtpVerifyDto;
+import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
+import blinkstay.auth.service.AuthService;
 import blinkstay.auth.service.UserService;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
@@ -45,6 +52,8 @@ import lombok.extern.slf4j.Slf4j;
 @Validated
 public class UserController {
 	private final UserService userService;
+
+	private final AuthService authService;
 
 	// ==========================================
 	// PUBLIC / REGISTRATION ENDPOINTS
@@ -85,17 +94,6 @@ public class UserController {
 				.message("User profile fetched successfully").data(userDto).build());
 	}
 
-	// UPDATE profile image (delete old, upload new)
-	@PutMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ResponseEntity<ApiResponse<UserResponseDto>> updateMyProfileImage(
-			@AuthenticationPrincipal UserDetails userDetails, @RequestParam("image") MultipartFile image) {
-		UUID currentUserId = UUID.fromString(userDetails.getUsername());
-		UserResponseDto updatedUser = userService.updateProfileImage(currentUserId, image);
-		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
-				.message("All users").data(updatedUser).build();
-		return ResponseEntity.ok(apiResponse);
-	}
-
 	@GetMapping("/allusers")
 	public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsersController() {
 		List<UserResponseDto> serviceReponse = userService.getAllUsers();
@@ -123,44 +121,18 @@ public class UserController {
 	}
 
 	@DeleteMapping("/{userId}")
-	public ResponseEntity<ApiResponse<String>> deleteUserByEmail(UUID userId) {
-		String serviceResponse = userService.deleteUserByEmail(userId);
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message("User deletion")
+	@PreAuthorize("hasAuthority('ADMIN')")
+	public ResponseEntity<ApiResponse<String>> deleteUser(UUID userId) {
+		String serviceResponse = userService.deleteUserById(userId);
+		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("User deletion")
 				.data(serviceResponse).build();
 
 		return ResponseEntity.ok(apiResponse);
 	}
 
-	// REPLACE profile image (keep same URL)
-	@PutMapping("/{userId}/image/replace")
-	public ResponseEntity<ApiResponse<UserResponseDto>> replaceProfileImage(@PathVariable UUID userId,
-			@RequestParam("image") MultipartFile image) {
-		UserResponseDto updatedUser = userService.replaceProfileImage(userId, image);
-		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
-				.message("Image replaced").data(updatedUser).build();
-		return ResponseEntity.ok(apiResponse);
-	}
-
-	// EFFICIENT UPDATE using overwrite
-	@PutMapping("/{userId}/image/update")
-	public ResponseEntity<ApiResponse<UserResponseDto>> updateProfileImageEfficient(@PathVariable UUID userId,
-			@RequestParam("image") MultipartFile image) {
-		UserResponseDto updatedUser = userService.updateProfileImageEfficient(userId, image);
-		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
-				.message("All users").data(updatedUser).build();
-		return ResponseEntity.ok(apiResponse);
-	}
-
-	@DeleteMapping("/{userId}/image")
-	public ResponseEntity<ApiResponse<UserResponseDto>> deleteProfileImage(@PathVariable("userId") UUID userId) {
-		UserResponseDto userResponseDto = userService.deleteProfileImage(userId);
-		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
-				.message("Profile image deleted successfully").data(userResponseDto).build();
-		return ResponseEntity.ok(apiResponse);
-	}
-
 	// BULK DELETE user images
 	@DeleteMapping("/images/bulk")
+	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ApiResponse<Integer>> deleteMultipleImages(List<UUID> userIds) {
 		userService.deleteMultipleUserImage(userIds);
 		ApiResponse<Integer> apiResponse = ApiResponse.<Integer>builder().success(true)
@@ -175,6 +147,46 @@ public class UserController {
 		ApiResponse<Map<String, Object>> apiResponse = ApiResponse.<Map<String, Object>>builder().success(true)
 				.message("Image details").data(serviceResponse).build();
 		return ResponseEntity.ok(apiResponse);
+	}
+
+	@PatchMapping("/me")
+	public ResponseEntity<ApiResponse<UserResponseDto>> updateMyProfile(@AuthenticationPrincipal UserDetails ud,
+			@Valid @RequestBody UpdateProfileDto dto) {
+		UserResponseDto res = userService.updateProfile(UUID.fromString(ud.getUsername()), dto);
+		return ResponseEntity
+				.ok(ApiResponse.<UserResponseDto>builder().success(true).message("Profile updated").data(res).build());
+	}
+
+	@PutMapping(value = "/me/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<ApiResponse<UserResponseDto>> updateMyProfileImage(@AuthenticationPrincipal UserDetails ud,
+			@RequestParam("image") MultipartFile image) {
+		UserResponseDto res = userService.updateProfileImage(UUID.fromString(ud.getUsername()), image);
+		return ResponseEntity.ok(ApiResponse.<UserResponseDto>builder().success(true).message("Profile image updated")
+				.data(res).build());
+	}
+
+	@PutMapping("/me/password")
+	public ResponseEntity<ApiResponse<String>> changeMyPassword(@AuthenticationPrincipal UserDetails ud,
+			@Valid @RequestBody ChangePasswordDto dto) {
+		userService.changePassword(UUID.fromString(ud.getUsername()), dto.getCurrentPassword(), dto.getNewPassword());
+		return ResponseEntity
+				.ok(ApiResponse.<String>builder().success(true).message("Password changed").data(null).build());
+	}
+
+	@DeleteMapping("/me/image")
+	public ResponseEntity<ApiResponse<UserResponseDto>> deleteMyImage(@AuthenticationPrincipal UserDetails ud) {
+		UserResponseDto res = userService.deleteProfileImage(UUID.fromString(ud.getUsername()));
+		return ResponseEntity.ok(ApiResponse.<UserResponseDto>builder().success(true).message("Profile image deleted")
+				.data(res).build());
+	}
+
+	@DeleteMapping("/me")
+	public ResponseEntity<ApiResponse<String>> deleteMyAccount(@AuthenticationPrincipal UserDetails ud,
+			HttpServletRequest req, HttpServletResponse res) {
+		userService.deleteUserById(UUID.fromString(ud.getUsername())); // soft delete
+		authService.logoutService(req, res); // inject AuthService
+		return ResponseEntity
+				.ok(ApiResponse.<String>builder().success(true).message("Account deleted").data(null).build());
 	}
 
 }

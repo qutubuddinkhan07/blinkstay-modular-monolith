@@ -15,11 +15,13 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.auth.dtos.AddUserDto;
 import blinkstay.auth.dtos.ImageUploadResult;
 import blinkstay.auth.dtos.TempUserRegistrationData;
+import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
@@ -93,12 +95,14 @@ public class UserServiceImpl implements UserService {
 
 	// EVICT CACHE ON SOFT DELETE
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
 			@CacheEvict(value = "usersByEmail", allEntries = true) })
-	public String deleteUserByEmail(UUID userId) {
+	public String deleteUserById(UUID userId) {
 		User user = helperGetUserId(userId);
 
 		user.setIsActive(false);
+		userRepository.save(user);
 		return "User deleted";
 	}
 
@@ -202,78 +206,43 @@ public class UserServiceImpl implements UserService {
 	// EVICT CACHE ON PROFILE IMAGE UPDATE
 	@Override
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
-			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
+			@CacheEvict(value = "usersByEmail", allEntries = true) })
 	public UserResponseDto updateProfileImage(UUID userId, MultipartFile image) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-
-		// Delete old image from Cloudinary if exists
-		if (user.getImagePublicId() != null || !user.getImagePublicId().isEmpty()) {
-			imageUploadService.deleteImage(user.getImagePublicId());
+		if (image == null || image.isEmpty()) {
+			throw new IllegalArgumentException("Image is required");
 		}
+
+		String type = image.getContentType();
+		if (type == null || !type.startsWith("image/")) {
+			throw new IllegalArgumentException("File must be an image");
+		}
+
+		User user = helperGetUserId(userId);
+		String oldPublicId = user.getImagePublicId();
 
 		// Upload new image
 		String publicId = "user_" + userId + "_" + System.currentTimeMillis() + "_" + user.getEmail();
 		ImageUploadResult result = imageUploadService.updateImage(image, publicId);
 
-		user.setProfileImgUrl(result.getPublicId());
+		user.setProfileImgUrl(result.getUrl());
 		user.setImagePublicId(result.getPublicId());
 
 		user = userRepository.save(user);
-		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
 
-		return userResponseDto;
-	}
-
-	// EVICT CACHE ON PROFILE IMAGE REPLACE
-	@Override
-	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
-			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
-	public UserResponseDto replaceProfileImage(UUID userId, MultipartFile newImage) {
-		User user = helperGetUserId(userId);
-
-		if (user.getImagePublicId() == null) {
-			ImageUploadResult result = imageUploadService.replaceImage(newImage, null);
-			user.setProfileImgUrl(result.getUrl());
-			user.setImagePublicId(result.getPublicId());
-		} else {
-			// Replace existing image using same public_id
-			ImageUploadResult result = imageUploadService.replaceImage(newImage, user.getImagePublicId());
-			user.setProfileImgUrl(result.getUrl());
-			// public_id remains the same
+		if (oldPublicId != null && !oldPublicId.isBlank()) {
+			try {
+				imageUploadService.deleteImage(oldPublicId);
+			} catch (Exception e) {
+				log.warn("Could not delete old image {}: {}", oldPublicId, e.getMessage());
+			}
 		}
 
-		user = userRepository.save(user);
-		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
-		return userResponseDto;
-	}
-
-	// EVICT CACHE ON EFFICIENT PROFILE IMAGE UPDATE
-	@Override
-	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
-			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
-	public UserResponseDto updateProfileImageEfficient(UUID userId, MultipartFile newImage) {
-		User user = userRepository.findById(userId).orElseThrow(() -> new RuntimeException("User not found"));
-
-		if (user.getImagePublicId() == null) {
-			// Upload new
-			ImageUploadResult result = imageUploadService.uploadImage(newImage, null);
-			user.setProfileImgUrl(null);
-			user.setImagePublicId(result.getPublicId());
-		} else {
-			// Update existing using overwrite parameter
-			ImageUploadResult result = imageUploadService.updateImage(newImage, user.getImagePublicId());
-			user.setProfileImgUrl(result.getUrl());
-			// public_id remains the same
-		}
-
-		user = userRepository.save(user);
-
-		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(user);
-		return userResponseDto;
+		return modelMapper.userToUserResponseDto(user);
 	}
 
 	// EVICT CACHE ON IMAGE DELETE
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
 			@CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null") })
 	public UserResponseDto deleteProfileImage(UUID userId) {
@@ -299,6 +268,7 @@ public class UserServiceImpl implements UserService {
 	// BULK DELETE - delete multiple user images
 	// EVICT CACHE IN BULK
 	@Override
+	@Transactional
 	@Caching(evict = { @CacheEvict(value = "usersById", allEntries = true),
 			@CacheEvict(value = "usersByEmail", allEntries = true) })
 	public void deleteMultipleUserImage(List<UUID> userIds) {
@@ -321,6 +291,37 @@ public class UserServiceImpl implements UserService {
 	@Cacheable(value = "hotelManagerIds")
 	public List<UUID> getApprovedHotelManagerIds() {
 		return userRepository.findBUserIdsByRole(UserRole.HOTEL_MANAGER);
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
+			@CacheEvict(value = "usersByEmail", allEntries = true) })
+	public UserResponseDto updateProfile(UUID userId, UpdateProfileDto dto) {
+		User user = helperGetUserId(userId);
+
+		if (dto.getUsername() != null && !dto.getUsername().isBlank()) {
+			user.setUsername(dto.getUsername().trim());
+		}
+		if (dto.getPhone() != null) {
+			user.setPhone(dto.getPhone().isBlank() ? null : dto.getPhone().trim());
+		}
+		if (dto.getBio() != null) {
+			user.setBio(dto.getBio().isBlank() ? null : dto.getBio().trim());
+		}
+
+		return modelMapper.userToUserResponseDto(userRepository.save(user));
+	}
+
+	@Override
+	@Transactional
+	public void changePassword(UUID userId, String currentPassword, String newPassword) {
+		User user = helperGetUserId(userId);
+		if (!passwordEncoder.matches(currentPassword, newPassword)) {
+			throw new IllegalArgumentException("Current password is incorrect");
+		}
+		user.setPassword(passwordEncoder.encode(newPassword));
+		userRepository.save(user);
 	}
 
 }

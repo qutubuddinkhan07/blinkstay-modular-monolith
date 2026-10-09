@@ -60,6 +60,12 @@ public class User {
 	@Column(nullable = false)
 	private String password;
 
+	@Column(length = 20)
+	private String phone;
+
+	@Column(length = 300)
+	private String bio;
+
 	@ElementCollection(fetch = FetchType.EAGER)
 	@CollectionTable(name = "user_roles", joinColumns = @JoinColumn(name = "user_id"))
 	@Enumerated(EnumType.STRING)

@@ -8,6 +8,7 @@ import java.util.UUID;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.auth.dtos.AddUserDto;
+import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
 
@@ -18,7 +19,7 @@ public interface UserService {
 
 	UserResponseDto getUserByEmail(String userEmail);
 
-	String deleteUserByEmail(UUID userId);
+	String deleteUserById(UUID userId);
 
 	List<UserResponseDto> getAllUsers();
 
@@ -30,10 +31,6 @@ public interface UserService {
 
 	UserResponseDto updateProfileImage(UUID userId, MultipartFile image);
 
-	UserResponseDto replaceProfileImage(UUID userId, MultipartFile newImage);
-
-	UserResponseDto updateProfileImageEfficient(UUID userId, MultipartFile newImage);
-
 	UserResponseDto deleteProfileImage(UUID userId);
 
 	void deleteMultipleUserImage(List<UUID> userIds);
@@ -42,4 +39,8 @@ public interface UserService {
 //	String userToHotelManager(Long userId, String email);
 
 	List<UUID> getApprovedHotelManagerIds();
+
+	UserResponseDto updateProfile(UUID userId, UpdateProfileDto dto);
+
+	void changePassword(UUID userId, String currentPassword, String newPassword);
 }
