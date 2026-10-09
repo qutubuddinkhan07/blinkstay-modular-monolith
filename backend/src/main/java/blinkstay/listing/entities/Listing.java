@@ -12,6 +12,7 @@ import org.hibernate.type.SqlTypes;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.listing.enums.SuspensionSource;
 import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
 import jakarta.persistence.ElementCollection;
@@ -67,6 +68,14 @@ public class Listing {
 	@Enumerated(EnumType.STRING)
 	@Builder.Default
 	private ListingStatus status = ListingStatus.DRAFT;
+
+	@Enumerated(EnumType.STRING)
+	private SuspensionSource suspensionSource;
+
+	@Column(length = 500)
+	private String suspensionReason;
+
+	private LocalDateTime suspendedAt;
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false)

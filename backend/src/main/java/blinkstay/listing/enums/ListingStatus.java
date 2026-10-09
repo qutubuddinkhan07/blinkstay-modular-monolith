@@ -1,5 +1,5 @@
 package blinkstay.listing.enums;
 
 public enum ListingStatus {
-	DRAFT, PUBLISHED, SUSPENDED
+	DRAFT, PUBLISHED, SUSPENDED, PAUSED
 }
