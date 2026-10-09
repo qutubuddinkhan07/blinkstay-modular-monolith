@@ -8,13 +8,19 @@ import {
 import * as authService from "../features/auth/authService";
 import { notify } from "../utils/notify";
 import axiosInstance from "../api/axiosInstance";
-import { Navigate } from "react-router-dom";
 
 const AuthContext = createContext(undefined);
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const updateUser = (nextUser) => setUser(nextUser);
+
+  const clearSession = () => {
+    localStorage.removeItem("hasSession");
+    setUser(null);
+  };
 
   // Session re-hydration on app start / refresh
   useEffect(() => {
@@ -84,17 +90,24 @@ export const AuthProvider = ({ children }) => {
       console.error("Logout request failed:", error);
       notify.info("Your session has ended.");
     } finally {
-      localStorage.removeItem("hasSession"); // was missing
-      setUser(null);
+      clearSession();
     }
   };
+
+  const roles = user?.roles ?? [];
+  const hasRole = (...wanted) => wanted.some((r) => roles.includes(r));
 
   const value = {
     user,
     isAuthenticated: Boolean(user),
+    isAdmin: roles.includes("ADMIN"),
+    isManager: roles.includes("HOTEL_MANAGER"),
+    hasRole,
     loading,
     loginUser,
     logout,
+    updateUser,
+    clearSession,
   };
 
   return (

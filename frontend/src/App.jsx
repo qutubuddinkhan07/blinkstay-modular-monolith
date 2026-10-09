@@ -1,22 +1,22 @@
 import { RouterProvider } from "react-router-dom";
 import route from "./routes/AppRoutes";
-import { ToastContainer } from "react-toastify";
 import { Suspense } from "react";
 import Loading from "./components/common/Loading";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
+import ThemedToaster from "./components/common/ThemedToaster";
 
 const App = () => {
   return (
     <>
-      <AuthProvider>
-        <ThemeProvider>
+      <ThemeProvider>
+        <AuthProvider>
           <Suspense fallback={<Loading />}>
             <RouterProvider router={route} />
+            <ThemedToaster />
           </Suspense>
-          <ToastContainer />
-        </ThemeProvider>
-      </AuthProvider>
+        </AuthProvider>
+      </ThemeProvider>
     </>
   );
 };

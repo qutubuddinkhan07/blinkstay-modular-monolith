@@ -48,7 +48,7 @@ const Login = () => {
     }
   };
 
-  const from = location.state?.from?.pathname || "/profile";
+  const from = location.state?.from?.pathname || "/explore";
   const handleSubmit = async (e) => {
     e.preventDefault();
     const validationErrors = validateForm();

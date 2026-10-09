@@ -1,6 +1,6 @@
 export const handleApiError = (error, context = "") => {
   if (!error.response) {
-    return 'Unable to connect Blinkstay. Please try again later.'
+    return "Unable to connect Blinkstay. Please try again later.";
   }
 
   const status = error.response.status;
@@ -22,6 +22,8 @@ export const handleApiError = (error, context = "") => {
       return serverMessage || "Resource not found.";
     case 409:
       return serverMessage || "Conflict. Resource already exists.";
+    case 413:
+      return "That file is too large. Please choose a smaller image.";
     case 500:
       if (serverMessage?.toLowerCase().includes("bad credentials")) {
         return "Invalid email or password.";

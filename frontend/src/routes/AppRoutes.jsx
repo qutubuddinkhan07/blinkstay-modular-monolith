@@ -30,7 +30,7 @@ const PageNotFound = Loadable(
 
 // Logged-in users
 const ProfilePage = Loadable(
-  lazy(() => import("../features/auth/pages/ProfilePage")),
+  lazy(() => import("../features/user/pages/ProfilePage")),
 );
 
 // Hotel manager / admin
@@ -42,6 +42,12 @@ const CreateListing = Loadable(
 );
 const EditListing = Loadable(
   lazy(() => import("../features/listings/pages/EditListing")),
+);
+
+const GuestRoute = Loadable(lazy(() => import("./GuestRoute")));
+
+const ComingSoon = Loadable(
+  lazy(() => import("../components/common/ComingSoon")),
 );
 
 const route = createBrowserRouter([
@@ -69,6 +75,10 @@ const route = createBrowserRouter([
             path: "/listings/:id",
             element: <Listing />,
           },
+          {
+            path: "/about",
+            element: <ComingSoon title="About Blinkstay" />,
+          },
 
           //? -----------------------------------------------------------
           //? PROTECTED ROUTES (Requires active BLINKSTAY_TOKEN cookie)
@@ -79,6 +89,23 @@ const route = createBrowserRouter([
               {
                 path: "/profile",
                 element: <ProfilePage />,
+              },
+              {
+                path: "/bookings",
+                element: <ComingSoon title="My Bookings" />,
+              },
+              {
+                path: "/favorites",
+                element: <ComingSoon title="Saved hotels" />,
+              },
+              {
+                path: "/become-host",
+                element: (
+                  <ComingSoon
+                    title="Become a host"
+                    description="Host requests are opening soon. You'll be able to apply right here."
+                  />
+                ),
               },
             ],
           },
@@ -109,25 +136,41 @@ const route = createBrowserRouter([
                 path: "/my-listings",
                 element: <MyListings />,
               },
+              {
+                path: "/manager/reservations",
+                element: <ComingSoon title="Reservations" />,
+              },
             ],
           },
 
-          //? ADMIN only (add admin pages here later)
-          // {
-          //   element: <ProtectedRoute allowedRoles={["ADMIN"]} />,
-          //   children: [{ path: "/admin", element: <AdminDashboard /> }],
-          // },
+          //? ADMIN only
+          {
+            element: <ProtectedRoute allowedRoles={["ADMIN"]} />,
+            children: [
+              {
+                path: "/admin",
+                element: <ComingSoon title="Admin dashboard" />,
+              },
+              {
+                path: "/admin/users",
+                element: <ComingSoon title="Manage users" />,
+              },
+              {
+                path: "/admin/host-requests",
+                element: <ComingSoon title="Host requests" />,
+              },
+            ],
+          },
         ],
       },
 
       // Unprotected standalone pages (without Navbar/Layout)
       {
-        path: "login",
-        element: <Login />,
-      },
-      {
-        path: "signup",
-        element: <Signup />,
+        element: <GuestRoute />,
+        children: [
+          { path: "login", element: <Login /> },
+          { path: "signup", element: <Signup /> },
+        ],
       },
       {
         path: "*", // wildcard route

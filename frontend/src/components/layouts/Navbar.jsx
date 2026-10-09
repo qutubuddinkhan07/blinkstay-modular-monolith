@@ -10,11 +10,13 @@ import {
 import { FaMoon } from "react-icons/fa";
 import { IoSunny } from "react-icons/io5";
 import {
+  FiBriefcase,
   FiCalendar,
   FiChevronDown,
   FiGrid,
   FiHeart,
   FiHome,
+  FiInbox,
   FiLogOut,
   FiMenu,
   FiPlusSquare,
@@ -25,6 +27,7 @@ import {
 import Logo from "../common/Logo";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
+import { displayRoles, roleLabel } from "../../utils/roles";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -38,7 +41,8 @@ const NAV_LIST = [
 
 // Account links shown in the avatar menu / mobile panel.
 // A link with `roles` only shows for users who have at least one of them.
-// Some of these pages aren't built yet, so they will show your 404 page until you add the routes.
+// An admin also holds HOTEL_MANAGER, so admins see the hotel-management links too.
+// Pages not built yet render a "Coming soon" placeholder (see AppRoutes).
 const ACCOUNT_SECTIONS = [
   {
     title: "My account",
@@ -81,14 +85,18 @@ const ACCOUNT_SECTIONS = [
         icon: FiUsers,
         roles: ["ADMIN"],
       },
+      {
+        label: "Host requests",
+        to: "/admin/host-requests",
+        icon: FiInbox,
+        roles: ["ADMIN"],
+      },
     ],
   },
 ];
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-
-const roleLabel = (role) => role.replace(/_/g, " ").toLowerCase();
 
 /* ------------------------------------------------------------------ */
 /* Motion presets (kept short: 150–300ms, transform + opacity only)    */
@@ -232,6 +240,10 @@ const Navbar = () => {
   const lastY = useRef(0);
 
   const roles = user?.roles ?? [];
+
+  const canBecomeHost =
+    !roles.includes("HOTEL_MANAGER") && !roles.includes("ADMIN");
+
   const sections = ACCOUNT_SECTIONS.map((section) => ({
     ...section,
     links: section.links.filter(
@@ -376,6 +388,20 @@ const Navbar = () => {
               className="hidden md:flex"
             />
 
+            {canBecomeHost && (
+              <MotionLink
+                to="/become-host"
+                whileHover={{ scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
+                aria-label="Become a host"
+                title="Become a host"
+                className={`hidden items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm font-semibold text-text transition-colors duration-300 hover:bg-bg md:flex ${focusRing}`}
+              >
+                <FiBriefcase size={16} />
+                <span className="hidden lg:inline">Become a host</span>
+              </MotionLink>
+            )}
+
             {isAuthenticated ? (
               /* Desktop avatar menu */
               <div ref={userRef} className="relative hidden md:block">
@@ -426,9 +452,9 @@ const Navbar = () => {
                         </div>
                       </div>
 
-                      {roles.length > 0 && (
+                      {displayRoles(roles).length > 0 && (
                         <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-                          {roles.map((r) => (
+                          {displayRoles(roles).map((r) => (
                             <span
                               key={r}
                               className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-subtext"
@@ -512,6 +538,15 @@ const Navbar = () => {
                     <p className="truncate text-xs text-subtext">
                       {user?.email}
                     </p>
+
+                    {displayRoles(roles).map((r) => (
+                      <span
+                        key={r}
+                        className="mt-1 inline-block rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-subtext"
+                      >
+                        {roleLabel(r)}
+                      </span>
+                    ))}
                   </div>
                 </motion.div>
               )}
@@ -557,6 +592,21 @@ const Navbar = () => {
                     sections={sections}
                     onNavigate={closeMenus}
                   />
+                  {canBecomeHost && (
+                    <motion.div
+                      variants={itemVariants}
+                      className="border-t border-border py-2"
+                    >
+                      <Link
+                        to="/become-host"
+                        onClick={closeMenus}
+                        className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-bg ${focusRing}`}
+                      >
+                        <FiBriefcase size={16} />
+                        Become a host
+                      </Link>
+                    </motion.div>
+                  )}
                 </motion.div>
               )}
 

@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import "react-toastify/dist/ReactToastify.css";
 import {
   FiEye,
   FiEyeOff,

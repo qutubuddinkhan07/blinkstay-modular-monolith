@@ -2,6 +2,28 @@
 
 @import "tailwindcss";
 
+@layer base {
+  html {
+    color-scheme: light;
+  }
+  [data-theme="dark"] {
+    color-scheme: dark;
+  } /* native inputs, scrollbars, autofill */
+
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-text);
+  }
+
+  /* Chrome's autofill paints a light box with dark text; keep it on-theme */
+  input:-webkit-autofill,
+  textarea:-webkit-autofill {
+    -webkit-text-fill-color: var(--color-text);
+    box-shadow: 0 0 0 1000px var(--color-input) inset;
+    caret-color: var(--color-text);
+  }
+}
+
 @utility font-display {
   font-family: "Fraunces", serif;
   font-optical-sizing: auto;
@@ -41,10 +63,36 @@
   --color-muted: #063b5b;
 }
 
-/* toastify reads these directly, no per-page overrides needed anymore */
-:root {
-  --toastify-color-success: var(--color-primary);
-  --toastify-color-error: var(--color-danger);
-  --toastify-color-progress-success: var(--color-primary);
-  --toastify-color-progress-error: var(--color-danger);
+[data-sonner-toast][data-type="success"] [data-icon] {
+  color: var(--color-primary);
+}
+[data-sonner-toast][data-type="error"] [data-icon] {
+  color: var(--color-danger);
+}
+
+/* Bigger toasts on tablets and larger; phones keep Sonner's full-width mobile layout */
+@media (min-width: 601px) {
+  [data-sonner-toaster] {
+    --width: 440px !important; /* default is 356px */
+  }
+
+  [data-sonner-toast] {
+    padding: 18px 20px !important;
+    font-size: 15px !important;
+    border-radius: 14px !important;
+  }
+
+  [data-sonner-toast] [data-description] {
+    font-size: 14px !important;
+  }
+
+  [data-sonner-toast] [data-icon] {
+    width: 20px;
+    height: 20px;
+  }
+
+  [data-sonner-toast] [data-icon] svg {
+    width: 20px;
+    height: 20px;
+  }
 }
