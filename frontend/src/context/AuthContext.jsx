@@ -16,13 +16,12 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Session Re-hydration: Check authentication status on app start/refresh
+  // Session re-hydration on app start / refresh
   useEffect(() => {
-    const initializeAuth = async () => {
-      let ignore = false;
+    let ignore = false; // must live in the effect scope so the cleanup can see it
 
+    const initializeAuth = async () => {
       try {
-        // First re-hydrate CSRF token
         await axiosInstance.get("/api/v1/auth/csrf");
       } catch (error) {
         console.error("CSRF fetch failed", error);
@@ -31,12 +30,10 @@ export const AuthProvider = ({ children }) => {
       // Only ask the server if this browser has logged in before
       if (localStorage.getItem("hasSession") === "1") {
         try {
-          // Fetch active user details (using BLINKSTAY_TOKEN cookie sent automatically)
           const response = await axiosInstance.get("/api/v2/user/me");
           if (!ignore) setUser(response.data.data);
-        } catch (error) {
-          // User is not authenticated or cookie has expired
-          localStorage.removeItem("hasSession"); // cookie expired
+        } catch {
+          localStorage.removeItem("hasSession"); // cookie expired or revoked
           if (!ignore) setUser(null);
         }
       }
@@ -52,39 +49,42 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const loginUser = async (email, password) => {
+    let response;
+
+    // Step 1: the login request itself
     try {
-      const response = await authService.login(email, password);
-
-      // Fetch profile details immediately after successful login
-      const profileResponse = await axiosInstance.get("/api/v2/user/me");
-      setUser(profileResponse.data?.data || profileResponse.data);
-      localStorage.setItem("hasSession", "1"); // acts as a flag
-
-      notify.success(response.data?.message || "Login successful!");
-
-      return {
-        success: true,
-        error: null,
-      };
+      response = await authService.login(email, password);
     } catch (error) {
-      console.error("Login failed", error);
-      return {
-        success: false,
-        error,
-      };
+      console.error("Login request failed", error);
+      return { success: false, error };
     }
+
+    // The server accepted us and set the cookie: remember that right away
+    localStorage.setItem("hasSession", "1");
+
+    // Step 2: load the profile, reported separately so we know which step failed
+    try {
+      const profileResponse = await axiosInstance.get("/api/v2/user/me");
+      setUser(profileResponse.data?.data ?? profileResponse.data);
+    } catch (error) {
+      console.error("Logged in, but loading the profile failed", error);
+      localStorage.removeItem("hasSession");
+      return { success: false, error };
+    }
+
+    notify.success(response.data?.message || "Login successful!");
+    return { success: true, error: null };
   };
 
   const logout = async () => {
     try {
       const response = await authService.logout();
-
       notify.success(response.data?.message || "Logged out successfully.");
     } catch (error) {
       console.error("Logout request failed:", error);
-
       notify.info("Your session has ended.");
     } finally {
+      localStorage.removeItem("hasSession"); // was missing
       setUser(null);
     }
   };

@@ -3,6 +3,7 @@ package blinkstay.auth.config;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
@@ -48,10 +49,16 @@ public class SpringSecurityConfiguration {
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
 						// Public requests
+//						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v2/user/register-init",
+//								"/api/v2/user/verify-otp", "/api/v3/listings/:id", "/swagger-ui/**", "/swagger-ui.html",
+//								"/v3/api-docs/**")
+//						.permitAll() ============
+
 						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v2/user/register-init",
-								"/api/v2/user/verify-otp", "/api/v3/listings/:id", "/swagger-ui/**", "/swagger-ui.html",
-								"/v3/api-docs/**")
+								"/api/v2/user/verify-otp", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
 						.permitAll()
+
+						.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()
 
 						.requestMatchers(HttpMethod.GET, "/api/v3/listings/all").permitAll()
 
@@ -72,9 +79,13 @@ public class SpringSecurityConfiguration {
 				.exceptionHandling(ex -> ex
 						// This handles unauthorized requests - return 401 not 500
 						.authenticationEntryPoint((request, response, authException) -> {
+							Object reason = request.getAttribute(JWTFilter.AUTH_ERROR_ATTRIBUTE);
+							String code = reason != null ? reason.toString() : "UNAUTHENTICATED";
+
 							response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 							response.setContentType("application/json");
-							response.getWriter().write("{\"message\": \"Authentication required\"}");
+							response.getWriter()
+									.write("{\"message\": \"Authentication required\", \"code\": \"" + code + "\"}");
 						}))
 				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
 
@@ -115,5 +126,17 @@ public class SpringSecurityConfiguration {
 	@Bean
 	public AuthenticationManager createAuthManager(AuthenticationConfiguration config) throws Exception {
 		return config.getAuthenticationManager();
+	}
+
+	/**
+	 * JWTFilter is a @Component, so Spring Boot would also register it as a plain
+	 * servlet filter. It already runs inside the security chain (addFilterBefore),
+	 * so switch the second registration off.
+	 */
+	@Bean
+	public FilterRegistrationBean<JWTFilter> jwtFilterRegistration(JWTFilter filter) {
+		FilterRegistrationBean<JWTFilter> registration = new FilterRegistrationBean<>(filter);
+		registration.setEnabled(false);
+		return registration;
 	}
 }

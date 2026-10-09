@@ -18,7 +18,7 @@ public class BlockedTokenServiceImpl implements BlockedTokenService {
 	// If false, don't cache so future logouts are recognized immediately
 	// Cache all check results (both true and false)
 	@Override
-	@Cacheable(value = "blockedTokens", key = "#token")
+	@Cacheable(value = "blockedTokens", key = "#token", unless = "!#result")
 	public Boolean checkIfPresent(String token) {
 		return blockedTokenRepo.existsByToken(token);
 	}

@@ -1,10 +1,9 @@
 package blinkstay.auth.serviceImpl;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,37 +12,41 @@ import org.springframework.stereotype.Service;
 
 import blinkstay.auth.entities.User;
 import blinkstay.auth.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@RequiredArgsConstructor
+@Slf4j
 public class CustomUserDetailsDaoService implements UserDetailsService {
-	@Autowired
-	private UserRepository userRepository;
+
+	private final UserRepository userRepository;
 
 	@Override
-	@Cacheable(value = "users", key = "#identifier")
 	public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
-		User user = null;
+		String id = identifier == null ? "" : identifier.trim();
 
-		// Trying loading by UUID (User by JWT Filter on incoming API calls)
-		try {
-			UUID userId = UUID.fromString(identifier);
-			user = userRepository.findById(userId).orElse(null);
-		} catch (IllegalArgumentException e) {
-			// Not a valid UUID string, proceed to lookup by email
-		}
-
-		// 2. Fallback to lookup by Email (Used during Login authentication)
-		if (user == null) {
-			user = userRepository.findByEmail(identifier)
-					.orElseThrow(() -> new UsernameNotFoundException("User not found"));
-		}
+		User user = findUser(id).orElseThrow(() -> {
+			log.warn("No user found for '{}'", id); // temporary: remove once login works
+			return new UsernameNotFoundException("User not found");
+		});
 
 		List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
 				.map(role -> new SimpleGrantedAuthority(role.name())).toList();
 
-		// Passing the user.getId().toString() so Spring security uses UUID as the
-		// principal identifier
 		return org.springframework.security.core.userdetails.User.withUsername(user.getId().toString())
-				.password(user.getPassword()).authorities(authorities).disabled(!user.getIsActive()).build();
+				.password(user.getPassword()).authorities(authorities)
+				.disabled(Boolean.FALSE.equals(user.getIsActive())).build();
+	}
+
+	private Optional<User> findUser(String id) {
+		if (id.contains("@")) {
+			return userRepository.findByEmail(id); // login with email
+		}
+		try {
+			return userRepository.findById(UUID.fromString(id)); // JWT filter
+		} catch (IllegalArgumentException e) {
+			return userRepository.findByEmail(id);
+		}
 	}
 }

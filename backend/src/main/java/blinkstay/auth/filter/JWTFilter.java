@@ -3,6 +3,8 @@ package blinkstay.auth.filter;
 import java.io.IOException;
 
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,12 +24,29 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
+
+	/**
+	 * Read by the entry point so the frontend can tell WHY the request was
+	 * rejected.
+	 */
+	public static final String AUTH_ERROR_ATTRIBUTE = "blinkstay.auth.error";
+
 	@Value("${app.cookie.name}")
 	private String authCookieName;
+
+	// These must match how the login code sets the cookie, or the browser won't
+	// overwrite it
+	@Value("${app.cookie.secure:false}")
+	private boolean cookieSecure;
+
+	@Value("${app.cookie.same-site:Lax}")
+	private String cookieSameSite;
 
 	private final JWTUtil jwtUtil;
 
@@ -39,55 +58,69 @@ public class JWTFilter extends OncePerRequestFilter {
 	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
 			throws ServletException, IOException {
 
-		System.out.println("========== JWT FILTER EXECUTED ==========");
-		System.out.println("Method: " + request.getMethod());
-		System.out.println("URI: " + request.getRequestURI());
-
 		String jwt = extractTokenFromCookies(request);
 
-		/*
-		 * No authentication cookie.
-		 *
-		 * We DO NOT immediately return 401 here.
-		 *
-		 * Public endpoints must continue through the filter chain. Protected endpoints
-		 * will eventually be rejected by Spring Security.
-		 */
-
-		if (jwt == null || jwt.isBlank()) {
-			filterChain.doFilter(request, response);
-			return;
+		if (jwt != null && !jwt.isBlank()) {
+			authenticate(jwt, request, response);
 		}
 
-		try {
-			// 1. Extract UUID string from JWT subject
-			String userIdStr = jwtUtil.extractUserId(jwt);
+		// ALWAYS continue, and OUTSIDE any try/catch. Exceptions thrown later
+		// (controller,
+		// services) are no longer mistaken for authentication failures.
+		filterChain.doFilter(request, response);
+	}
 
-			// 2. Check whether token has been revoked
+	private void authenticate(String jwt, HttpServletRequest request, HttpServletResponse response) {
+		try {
+			String userIdStr = jwtUtil.extractUserId(jwt); // throws if expired / invalid
 
 			if (blockedTokenService.checkIfPresent(jwt)) {
-				writeError(response, "Token has been revoked/logged out");
+				reject(request, response, "TOKEN_REVOKED");
 				return;
 			}
 
-			// 3. Build Spring Security authentication
-			if (userIdStr != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-				UserDetails userDetails = userDetailsService.loadUserByUsername(userIdStr);
-
-				UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails,
-						null, userDetails.getAuthorities());
-				authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-				SecurityContextHolder.getContext().setAuthentication(authToken);
+			if (userIdStr == null || SecurityContextHolder.getContext().getAuthentication() != null) {
+				return;
 			}
 
-			filterChain.doFilter(request, response);
+			UserDetails userDetails = userDetailsService.loadUserByUsername(userIdStr);
+
+			// A blocked / deactivated account must stop working immediately
+			if (!userDetails.isEnabled()) {
+				reject(request, response, "ACCOUNT_BLOCKED");
+				return;
+			}
+
+			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
+					userDetails.getAuthorities());
+			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+			SecurityContextHolder.getContext().setAuthentication(authToken);
+
+			log.debug("Authenticated {} with {}", userDetails.getUsername(), userDetails.getAuthorities());
+
 		} catch (ExpiredJwtException e) {
-			writeError(response, "JWT expired");
-		} catch (JwtException e) {
-			writeError(response, "JWT Invalid");
+			reject(request, response, "TOKEN_EXPIRED");
+		} catch (JwtException | IllegalArgumentException e) {
+			reject(request, response, "TOKEN_INVALID");
 		} catch (UsernameNotFoundException e) {
-			writeError(response, "User not found");
+			reject(request, response, "USER_NOT_FOUND");
 		}
+	}
+
+	/**
+	 * Treat the request as logged-out and tell the browser to drop the dead cookie.
+	 */
+	private void reject(HttpServletRequest request, HttpServletResponse response, String code) {
+		log.warn("Rejecting auth cookie on {} {}: {}", request.getMethod(), request.getRequestURI(), code);
+		request.setAttribute(AUTH_ERROR_ATTRIBUTE, code);
+		clearAuthCookie(response);
+	}
+
+	private void clearAuthCookie(HttpServletResponse response) {
+		ResponseCookie cleared = ResponseCookie.from(authCookieName, "").httpOnly(true).secure(cookieSecure)
+				.sameSite(cookieSameSite).path("/").maxAge(0).build();
+
+		response.addHeader(HttpHeaders.SET_COOKIE, cleared.toString());
 	}
 
 	private String extractTokenFromCookies(HttpServletRequest request) {
@@ -107,25 +140,11 @@ public class JWTFilter extends OncePerRequestFilter {
 	}
 
 	@Override
-	protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-		System.out.println("******** SHOULD NOT FILTER ********");
-		System.out.println("Method: " + request.getMethod());
-		System.out.println("URI: " + request.getRequestURI());
-
+	protected boolean shouldNotFilter(HttpServletRequest request) {
 		String path = request.getRequestURI();
 
-		boolean skip = path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
+		return "OPTIONS".equalsIgnoreCase(request.getMethod()) // CORS preflight
+				|| path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
 				|| path.startsWith("/api/v2/user/verify-otp");
-
-		System.out.println("JWT shouldNotFilter: " + skip);
-		System.out.println("JWT path: " + path);
-
-		return skip;
-	}
-
-	private void writeError(HttpServletResponse response, String message) throws IOException {
-		response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-		response.setContentType("application/json");
-		response.getWriter().write("{\"message\": \"" + message + "\"}");
 	}
 }
