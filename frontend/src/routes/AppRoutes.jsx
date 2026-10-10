@@ -50,6 +50,10 @@ const ComingSoon = Loadable(
   lazy(() => import("../components/common/ComingSoon")),
 );
 
+const BlockedPage = Loadable(
+  lazy(() => import("../features/auth/pages/BlockedPage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -172,6 +176,7 @@ const route = createBrowserRouter([
           { path: "signup", element: <Signup /> },
         ],
       },
+      { path: "blocked", element: <BlockedPage /> },
       {
         path: "*", // wildcard route
         element: <PageNotFound />,

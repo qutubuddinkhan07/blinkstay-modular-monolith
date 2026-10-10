@@ -4,6 +4,8 @@ export const handleApiError = (error, context = "") => {
   }
 
   const status = error.response.status;
+  const code = error.response.data?.code;
+
   const serverMessage =
     typeof error.response.data === "string"
       ? error.response.data
@@ -13,11 +15,12 @@ export const handleApiError = (error, context = "") => {
     case 400:
       return serverMessage || "Bad request. Please check your inputs.";
     case 401:
+      if (code === "ACCOUNT_BLOCKED") return "Your account has been blocked.";
       // differentiate between login failure and expired session
       if (context === "login") return "Invalid email or password.";
       return "Session expired. Please login again.";
     case 403:
-      return "You don't have permission to do this.";
+      return serverMessage || "You don't have permission to do this.";
     case 404:
       return serverMessage || "Resource not found.";
     case 409:

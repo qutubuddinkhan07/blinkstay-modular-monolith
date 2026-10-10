@@ -1,0 +1,18 @@
+' Diagram 4: What a blocked user sees next (no event involved)
+@startuml 04-blocked-user-next-request
+actor "Blocked host" as H
+participant JWTFilter as F
+participant CustomUserDetailsDaoService as UD
+database "users table" as DB
+
+H -> F : any request with the cookie
+F -> UD : loadUserByUsername(userId)
+UD -> DB : select user
+UD --> F : UserDetails (disabled = !isActive)
+F -> F : isEnabled() is false
+F --> H : 401 {code: ACCOUNT_BLOCKED}\n+ cookie cleared
+note right of F
+  The user is re-read on every request,
+  so blocking takes effect immediately.
+end note
+@enduml

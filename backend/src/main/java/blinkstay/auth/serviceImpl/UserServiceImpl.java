@@ -269,7 +269,8 @@ public class UserServiceImpl implements UserService {
 
 		String publicId = user.getImagePublicId();
 		if (publicId == null || publicId.isBlank()) {
-			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "You don't have a profile image to delete");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+					"You don't have a profile image publicId [Seeded data] to delete");
 		}
 
 		Map<String, Object> result = imageUploadService.deleteImage(publicId);

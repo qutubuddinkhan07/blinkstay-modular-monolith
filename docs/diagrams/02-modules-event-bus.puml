@@ -1,0 +1,39 @@
+' Diagram 2: Modules and the event bus
+@startuml 02-modules-event-bus
+skinparam componentStyle rectangle
+skinparam shadowing false
+
+package "auth module" #E8F0FE {
+  [AdminUserService] as AUS
+  [JWTFilter] as JF
+}
+package "listing module" #E6F4EA {
+  [ListingService] as LS
+  [UserLifecycleListener] as ULL
+  [ListingModerationService] as LMS
+}
+package "room module" #FEF7E0 {
+  [RoomService] as RS
+}
+package "notification module" #FCE8E6 {
+  [Notification listeners\n(Step 6)] as NL
+  [MailService] as MS
+}
+
+cloud "Spring event bus\n(ApplicationEventPublisher)" as BUS
+
+AUS --> BUS : UserBlockedEvent,\nUserUnblockedEvent
+LS --> BUS : ListingSuspendedEvent,\nListingRestoredEvent
+BUS ..> ULL : same thread,\nsame transaction
+BUS ..> NL : after commit,\nasync (Step 6)
+ULL --> LMS
+LMS --> RS : rooms check on restore
+LS --> RS : direct call
+RS -[#red]-> LS : RoomController asks\nownership (cycle)
+NL --> MS
+
+note bottom of BUS
+  Event classes live in blinkstay.common.events.
+  They are the only thing modules share.
+end note
+@enduml

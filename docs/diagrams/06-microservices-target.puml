@@ -1,0 +1,32 @@
+' Microservice picture
+@startuml 06-microservices-target
+skinparam shadowing false
+actor Browser
+node "API Gateway\n(checks the JWT cookie)" as GW
+
+package "Auth service" {
+  [Users, login,\nhost requests] as AU
+  database "auth DB" as ADB
+}
+package "Listing service" {
+  [Listings + rooms] as LI
+  database "listing DB" as LDB
+}
+package "Notification service" {
+  [Mail + in-app\nnotifications] as NO
+  database "notification DB" as NDB
+}
+queue "Message broker\n(RabbitMQ or Kafka)" as MQ
+
+Browser --> GW
+GW --> AU : /api/v1, /api/v2
+GW --> LI : /api/v3, /api/v4
+GW --> NO : /api/v2/notifications
+AU --> ADB
+LI --> LDB
+NO --> NDB
+AU --> MQ : UserBlockedEvent,\nUserUnblockedEvent
+LI --> MQ : ListingSuspendedEvent
+MQ --> LI : UserBlockedEvent,\nUserUnblockedEvent
+MQ --> NO : all events
+@enduml

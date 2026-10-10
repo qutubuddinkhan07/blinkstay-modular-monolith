@@ -1,0 +1,46 @@
+' Diagram 3: Blocking a host (sequence)
+@startuml 03-block-host-sequence
+autonumber
+actor Admin
+participant "AdminUserController" as C
+
+box "auth module" #E8F0FE
+  participant "AdminUserServiceImpl\n@Transactional" as S
+  database "users table" as UDB
+end box
+
+participant "Spring event bus" as BUS
+
+box "listing module" #E6F4EA
+  participant "UserLifecycleListener" as L
+  participant "ListingModerationService" as M
+  database "listings table" as LDB
+end box
+
+participant "Caffeine caches" as CA
+
+Admin -> C : POST /api/v2/admin/users/{id}/block {reason}
+C -> S : blockUser(adminId, id, reason)
+activate S
+S -> UDB : isActive=false, blockReason, blockedAt
+S -> BUS : publishEvent(UserBlockedEvent)
+activate BUS
+BUS -> L : on(UserBlockedEvent)\nsame thread, same transaction
+activate L
+L -> M : suspendAllByManager(userId, reason)
+M -> LDB : each listing -> SUSPENDED\nsave statusBeforeSuspension\nsource = OWNER_BLOCKED
+M --> L : done
+deactivate L
+BUS --> S : return
+deactivate BUS
+S --> C : ok
+deactivate S
+
+note over S, LDB
+  COMMIT: the user row and all listings are saved together.
+  If anything above throws, BOTH roll back.
+end note
+
+M -> CA : after commit: clear listingById,\npublishedListings
+C --> Admin : 200 "User blocked"
+@enduml

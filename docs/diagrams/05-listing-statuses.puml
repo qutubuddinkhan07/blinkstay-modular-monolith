@@ -1,0 +1,25 @@
+' Diagram 5: Listing statuses
+@startuml 05-listing-statuses
+skinparam shadowing false
+
+[*] --> DRAFT : create listing
+DRAFT --> PUBLISHED : owner publish\n(needs a room)
+PUBLISHED --> PAUSED : owner pause
+PAUSED --> PUBLISHED : owner resume\n(needs a room)
+PUBLISHED --> DRAFT : last room deleted
+
+DRAFT --> SUSPENDED : admin suspend OR\nowner blocked
+PUBLISHED --> SUSPENDED : admin suspend OR\nowner blocked
+PAUSED --> SUSPENDED : admin suspend OR\nowner blocked
+
+SUSPENDED --> DRAFT : restore (was DRAFT)
+SUSPENDED --> PUBLISHED : restore (was PUBLISHED)
+SUSPENDED --> PAUSED : restore (was PAUSED)
+
+note right of SUSPENDED
+  Stores statusBeforeSuspension and a source:
+  ADMIN -> only an admin "unsuspend" restores it
+  OWNER_BLOCKED -> only unblocking the owner restores it
+  The owner can never publish, pause or resume it.
+end note
+@enduml

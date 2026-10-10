@@ -1,0 +1,38 @@
+@startuml 01-use-cases
+left to right direction
+skinparam shadowing false
+
+actor "Guest" as G
+actor "User" as U
+actor "Hotel Manager" as H
+actor "Admin" as A
+U --|> G
+H --|> U
+A --|> U
+
+rectangle "BlinkStay" {
+  usecase "Browse published listings" as UC1 #LightGreen
+  usecase "View listing details" as UC2 #LightGreen
+  usecase "Register (OTP), login, logout" as UC3 #LightGreen
+  usecase "Edit profile, photo, password,\ndelete account" as UC4 #LightGreen
+  usecase "Create / edit listing and rooms" as UC5 #LightGreen
+  usecase "Publish / pause / resume listing" as UC6 #LightGreen
+  usecase "Block / unblock user\n(suspends or restores their listings)" as UC7 #LightGreen
+  usecase "Suspend / unsuspend a listing" as UC8 #LightGreen
+  usecase "Apply to become a host" as UC9 #Khaki
+  usecase "Approve / reject host request" as UC10 #Khaki
+  usecase "Receive notifications" as UC11 #Khaki
+}
+
+G --> UC1
+G --> UC2
+G --> UC3
+U --> UC4
+U --> UC9
+U --> UC11
+H --> UC5
+H --> UC6
+A --> UC7
+A --> UC8
+A --> UC10
+@enduml

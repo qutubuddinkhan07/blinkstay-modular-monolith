@@ -1,13 +1,8 @@
-import {
-  Children,
-  createContext,
-  useContext,
-  useEffect,
-  useState,
-} from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import * as authService from "../features/auth/authService";
 import { notify } from "../utils/notify";
 import axiosInstance from "../api/axiosInstance";
+import { setAuthFailureHandler } from "../api/axiosInterceptors";
 
 const AuthContext = createContext(undefined);
 
@@ -21,6 +16,32 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem("hasSession");
     setUser(null);
   };
+
+  const userRef = useRef(null);
+  userRef.current = user;
+
+  // Lets the axios interceptor tell React that the session is gone or blocked
+  useEffect(() => {
+    setAuthFailureHandler(({ type, message }) => {
+      localStorage.removeItem("hasSession");
+
+      if (type === "blocked") {
+        sessionStorage.setItem("blockedMessage", message || "");
+        setUser(null);
+        window.location.replace("/blocked"); // full reload: clean slate
+        return;
+      }
+
+      // Only tell people who were actually logged in.
+      // ProtectedRoute redirects to /login once user becomes null.
+      if (userRef.current) {
+        notify.info("Your session has expired. Please log in again.");
+      }
+      setUser(null);
+    });
+
+    return () => setAuthFailureHandler(null);
+  }, []);
 
   // Session re-hydration on app start / refresh
   useEffect(() => {
