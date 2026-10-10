@@ -11,6 +11,8 @@ const ConfirmDialog = ({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   busy = false,
+  busyLabel = "Working…",
+  tone = "danger", // "danger" | "primary"
   onConfirm,
   onCancel,
 }) => {
@@ -56,9 +58,13 @@ const ConfirmDialog = ({
             type="button"
             onClick={onConfirm}
             disabled={busy}
-            className={`${base} bg-danger text-white hover:opacity-90 focus-visible:outline-danger`}
+            className={`${base} ${
+              tone === "primary"
+                ? "bg-primary text-on-primary hover:bg-primary-hover focus-visible:outline-primary"
+                : "bg-danger text-white hover:opacity-90 focus-visible:outline-danger"
+            }`}
           >
-            {busy ? "Removing…" : confirmLabel}
+            {busy ? busyLabel : confirmLabel}
           </button>
         </div>
       </div>

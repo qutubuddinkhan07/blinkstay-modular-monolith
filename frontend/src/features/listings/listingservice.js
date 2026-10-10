@@ -83,3 +83,13 @@ export const resumeListing = (id) => {
 export const deleteListing = (id) => {
   return axiosInstance.delete(`${LISTING_URL}/${id}`);
 };
+
+// POST /api/v3/admin/listings/{id}/suspend  body { reason } (required, max 500)
+export const suspendListing = (id, reason) => {
+  return axiosInstance.post(`/v3/admin/listings/${id}/suspend`, { reason });
+};
+
+// POST /api/v3/admin/listings/{id}/unsuspend (409 if suspended because the owner is blocked)
+export const unsuspendListing = (id) => {
+  return axiosInstance.post(`/v3/admin/listings/${id}/unsuspend`);
+};

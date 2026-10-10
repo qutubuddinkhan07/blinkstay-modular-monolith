@@ -171,6 +171,7 @@ const AvatarUploader = ({ onDirtyChange }) => {
         description="Your photo will be deleted and replaced with your initial. You can add a new one any time."
         confirmLabel="Remove photo"
         busy={busy}
+        busyLabel="Removing…"
         onConfirm={onRemove}
         onCancel={() => setConfirmRemove(false)}
       />

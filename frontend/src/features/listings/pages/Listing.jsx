@@ -1,11 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { useParams } from "react-router-dom";
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import { Link, useParams } from "react-router-dom";
 import Loading from "../../../components/common/Loading";
+import StatusBanner from "../../../components/common/StatusBanner";
 import { fetchListingById } from "../listingService";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import ListingGallery from "../components/listing/ListingGallery";
+import ListingAdminControls from "../components/listing/ListingAdminControls";
 import BookingCard from "../components/booking/BookingCard";
 import ListingMap from "../components/listing/ListingMap";
+import { focusRing } from "../components/create-listing/formStyles";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -13,55 +16,98 @@ const prettyAmenity = (a) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
+const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`;
+
 const Listing = () => {
   const { id } = useParams();
   const [listing, setListing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [notFound, setNotFound] = useState(false);
+  const reqRef = useRef(0); // only the latest request may update state
 
-  useEffect(() => {
-    let ignore = false;
+  // silent = refetch without the full-page loader (used after admin actions)
+  const load = useCallback(
+    async (silent = false) => {
+      const req = ++reqRef.current;
 
-    const load = async () => {
-      try {
+      if (!silent) {
         setLoading(true);
         setError(null);
+        setNotFound(false);
+      }
+
+      try {
         const res = await fetchListingById(id);
 
         // API shape: { success, message, data: {...} }
-        if (!ignore) setListing(res.data.data);
-      } catch (error) {
-        console.log("error fetching listing");
-
-        if (!ignore) {
-          setError(handleApiError(error, "listing"));
+        if (req === reqRef.current) {
+          setListing(res.data.data);
+          setError(null);
+          setNotFound(false);
         }
+      } catch (err) {
+        if (req !== reqRef.current) return;
+        console.error("error fetching listing", err);
+        setListing(null);
+        setNotFound(err.response?.status === 404);
+        setError(handleApiError(err, "listing"));
       } finally {
-        if (!ignore) {
-          setLoading(false);
-        }
+        if (req === reqRef.current) setLoading(false);
       }
-    };
+    },
+    [id],
+  );
 
+  useEffect(() => {
     load();
     window.scrollTo({ top: 0 });
 
     return () => {
-      ignore = true;
+      reqRef.current++; // ignore any request still in flight
     };
-  }, [id]);
+  }, [load]);
 
   if (loading) {
     return <Loading />;
   }
 
+  // 404: missing, or not published and you're not the owner or an admin
+  if (notFound) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-text">
+        <div className="max-w-md">
+          <h2 className="font-display text-2xl font-semibold">
+            Listing not available
+          </h2>
+          <p className="mt-2 text-subtext">
+            This listing doesn't exist, or it isn't open to guests right now.
+          </p>
+          <Link to="/explore" className={`mt-5 ${primaryLink}`}>
+            Browse listings
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   if (error || !listing) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-text">
-        <div>
-          <h2 className="text-2xl font-bold">Listing unavailable</h2>
-
-          <p className="mt-2 text-subtext">{error || "Listing not found."}</p>
+        <div className="max-w-md">
+          <h2 className="font-display text-2xl font-semibold">
+            Couldn't load this listing
+          </h2>
+          <p className="mt-2 text-subtext">
+            {error || "Something went wrong."}
+          </p>
+          <button
+            type="button"
+            onClick={() => load()}
+            className={`mt-5 cursor-pointer ${primaryLink}`}
+          >
+            Try again
+          </button>
         </div>
       </div>
     );
@@ -70,6 +116,22 @@ const Listing = () => {
   return (
     <div className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
+        {/* Only the owner or an admin ever gets a non-PUBLISHED listing back */}
+        <StatusBanner
+          status={listing.status}
+          reason={listing.suspensionReason}
+          suspendedAt={listing.suspendedAt}
+          title={listing.title}
+          className="mb-4"
+        />
+
+        {/* Admins only; renders nothing for everyone else */}
+        <ListingAdminControls
+          listing={listing}
+          onChanged={() => load(true)}
+          className="mb-6"
+        />
+
         {/* Title: location */}
         <h1 className="mb-6 text-2xl font-semibold sm:text-3xl">
           {listing.title}
