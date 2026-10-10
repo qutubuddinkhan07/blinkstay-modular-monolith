@@ -69,6 +69,16 @@ export const publishListing = (id) => {
   return axiosInstance.post(`${LISTING_URL}/${id}/publish`);
 };
 
+// POST /{id}/pause
+export const pauseListing = (id) => {
+  return axiosInstance.post(`${LISTING_URL}/${id}/pause`);
+};
+
+// POST /{id}/resume
+export const resumeListing = (id) => {
+  return axiosInstance.post(`${LISTING_URL}/${id}/resume`);
+};
+
 // DELETE /{id} (owner or admin)
 export const deleteListing = (id) => {
   return axiosInstance.delete(`${LISTING_URL}/${id}`);
