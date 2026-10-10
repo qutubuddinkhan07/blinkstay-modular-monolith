@@ -22,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 
 import blinkstay.auth.dtos.ApiResponse;
+import blinkstay.common.exception.AccountBlockedException;
 import blinkstay.common.exception.ManagerNotOwnerException;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
@@ -67,6 +68,12 @@ public class GlobalExceptionHandler {
 				.message("Validation failed").data(errors).build();
 
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+	}
+
+	@ExceptionHandler(AccountBlockedException.class)
+	public ResponseEntity<ApiResponse<String>> handleAccountBlocked(AccountBlockedException ex) {
+		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+				ApiResponse.<String>builder().success(false).message(ex.getMessage()).data("ACCOUNT_BLOCKED").build());
 	}
 
 	@ExceptionHandler(UserNotFoundException.class)

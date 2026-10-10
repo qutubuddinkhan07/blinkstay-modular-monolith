@@ -11,6 +11,7 @@ import org.springframework.data.repository.query.Param;
 
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.listing.enums.SuspensionSource;
 
 public interface ListingRepository extends JpaRepository<Listing, UUID> {
 	@Query("SELECT l FROM Listing l WHERE l.managerId = :managerId")
@@ -19,4 +20,9 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 	Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
 	Page<Listing> findByStatusAndCountry(ListingStatus listingStatus, String country, Pageable pageable);
+
+	List<Listing> findByManagerIdAndStatusNot(UUID managerId, ListingStatus status);
+
+	List<Listing> findByManagerIdAndStatusAndSuspensionSource(UUID managerId, ListingStatus status,
+			SuspensionSource suspensionSource);
 }

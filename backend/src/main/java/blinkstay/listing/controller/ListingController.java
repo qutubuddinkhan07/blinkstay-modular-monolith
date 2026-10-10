@@ -79,7 +79,14 @@ public class ListingController {
 
 	@GetMapping("/{listingId}")
 	public ResponseEntity<ListingApiResponse<ListingDetailsResponseDto>> getListingByIdController(
-			@PathVariable("listingId") UUID listingId) {
+			@PathVariable("listingId") UUID listingId, @AuthenticationPrincipal UserDetails userDetails) {
+		UUID viewerId = userDetails == null ? null : UUID.fromString(userDetails.getUsername());
+
+		boolean isAdmin = userDetails != null
+				&& userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
+
+		listingService.checkListingVisible(listingId, viewerId, isAdmin);
+
 		ListingDetailsResponseDto listingDetailsResponseDto = listingService.getListingById(listingId);
 		ListingApiResponse<ListingDetailsResponseDto> response = ListingApiResponse.<ListingDetailsResponseDto>builder()
 				.success(true).message("Listing fetched successfully").data(listingDetailsResponseDto).build();
@@ -102,6 +109,26 @@ public class ListingController {
 				.message("Listing published successfully").data(response).build();
 
 		return ResponseEntity.ok(apiResponse);
+	}
+
+	@Operation(summary = "Pause listing")
+	@SecurityRequirement(name = "Bearer Authentication")
+	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
+	@PostMapping("/{listingId}/pause")
+	public ResponseEntity<ListingApiResponse<String>> pauseListing(@AuthenticationPrincipal UserDetails userDetails,
+			@PathVariable UUID listingId) {
+		String msg = listingService.pauseListing(UUID.fromString(userDetails.getUsername()), listingId);
+		return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
+	}
+
+	@Operation(summary = "Resume listing")
+	@SecurityRequirement(name = "Bearer Authentication")
+	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
+	@PostMapping("/{listingId}/resume")
+	public ResponseEntity<ListingApiResponse<String>> resumeListing(@AuthenticationPrincipal UserDetails userDetails,
+			@PathVariable UUID listingId) {
+		String msg = listingService.resumeListing(UUID.fromString(userDetails.getUsername()), listingId);
+		return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
 	}
 
 	@GetMapping("/my-listings")

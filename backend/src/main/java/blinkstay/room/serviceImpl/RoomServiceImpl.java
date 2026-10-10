@@ -94,7 +94,7 @@ public class RoomServiceImpl implements RoomService {
 	}
 
 	@Override
-	@CacheEvict(value = "listingId", key = "#listingId")
+	@CacheEvict(value = "listingById", key = "#listingId")
 	public String deleteRoom(UUID listingId, UUID roomId) {
 		ListingRoom room = roomRepo.findById(roomId)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No room found with " + roomId));

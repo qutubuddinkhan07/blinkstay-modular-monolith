@@ -74,20 +74,26 @@ public class SpringSecurityConfiguration {
 						// User APIs
 						.requestMatchers("/api/v2/user/**").hasAnyAuthority("USER", "HOTEL_MANAGER", "ADMIN")
 
+						.requestMatchers("/api/v2/admin/**", "/api/v3/admin/**").hasAuthority("ADMIN")
+
 						// Everything else requires authentication
 						.anyRequest().authenticated())
-				.exceptionHandling(ex -> ex
-						// This handles unauthorized requests - return 401 not 500
-						.authenticationEntryPoint((request, response, authException) -> {
-							Object reason = request.getAttribute(JWTFilter.AUTH_ERROR_ATTRIBUTE);
-							String code = reason != null ? reason.toString() : "UNAUTHENTICATED";
+				.exceptionHandling(ex -> ex.accessDeniedHandler((request, response, e) -> {
+					boolean csrf = e instanceof org.springframework.security.web.csrf.CsrfException;
+					response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+					response.setContentType("application/json");
+					response.getWriter()
+							.write("{\"message\": \"" + (csrf ? "Invalid or missing CSRF token" : "Access denied")
+									+ "\", \"code\": \"" + (csrf ? "CSRF_INVALID" : "FORBIDDEN") + "\"}");
+				}).authenticationEntryPoint((request, response, authException) -> {
+					Object reason = request.getAttribute(JWTFilter.AUTH_ERROR_ATTRIBUTE);
+					String code = reason != null ? reason.toString() : "UNAUTHENTICATED";
 
-							response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-							response.setContentType("application/json");
-							response.getWriter()
-									.write("{\"message\": \"Authentication required\", \"code\": \"" + code + "\"}");
-						}))
-				.formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
+					response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+					response.setContentType("application/json");
+					response.getWriter()
+							.write("{\"message\": \"Authentication required\", \"code\": \"" + code + "\"}");
+				})).formLogin(form -> form.disable()).httpBasic(basic -> basic.disable())
 
 				// REGISTER FILTER HERE
 				.addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);

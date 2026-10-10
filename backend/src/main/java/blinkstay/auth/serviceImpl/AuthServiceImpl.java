@@ -11,18 +11,23 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.auth.entities.BlockedToken;
-import blinkstay.auth.repository.BlockedTokenRepositry;
+import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.AuthService;
+import blinkstay.auth.service.BlockedTokenService;
 import blinkstay.auth.util.JWTUtil;
+import blinkstay.common.exception.AccountBlockedException;
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -49,7 +54,11 @@ public class AuthServiceImpl implements AuthService {
 
 	private final JWTUtil jwtUtil;
 
-	private final BlockedTokenRepositry blockedTokenRepositry;
+	private final BlockedTokenService blockedTokenService;
+
+	private final UserRepository userRepository;
+
+	private final PasswordEncoder passwordEncoder;
 
 	@Override
 	public void authUsernameAndPasswordService(String username, String password, HttpServletResponse response) {
@@ -73,6 +82,15 @@ public class AuthServiceImpl implements AuthService {
 					.sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
 
 			response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
+		} catch (DisabledException e) {
+			// Spring checks "disabled" before the password, so only tell someone
+			// who knows the password that the account is blocked
+			userRepository.findByEmail(username.trim())
+					.filter(u -> u.getDeletedAt() == null && passwordEncoder.matches(password, u.getPassword()))
+					.ifPresent(u -> {
+						throw new AccountBlockedException(u.getBlockReason());
+					});
+			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
 		} catch (AuthenticationException e) {
 			log.warn("Authentication failed for {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
 			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
@@ -88,24 +106,25 @@ public class AuthServiceImpl implements AuthService {
 			return "No JWT found";
 		}
 
-		if (blockedTokenRepositry.existsByToken(jwt)) {
+		LocalDateTime expireAt;
+		try {
+			expireAt = jwtUtil.extractExpiry(jwt).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+		} catch (JwtException | IllegalArgumentException e) {
+			// expired or invalid: nothing left to revoke, just clear the cookie
 			clearAuthCookie(response);
-			return "Already Log out";
+			return "Session already expired";
 		}
 
-		LocalDateTime expireAt = jwtUtil.extractExpiry(jwt).toInstant().atZone(ZoneId.systemDefault())
-				.toLocalDateTime();
+		if (blockedTokenService.checkIfPresent(jwt)) {
+			clearAuthCookie(response);
+			return "Already logged out";
+		}
 
 		BlockedToken token = BlockedToken.builder().token(jwt).blockedAt(LocalDateTime.now()).expiresAt(expireAt)
 				.build();
-
-		blockedTokenRepositry.save(token);
-
-		// Helper call to populate the cache immediately on logout
-		cacheBlockedToken(jwt);
+		blockedTokenService.blockToken(jwt, token);
 
 		clearAuthCookie(response);
-
 		return "Logout successful";
 	}
 

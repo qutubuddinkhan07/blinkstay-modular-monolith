@@ -95,6 +95,7 @@ public class UserController {
 	}
 
 	@GetMapping("/allusers")
+	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsersController() {
 		List<UserResponseDto> serviceReponse = userService.getAllUsers();
 		ApiResponse<List<UserResponseDto>> apiResponse = ApiResponse.<List<UserResponseDto>>builder().success(true)
@@ -103,6 +104,7 @@ public class UserController {
 	}
 
 	@GetMapping("/{userId}")
+	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ApiResponse<UserResponseDto>> getUserById(@PathVariable("userId") UUID userId) {
 		UserResponseDto userResponseDto = userService.getUserById(userId);
 		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
@@ -112,6 +114,7 @@ public class UserController {
 	}
 
 	@GetMapping
+	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ApiResponse<UserResponseDto>> getUserByEmail(@RequestParam String userEmail) {
 		UserResponseDto userResponseDto = userService.getUserByEmail(userEmail);
 		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
@@ -122,7 +125,7 @@ public class UserController {
 
 	@DeleteMapping("/{userId}")
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public ResponseEntity<ApiResponse<String>> deleteUser(UUID userId) {
+	public ResponseEntity<ApiResponse<String>> deleteUser(@PathVariable UUID userId) {
 		String serviceResponse = userService.deleteUserById(userId);
 		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(true).message("User deletion")
 				.data(serviceResponse).build();
@@ -133,7 +136,7 @@ public class UserController {
 	// BULK DELETE user images
 	@DeleteMapping("/images/bulk")
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public ResponseEntity<ApiResponse<Integer>> deleteMultipleImages(List<UUID> userIds) {
+	public ResponseEntity<ApiResponse<Integer>> deleteMultipleImages(@RequestBody List<UUID> userIds) {
 		userService.deleteMultipleUserImage(userIds);
 		ApiResponse<Integer> apiResponse = ApiResponse.<Integer>builder().success(true)
 				.message("Images deleted successfully in bulk").data(userIds.size()).build();
@@ -142,6 +145,7 @@ public class UserController {
 
 	// Get image details (for debugging)
 	@GetMapping("/{userId}/image-details")
+	@PreAuthorize("hasAuthority('ADMIN')")
 	public ResponseEntity<ApiResponse<?>> getImageDetails(@PathVariable("userId") UUID userId) {
 		Map<String, Object> serviceResponse = userService.getImageDetails(userId);
 		ApiResponse<Map<String, Object>> apiResponse = ApiResponse.<Map<String, Object>>builder().success(true)

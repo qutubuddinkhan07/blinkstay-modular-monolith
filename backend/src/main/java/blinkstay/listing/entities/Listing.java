@@ -72,6 +72,9 @@ public class Listing {
 	@Enumerated(EnumType.STRING)
 	private SuspensionSource suspensionSource;
 
+	@Enumerated(EnumType.STRING)
+	private ListingStatus statusBeforeSuspension;
+
 	@Column(length = 500)
 	private String suspensionReason;
 

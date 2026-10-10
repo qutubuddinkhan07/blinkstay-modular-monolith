@@ -58,6 +58,7 @@ public class User {
 
 	@NotBlank(message = "password cannot be empty")
 	@Column(nullable = false)
+	@ToString.Exclude
 	private String password;
 
 	@Column(length = 20)
@@ -76,6 +77,13 @@ public class User {
 
 	@Builder.Default
 	private Boolean isActive = true;
+
+	@Column(length = 500)
+	private String blockReason;
+
+	private LocalDateTime blockedAt; // Blocked: isActive = false and deletedAt = null.
+
+	private LocalDateTime deletedAt; // Self-deleted: isActive = false and deletedAt set.
 
 	// Stores Cloudinary image URL
 	private String profileImgUrl;

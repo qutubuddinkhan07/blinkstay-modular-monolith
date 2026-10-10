@@ -38,4 +38,14 @@ public interface ListingService {
 	void deleteListing(UUID userId, boolean isAdmin, UUID listingId);
 
 	void deleteRoomFromListing(UUID userId, UUID listingId, UUID roomId);
+
+	String pauseListing(UUID userId, UUID listingId);
+
+	String resumeListing(UUID userId, UUID listingId);
+
+	String suspendListing(UUID listingId, String reason);
+
+	String unsuspendListing(UUID listingId);
+
+	void checkListingVisible(UUID listingId, UUID viewerId, boolean isAdmin);
 }

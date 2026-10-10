@@ -1,5 +1,6 @@
 package blinkstay.listing.dto;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 import blinkstay.listing.enums.ListingCategory;
@@ -34,4 +35,8 @@ public class ListingResponseDto {
 	private ListingCategory category;
 
 	private String owner;
+
+	private String suspensionReason;
+
+	private LocalDateTime suspendedAt;
 }

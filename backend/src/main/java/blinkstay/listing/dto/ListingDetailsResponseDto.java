@@ -47,4 +47,8 @@ public class ListingDetailsResponseDto {
 	private LocalDateTime createdAt;
 
 	private LocalDateTime updatedAt;
+
+	private String suspensionReason;
+
+	private LocalDateTime suspendedAt;
 }

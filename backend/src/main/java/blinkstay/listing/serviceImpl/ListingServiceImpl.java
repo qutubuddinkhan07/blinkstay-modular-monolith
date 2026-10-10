@@ -1,5 +1,6 @@
 package blinkstay.listing.serviceImpl;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -14,6 +15,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -27,6 +29,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import blinkstay.common.events.ListingRestoredEvent;
+import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.exception.ManagerNotOwnerException;
 import blinkstay.listing.constants.ImagePublicIds;
 import blinkstay.listing.dto.AddListingDto;
@@ -40,6 +44,7 @@ import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.repository.ListingGeometryRepository;
 import blinkstay.listing.repository.ListingImageRepository;
@@ -73,6 +78,8 @@ public class ListingServiceImpl implements ListingService {
 
 	// contacting room service
 	private final RoomService roomService;
+
+	private final ApplicationEventPublisher publisher;
 
 	/**
 	 * Helper method to clean up orphan Cloudinary uploads
@@ -268,33 +275,6 @@ public class ListingServiceImpl implements ListingService {
 	@Override
 	public List<Listing> getListingsByManagerId(UUID managerId) {
 		return listingRepo.findAllByManagerId(managerId);
-	}
-
-	// EVICT PUBLISHED LISTINGS FEED WHEN A NEW LISTING IS PUBLISHED
-	@Override
-	@Transactional
-	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
-			@CacheEvict(value = "publishedListings", allEntries = true) })
-	public String listingPublishService(UUID userId, UUID listingId) {
-		checkWhetherSameManager(userId, listingId);
-
-		Listing listing = helperGetListingById(listingId); // 404 if missing
-
-		// Proper statuses (not RuntimeException -> 500) so the UI can show the reason
-		if (!roomService.checkDoesListingHaveRooms(listingId)) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT,
-					"Listing cannot be published because it has no rooms");
-		}
-
-		if (listing.getStatus() == ListingStatus.PUBLISHED) {
-			throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing already published");
-		}
-
-		listing.setStatus(ListingStatus.PUBLISHED);
-
-		listingRepo.save(listing);
-
-		return listing.getTitle() + " having id: " + listing.getId() + " PUBLISHED";
 	}
 
 	// EVICT BOTH SINGLE LISTING CACHE AND SEARCH FEED CACHE ON UPDATE
@@ -558,6 +538,139 @@ public class ListingServiceImpl implements ListingService {
 			listing.setStatus(ListingStatus.DRAFT);
 			listingRepo.save(listing);
 			log.info("Listing {} moved back to DRAFT because its last room was deleted", listingId);
+		}
+	}
+
+	// EVICT PUBLISHED LISTINGS FEED WHEN A NEW LISTING IS PUBLISHED
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public String listingPublishService(UUID userId, UUID listingId) {
+		checkWhetherSameManager(userId, listingId);
+		Listing listing = helperGetListingById(listingId);
+
+		if (listing.getStatus() == ListingStatus.PUBLISHED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing already published");
+		}
+		if (listing.getStatus() == ListingStatus.SUSPENDED) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+					"This listing is suspended. Please contact support.");
+		}
+		// remaining statuses: DRAFT or PAUSED
+		return makeLive(listing);
+	}
+
+	private String makeLive(Listing listing) {
+		if (!roomService.checkDoesListingHaveRooms(listing.getId())) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Listing cannot be published because it has no rooms");
+		}
+		listing.setStatus(ListingStatus.PUBLISHED);
+		listingRepo.save(listing);
+		return listing.getTitle() + " having id: " + listing.getId() + " PUBLISHED";
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public String pauseListing(UUID userId, UUID listingId) {
+		checkWhetherSameManager(userId, listingId);
+		Listing listing = helperGetListingById(listingId);
+
+		if (listing.getStatus() != ListingStatus.PUBLISHED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a published listing can be paused");
+		}
+		listing.setStatus(ListingStatus.PAUSED);
+		listingRepo.save(listing);
+		return "Listing paused";
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public String resumeListing(UUID userId, UUID listingId) {
+		checkWhetherSameManager(userId, listingId);
+		Listing listing = helperGetListingById(listingId);
+
+		if (listing.getStatus() == ListingStatus.SUSPENDED) {
+			throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+					"This listing is suspended. Please contact support.");
+		}
+		if (listing.getStatus() != ListingStatus.PAUSED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a paused listing can be resumed");
+		}
+		return makeLive(listing); // also re-checks that it still has rooms
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public String suspendListing(UUID listingId, String reason) {
+		Listing listing = helperGetListingById(listingId);
+
+		if (listing.getStatus() == ListingStatus.SUSPENDED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing is already suspended");
+		}
+		listing.setStatusBeforeSuspension(listing.getStatus());
+		listing.setStatus(ListingStatus.SUSPENDED);
+		listing.setSuspensionSource(SuspensionSource.ADMIN);
+		listing.setSuspensionReason(reason.trim());
+		listing.setSuspendedAt(LocalDateTime.now());
+		listingRepo.save(listing);
+
+		// Step 3: publish ListingSuspendedEvent here
+		publisher.publishEvent(new ListingSuspendEvent(listing.getId(), listing.getManagerId(), listing.getTitle(),
+				listing.getSuspensionReason()));
+
+		return "Listing suspended";
+	}
+
+	@Override
+	@Transactional
+	@Caching(evict = { @CacheEvict(value = "listingById", key = "#listingId"),
+			@CacheEvict(value = "publishedListings", allEntries = true) })
+	public String unsuspendListing(UUID listingId) {
+		Listing listing = helperGetListingById(listingId);
+
+		if (listing.getStatus() != ListingStatus.SUSPENDED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing is not suspended");
+		}
+		if (listing.getSuspensionSource() == SuspensionSource.OWNER_BLOCKED) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"This listing was suspended because its owner is blocked. Unblock the owner instead.");
+		}
+
+		ListingStatus restore = listing.getStatusBeforeSuspension() != null ? listing.getStatusBeforeSuspension()
+				: ListingStatus.DRAFT;
+		// a published listing that lost its rooms in the meantime goes back to draft
+		if (restore == ListingStatus.PUBLISHED && !roomService.checkDoesListingHaveRooms(listingId)) {
+			restore = ListingStatus.DRAFT;
+		}
+
+		listing.setStatus(restore);
+		listing.setStatusBeforeSuspension(null);
+		listing.setSuspensionSource(null);
+		listing.setSuspensionReason(null);
+		listing.setSuspendedAt(null);
+		listingRepo.save(listing);
+
+		publisher.publishEvent(
+				new ListingRestoredEvent(listing.getId(), listing.getManagerId(), listing.getTitle(), restore.name()));
+
+		return "Listing restored to " + restore;
+	}
+
+	@Override
+	public void checkListingVisible(UUID listingId, UUID viewerId, boolean isAdmin) {
+		Listing listing = helperGetListingById(listingId);
+		boolean isOwner = viewerId != null && viewerId.equals(listing.getManagerId());
+
+		if (listing.getStatus() != ListingStatus.PUBLISHED && !isOwner && !isAdmin) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found");
 		}
 	}
 }

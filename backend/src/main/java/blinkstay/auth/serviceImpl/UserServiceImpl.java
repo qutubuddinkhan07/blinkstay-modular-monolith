@@ -13,6 +13,7 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
+import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
 import blinkstay.notification.service.NotificationService;
@@ -58,6 +60,8 @@ public class UserServiceImpl implements UserService {
 
 	@Qualifier("authModelMapper")
 	private final ModelMapper modelMapper;
+
+	private final ApplicationEventPublisher publisher;
 
 //	public UserServiceImpl(UserRepository userRepository, SecureRandom random,
 //			Map<String, TempUserRegistrationData> otpHolder, NotificationService notificationService,
@@ -99,12 +103,24 @@ public class UserServiceImpl implements UserService {
 	@Override
 	@Transactional
 	@Caching(evict = { @CacheEvict(value = "usersById", key = "#userId"),
-			@CacheEvict(value = "usersByEmail", allEntries = true) })
+			@CacheEvict(value = "usersByEmail", allEntries = true),
+			@CacheEvict(value = "hotelManagerIds", allEntries = true) })
 	public String deleteUserById(UUID userId) {
 		User user = helperGetUserId(userId);
 
+		if (user.getDeletedAt() != null) {
+			throw new UserNotFoundException("User not found");
+		}
+		if (user.getRoles().contains(UserRole.ADMIN) && Boolean.TRUE.equals(user.getIsActive())
+				&& userRepository.countActiveByRole(UserRole.ADMIN) <= 1) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "The last active admin cannot be deleted");
+		}
+
 		user.setIsActive(false);
+		user.setDeletedAt(LocalDateTime.now());
 		userRepository.save(user);
+
+		publisher.publishEvent(new UserBlockedEvent(userId, "Account deleted"));
 		return "User deleted";
 	}
 
@@ -295,7 +311,7 @@ public class UserServiceImpl implements UserService {
 	@Override
 	@Cacheable(value = "hotelManagerIds")
 	public List<UUID> getApprovedHotelManagerIds() {
-		return userRepository.findBUserIdsByRole(UserRole.HOTEL_MANAGER);
+		return userRepository.findUserIdsByRole(UserRole.HOTEL_MANAGER);
 	}
 
 	@Override
