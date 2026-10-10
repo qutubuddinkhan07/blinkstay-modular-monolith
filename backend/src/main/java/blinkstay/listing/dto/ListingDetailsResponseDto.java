@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.room.dto.RoomResponseDto;
 import blinkstay.room.dto.RoomSummaryDto;
 import lombok.AllArgsConstructor;
@@ -47,6 +48,8 @@ public class ListingDetailsResponseDto {
 	private LocalDateTime createdAt;
 
 	private LocalDateTime updatedAt;
+
+	private SuspensionSource suspensionSource;
 
 	private String suspensionReason;
 

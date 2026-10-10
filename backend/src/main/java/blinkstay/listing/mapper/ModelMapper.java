@@ -59,9 +59,10 @@ public class ModelMapper {
 			List<ListingImage> images) {
 		return ListingDetailsResponseDto.builder().id(listing.getId()).title(listing.getTitle())
 				.location(listing.getLocation()).description(listing.getDescription()).country(listing.getCountry())
-				.amenities(listing.getAmenities()).status(listing.getStatus())
-				.suspensionReason(listing.getSuspensionReason()).suspendedAt(listing.getSuspendedAt())
-				.category(listing.getCategory()).geometry(geometry == null ? null : geometryToGeometryDto(geometry))
+				.amenities(listing.getAmenities()).status(listing.getStatus()).roomSummary(null)
+				.suspensionSource(listing.getSuspensionSource()).suspensionReason(listing.getSuspensionReason())
+				.suspendedAt(listing.getSuspendedAt()).category(listing.getCategory())
+				.geometry(geometry == null ? null : geometryToGeometryDto(geometry))
 				.images(listingImagesToImageDto(images)).createdAt(listing.getCreatedAt())
 				.updatedAt(listing.getUpdatedAt()).build();
 	}
