@@ -1,23 +1,25 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { notify } from "../../../../utils/notify";
-import { handleApiError } from "../../../../api/errors/handleApiError";
+import { notify } from "../../../utils/notify";
+import { handleApiError } from "../../../api/errors/handleApiError";
 import {
   fetchMyListings,
   publishListing,
   pauseListing,
   resumeListing,
   deleteListing,
-} from "../../listingService";
-import { normalizeListing } from "../../listingMappers";
-import { focusRing } from "../../components/create-listing/formStyles";
-import DeleteListingDialog from "../../components/edit-listings/DeleteListingDialog";
-import MyListingCard from "../../components/my-listings/MyListingCard";
+} from "../listingService";
+import { normalizeListing } from "../listingMappers";
+import { focusRing } from "../components/create-listing/formStyles";
+import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
+import MyListingCard from "../components/my-listings/MyListingCard";
+import ListingFilters from "../components/my-listings/ListingFilters";
 
 // normalizeListing may not carry the status fields, so add them from the raw response
 const toRow = (raw) => ({
   ...normalizeListing(raw),
   status: raw.status,
+  suspensionSource: raw.suspensionSource ?? null,
   suspensionReason: raw.suspensionReason ?? null,
   suspendedAt: raw.suspendedAt ?? null,
 });
@@ -50,6 +52,11 @@ const MyListings = () => {
   const [toDelete, setToDelete] = useState(null); // listing waiting for confirmation
   const [deleting, setDeleting] = useState(false);
 
+  // Filter States
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
   useEffect(() => {
     let ignore = false;
 
@@ -74,6 +81,22 @@ const MyListings = () => {
       ignore = true;
     };
   }, [reloadKey]);
+
+  // Computed/Filtered listings list
+  const filteredListings = useMemo(() => {
+    return listings.filter((l) => {
+      const matchesSearch =
+        !search ||
+        l.title.toLowerCase().includes(search.toLowerCase()) ||
+        (l.country && l.country.toLowerCase().includes(search.toLowerCase()));
+
+      const matchesStatus = !statusFilter || l.status === statusFilter;
+      const matchesCategory =
+        !categoryFilter || l.category === categoryFilter;
+
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [listings, search, statusFilter, categoryFilter]);
 
   const handleAction = async (listing, action) => {
     const cfg = ACTIONS[action];
@@ -155,6 +178,18 @@ const MyListings = () => {
           </Link>
         </div>
 
+        {/* Search & Filter Component integrated cleanly here */}
+        {!loading && !error && listings.length > 0 && (
+          <ListingFilters
+            search={search}
+            setSearch={setSearch}
+            statusFilter={statusFilter}
+            setStatusFilter={setStatusFilter}
+            categoryFilter={categoryFilter}
+            setCategoryFilter={setCategoryFilter}
+          />
+        )}
+
         {loading && (
           <ul className="space-y-4" aria-busy="true">
             {Array.from({ length: 3 }, (_, i) => (
@@ -190,7 +225,7 @@ const MyListings = () => {
 
         {!loading && !error && listings.length > 0 && (
           <ul className="space-y-4">
-            {listings.map((l) => (
+            {filteredListings.map((l) => (
               <MyListingCard
                 key={l.id}
                 listing={l}

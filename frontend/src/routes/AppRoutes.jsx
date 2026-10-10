@@ -35,7 +35,7 @@ const ProfilePage = Loadable(
 
 // Hotel manager / admin
 const MyListings = Loadable(
-  lazy(() => import("../features/listings/components/my-listings/MyListings")),
+  lazy(() => import("../features/listings/pages/MyListings")),
 );
 const CreateListing = Loadable(
   lazy(() => import("../features/listings/pages/CreateListing")),

@@ -14,8 +14,40 @@ const STATUS_ACTION = {
   PAUSED: { key: "resume", label: "Resume", busyLabel: "Resuming..." },
 };
 
+/**
+ * Removes duplicate country suffix from location if present
+ */
+const formatLocation = (location, country) => {
+  if (!location) return country || "Location not listed";
+  if (!country) return location;
+
+  const locTrimmed = location.trim();
+  const countryTrimmed = country.trim();
+
+  // Regex matches trailing comma + spaces + country name (case insensitive)
+  const duplicateCountryRegex = new RegExp(
+    `,\\s*${countryTrimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$")}`,
+    "i",
+  );
+
+  // Strip trailing country from location if present
+  const cleanLoc = locTrimmed.replace(duplicateCountryRegex, "").trim();
+
+  return `${cleanLoc}, ${countryTrimmed}`;
+};
+
 const MyListingCard = ({ listing: l, busyAction, onAction, onDelete }) => {
   const action = STATUS_ACTION[l.status];
+
+  const formatSuspensionSource = (source) => {
+    if (!source) return "";
+
+    const lower = source.toLowerCase();
+    return lower.charAt(0).toUpperCase() + lower.slice(1);
+  };
+
+  // Formatted location string using the helper
+  const displayLocation = formatLocation(l.location, l.country);
 
   return (
     <li className="rounded-2xl border border-border bg-surface p-4 transition-colors duration-300">
@@ -41,11 +73,16 @@ const MyListingCard = ({ listing: l, busyAction, onAction, onDelete }) => {
               {l.title}
             </h2>
             <StatusBadge status={l.status} />
+
+            {l.status === "SUSPENDED" && l.suspensionSource && (
+              <span className="text-xs font-medium text-danger/80">
+                Suspended by {formatSuspensionSource(l.suspensionSource)}
+              </span>
+            )}
           </div>
 
           <p className="mt-1 truncate text-sm text-subtext">
-            {[l.location, l.country].filter(Boolean).join(", ") ||
-              "Location not listed"}
+            {displayLocation}
           </p>
           <p className="mt-0.5 text-xs capitalize text-subtext">
             {l.category.toLowerCase()}
