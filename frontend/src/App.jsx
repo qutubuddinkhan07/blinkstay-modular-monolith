@@ -8,16 +8,14 @@ import ThemedToaster from "./components/common/ThemedToaster";
 
 const App = () => {
   return (
-    <>
-      <ThemeProvider>
-        <AuthProvider>
-          <Suspense fallback={<Loading />}>
-            <RouterProvider router={route} />
-            <ThemedToaster />
-          </Suspense>
-        </AuthProvider>
-      </ThemeProvider>
-    </>
+    <ThemeProvider>
+      <ThemedToaster />
+      <AuthProvider>
+        <Suspense fallback={<Loading />}>
+          <RouterProvider router={route} />
+        </Suspense>
+      </AuthProvider>
+    </ThemeProvider>
   );
 };
 

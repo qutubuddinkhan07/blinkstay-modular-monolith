@@ -19,10 +19,15 @@ export const AuthProvider = ({ children }) => {
 
   const userRef = useRef(null);
   userRef.current = user;
+  const loadingRef = useRef(true);
+  loadingRef.current = loading;
+  const expiredNoticeRef = useRef(false); // toast waiting for loading to finish
 
   // Lets the axios interceptor tell React that the session is gone or blocked
   useEffect(() => {
     setAuthFailureHandler(({ type, message }) => {
+      const hadSession =
+        Boolean(userRef.current) || localStorage.getItem("hasSession") === "1";
       localStorage.removeItem("hasSession");
 
       if (type === "blocked") {
@@ -34,14 +39,26 @@ export const AuthProvider = ({ children }) => {
 
       // Only tell people who were actually logged in.
       // ProtectedRoute redirects to /login once user becomes null.
-      if (userRef.current) {
-        notify.info("Your session has expired. Please log in again.");
+      if (hadSession) {
+        if (loadingRef.current) {
+          expiredNoticeRef.current = true; // show it once the app has rendered
+        } else {
+          notify.info("Your session has expired. Please log in again.");
+        }
       }
       setUser(null);
     });
 
     return () => setAuthFailureHandler(null);
   }, []);
+
+  // Shows the toast that was held back while the app was still loading
+  useEffect(() => {
+    if (!loading && expiredNoticeRef.current) {
+      expiredNoticeRef.current = false;
+      notify.info("Your session has expired. Please log in again.");
+    }
+  }, [loading]);
 
   // Session re-hydration on app start / refresh
   useEffect(() => {
@@ -59,8 +76,9 @@ export const AuthProvider = ({ children }) => {
         try {
           const response = await axiosInstance.get("/api/v2/user/me");
           if (!ignore) setUser(response.data.data);
-        } catch {
+        } catch (error) {
           localStorage.removeItem("hasSession"); // cookie expired or revoked
+          if (error.response?.status === 401) expiredNoticeRef.current = true;
           if (!ignore) setUser(null);
         }
       }

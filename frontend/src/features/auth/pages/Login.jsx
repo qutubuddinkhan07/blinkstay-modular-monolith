@@ -5,6 +5,8 @@ import { handleApiError } from "../../../api/errors/handleApiError";
 import Logo from "../../../components/common/Logo";
 import { useTheme } from "../../../context/ThemeContext";
 import { useAuth } from "../../../context/AuthContext";
+import { isBlockedError } from "../../../api/errors/isBlockedError";
+import BlockedNotice from "../../../components/common/BlockedNotice";
 
 /* ---------- Login ---------- */
 
@@ -20,6 +22,7 @@ const Login = () => {
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [blockedMessage, setBlockedMessage] = useState(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -51,6 +54,8 @@ const Login = () => {
   const from = location.state?.from?.pathname || "/explore";
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setBlockedMessage(null); // clear the notice on every new attempt
+
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length === 0) {
       setIsLoading(true);
@@ -60,6 +65,9 @@ const Login = () => {
 
         if (result.success) {
           navigate(from, { replace: true }); //Navigate after login complete
+        } else if (isBlockedError(result.error)) {
+          // blocked account: show the notice (reason + support email) instead of a plain error line
+          setBlockedMessage(result.error.response?.data?.message || "");
         } else {
           setErrors({ api: handleApiError(result.error, "login") });
         }
@@ -110,6 +118,12 @@ const Login = () => {
             Log in to pick up where you left off.
           </p>
         </div>
+
+        {blockedMessage !== null && (
+          <div className="mb-5">
+            <BlockedNotice message={blockedMessage} />
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-5 font-body">
           <div>
