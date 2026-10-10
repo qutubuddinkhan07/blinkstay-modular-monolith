@@ -1,7 +1,7 @@
 import axiosInstance from "../../api/axiosInstance";
 
-const AUTH_URL = "/api/v1/auth";
-const USER_URL = "/api/v2/user";
+const AUTH_URL = "/v1/auth";
+const USER_URL = "/v2/user";
 
 export const registerInit = (userData, profileImg) => {
   const formData = new FormData();

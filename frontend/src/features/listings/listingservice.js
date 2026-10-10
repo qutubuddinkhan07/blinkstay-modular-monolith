@@ -1,7 +1,7 @@
 import axios from "axios";
 import axiosInstance from "../../api/axiosInstance";
 
-const LISTING_URL = "/api/v3/listings";
+const LISTING_URL = "/v3/listings";
 
 export const fetchListings = ({ page, size, sortBy, direction, country }) => {
   return axiosInstance.get(`${LISTING_URL}/all`, {

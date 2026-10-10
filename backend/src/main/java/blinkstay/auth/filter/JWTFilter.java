@@ -59,6 +59,7 @@ public class JWTFilter extends OncePerRequestFilter {
 			throws ServletException, IOException {
 
 		String jwt = extractTokenFromCookies(request);
+		log.info("Cookie secure: {}", cookieSecure);
 
 		if (jwt != null && !jwt.isBlank()) {
 			authenticate(jwt, request, response);

@@ -1,6 +1,6 @@
 import axiosInstance from "../../api/axiosInstance";
 
-const ROOM_URL = "/api/v4/rooms";
+const ROOM_URL = "/v4/rooms";
 
 // POST /{listingId}/rooms   body = AddRoomDto { roomType, price, totalRooms, availableRooms }
 export const createRoom = (listingId, room) => {

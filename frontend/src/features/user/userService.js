@@ -2,7 +2,7 @@
 
 import axiosInstance from "../../api/axiosInstance";
 
-const BASE = "/api/v2/user/me";
+const BASE = "/v2/user/me";
 
 export const getMe = axiosInstance.get(BASE);
 

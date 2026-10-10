@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.Transformation;
@@ -134,12 +136,41 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 
 	@Override
 	public ImageUploadResult updateImage(MultipartFile newFile, String publicId) {
+		// Define allowed formats
+		String[] allowedFormats = { "jpg", "jpeg", "png", "gif" };
+
+		// Validate file is not empty
+		if (newFile == null || newFile.isEmpty()) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please upload a valid image file.");
+		}
+
+		// Extract file extension
+		String originalFilename = newFile.getOriginalFilename();
+		String fileExtension = "";
+		if (originalFilename != null && originalFilename.contains(".")) {
+			fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+		}
+
+		// Check if the format matches the allowed formats
+		boolean isFormatAllowed = false;
+		for (String format : allowedFormats) {
+			if (format.equals(fileExtension)) {
+				isFormatAllowed = true;
+				break;
+			}
+		}
+
+		if (!isFormatAllowed) {
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+					"Invalid image format. Allowed formats are: jpg, jpeg, png, gif.");
+		}
+
 		try {
 			Map<String, Object> uploadParams = new HashMap<>();
 			uploadParams.put("public_id", publicId);
 			uploadParams.put("overwrite", true);
 			uploadParams.put("folder", "blinkstay_user_profiles");
-			uploadParams.put("allowed_formats", new String[] { "jpg", "jpeg", "png", "gif" });
+			uploadParams.put("allowed_formats", allowedFormats);
 			uploadParams.put("transformation",
 					new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
 
@@ -151,6 +182,9 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
 					.publicId((String) uploadResult.get("public_id")).size(size)
 					.format((String) uploadResult.get("format")).build();
+		} catch (ResponseStatusException rse) {
+			throw rse; // Rethrow ResponseStatusException directly so it isn't wrapped in a
+						// RuntimeException
 		} catch (Exception e) {
 			throw new RuntimeException("Failed to update image: " + e.getMessage(), e);
 		}

@@ -4,7 +4,7 @@ import Cookies from "js-cookie";
 const MUTATING = ["post", "put", "patch", "delete"];
 
 // 401 codes that mean "your session is gone"
-const SESSION_CODE = [
+const SESSION_CODES = [
   "TOKEN_EXPIRED",
   "TOKEN_INVALID",
   "USER_NOT_FOUND",
@@ -13,15 +13,15 @@ const SESSION_CODE = [
 
 // A 401 here is an expected failure (wrong password, etc.), not a lost session
 const SKIP_401_URLS = [
-  "/api/v1/auth/login",
-  "/api/v1/auth/register",
-  "/api/v2/user/register-init",
-  "/api/v2/user/verify-otp",
-  "/api/v3/listings/all",
-  "/api/v1/auth/logout",
+  "/v1/auth/login",
+  "/v1/auth/register",
+  "/v2/user/register-init",
+  "/v2/user/verify-otp",
+  "/v3/listings/all",
+  "/v1/auth/logout",
 ];
 
-const CSRF_URL = "/auth.v1/auth/csrf";
+const CSRF_URL = "/v1/auth/csrf";
 
 // AuthContext registers this on mount, so the interceptor can reach React state
 let authFailureHandler = null;
@@ -81,10 +81,10 @@ axiosInstance.interceptors.response.use(
       status === 403 &&
       code === "CSRF_INVALID" &&
       config &&
-      !config._csrfRetired &&
+      !config._csrfRetried && // <-- Fixed: match 'Retried'
       !config.url?.startsWith(CSRF_URL)
     ) {
-      config._csrfRetried = true;
+      config._csrfRetried = true; // <-- Fixed: match 'Retried'
       try {
         await refreshCsrf();
         return axiosInstance(config); // request interceptor re-attaches the new token

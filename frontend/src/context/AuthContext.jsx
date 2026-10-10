@@ -66,7 +66,7 @@ export const AuthProvider = ({ children }) => {
 
     const initializeAuth = async () => {
       try {
-        await axiosInstance.get("/api/v1/auth/csrf");
+        await axiosInstance.get("/v1/auth/csrf");
       } catch (error) {
         console.error("CSRF fetch failed", error);
       }
@@ -74,7 +74,7 @@ export const AuthProvider = ({ children }) => {
       // Only ask the server if this browser has logged in before
       if (localStorage.getItem("hasSession") === "1") {
         try {
-          const response = await axiosInstance.get("/api/v2/user/me");
+          const response = await axiosInstance.get("/v2/user/me");
           if (!ignore) setUser(response.data.data);
         } catch (error) {
           localStorage.removeItem("hasSession"); // cookie expired or revoked
@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
 
     // Step 2: load the profile, reported separately so we know which step failed
     try {
-      const profileResponse = await axiosInstance.get("/api/v2/user/me");
+      const profileResponse = await axiosInstance.get("/v2/user/me");
       setUser(profileResponse.data?.data ?? profileResponse.data);
     } catch (error) {
       console.error("Logged in, but loading the profile failed", error);
