@@ -103,3 +103,8 @@ export const suspendListing = (id, reason) => {
 export const unsuspendListing = (id) => {
   return axiosInstance.post(`/v3/admin/listings/${id}/unsuspend`);
 };
+
+// GET /api/v3/listings/manager/{managerId} (ADMIN only) -> res.data.data is an array
+export const fetchListingsByManager = (managerId) => {
+  return axiosInstance.get(`${LISTING_URL}/manager/${managerId}`);
+};

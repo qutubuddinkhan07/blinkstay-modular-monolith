@@ -18,23 +18,6 @@ const formatDate = (value) => {
       });
 };
 
-// const UserAvatar = ({ user }) =>
-//   user.profileImgUrl ? (
-//     <img
-//       src={user.profileImgUrl}
-//       alt=""
-//       referrerPolicy="no-referrer"
-//       className="h-11 w-11 shrink-0 rounded-full object-cover"
-//     />
-//   ) : (
-//     <span
-//       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-text font-display font-semibold text-surface"
-//       aria-hidden="true"
-//     >
-//       {user.username?.[0]?.toUpperCase() ?? "U"}
-//     </span>
-//   );
-
 const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
   const isSelf = String(user.id) === String(currentUserId);
   const isAdminRow = user.primaryRole === "ADMIN";
@@ -98,7 +81,11 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
 
         <div className="flex flex-wrap gap-2">
           {isHost && (
-            <Link to={`/admin/users/${user.id}/listings`} className={smallBtn}>
+            <Link
+              to={`/admin/users/${user.id}/listings`}
+              state={{ username: user.username }}
+              className={smallBtn}
+            >
               View listings
             </Link>
           )}

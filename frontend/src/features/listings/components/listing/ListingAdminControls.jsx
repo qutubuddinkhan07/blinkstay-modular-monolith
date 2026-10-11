@@ -12,7 +12,12 @@ import { focusRing } from "../create-listing/formStyles";
 const btn = `cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
 // Shown to admins only. `onChanged` should reload the listing after a change.
-const ListingAdminControls = ({ listing, onChanged }) => {
+const ListingAdminControls = ({
+  listing,
+  onChanged,
+  className = "",
+  compact = false,
+}) => {
   const { isAdmin } = useAuth();
   const navigate = useNavigate();
   const [dialog, setDialog] = useState(null); // "suspend" | "unsuspend" | null
@@ -67,45 +72,46 @@ const ListingAdminControls = ({ listing, onChanged }) => {
     }
   };
 
-  return (
-    <section
-      aria-label="Admin moderation"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 mb-4"
+  const control = ownerBlocked ? (
+    compact ? (
+      <Link
+        to="/admin/users"
+        className={`${btn} border border-border bg-bg text-text hover:bg-border/60`}
+      >
+        Owner blocked: unblock
+      </Link>
+    ) : (
+      <p className="text-sm text-subtext">
+        Suspended because its owner is blocked.{" "}
+        <Link
+          to="/admin/users"
+          className="font-semibold text-primary underline"
+        >
+          Unblock the owner
+        </Link>{" "}
+        to restore it.
+      </p>
+    )
+  ) : suspended ? (
+    <button
+      type="button"
+      onClick={() => setDialog("unsuspend")}
+      className={`${btn} bg-primary text-on-primary hover:bg-primary-hover`}
     >
-      <div className="flex items-center gap-2 text-sm font-semibold text-text">
-        <FiShield size={16} className="text-subtext" aria-hidden="true" />
-        Admin moderation
-      </div>
+      Unsuspend{compact ? "" : " listing"}
+    </button>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setDialog("suspend")}
+      className={`${btn} border border-danger/50 bg-bg text-danger hover:bg-danger/10`}
+    >
+      Suspend{compact ? "" : " listing"}
+    </button>
+  );
 
-      {ownerBlocked ? (
-        <p className="text-sm text-subtext">
-          Suspended because its owner is blocked.{" "}
-          <Link
-            to="/admin/users"
-            className="font-semibold text-primary underline"
-          >
-            Unblock the owner
-          </Link>{" "}
-          to restore it.
-        </p>
-      ) : suspended ? (
-        <button
-          type="button"
-          onClick={() => setDialog("unsuspend")}
-          className={`${btn} bg-primary text-on-primary hover:bg-primary-hover`}
-        >
-          Unsuspend listing
-        </button>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setDialog("suspend")}
-          className={`${btn} border border-danger/50 bg-bg text-danger hover:bg-danger/10`}
-        >
-          Suspend listing
-        </button>
-      )}
-
+  const dialogs = (
+    <>
       <ReasonDialog
         open={dialog === "suspend"}
         title="Suspend this listing?"
@@ -128,6 +134,30 @@ const ListingAdminControls = ({ listing, onChanged }) => {
         onConfirm={handleUnsuspend}
         onCancel={() => setDialog(null)}
       />
+    </>
+  );
+
+  if (compact) {
+    return (
+      <>
+        {control}
+        {dialogs}
+      </>
+    );
+  }
+
+  return (
+    <section
+      aria-label="Admin moderation"
+      className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface p-4 ${className}`}
+    >
+      <div className="flex items-center gap-2 text-sm font-semibold text-text">
+        <FiShield size={16} className="text-subtext" aria-hidden="true" />
+        Admin moderation
+      </div>
+
+      {control}
+      {dialogs}
     </section>
   );
 };

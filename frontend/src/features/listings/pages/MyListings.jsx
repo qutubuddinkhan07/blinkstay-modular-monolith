@@ -9,21 +9,12 @@ import {
   resumeListing,
   deleteListing,
 } from "../listingService";
-import { normalizeListing } from "../listingMappers";
+import { toListingsRow } from "../listingMappers";
 import { focusRing } from "../components/create-listing/formStyles";
 import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
 import MyListingCard from "../components/my-listings/MyListingCard";
 import ListingFilters from "../components/my-listings/ListingFilters";
 import { FiX } from "react-icons/fi";
-
-// normalizeListing may not carry the status fields, so add them from the raw response
-const toRow = (raw) => ({
-  ...normalizeListing(raw),
-  status: raw.status,
-  suspensionSource: raw.suspensionSource ?? null,
-  suspensionReason: raw.suspensionReason ?? null,
-  suspendedAt: raw.suspendedAt ?? null,
-});
 
 const ACTIONS = {
   publish: {
@@ -67,7 +58,7 @@ const MyListings = () => {
         setError(null);
 
         const res = await fetchMyListings();
-        if (!ignore) setListings((res.data.data ?? []).map(toRow));
+        if (!ignore) setListings((res.data.data ?? []).map(toListingsRow));
       } catch (err) {
         if (ignore) return;
         console.error("Failed to load my listings", err);

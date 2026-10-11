@@ -4,6 +4,7 @@ import StatusBadge from "../../../../components/common/StatusBadge";
 import StatusBanner from "../../../../components/common/StatusBanner";
 import ZoomImage from "../../../../components/common/ZoomImage";
 import ImageCarousel from "../../../../components/common/ImageCarousel";
+import ListingAdminControls from "../listing/ListingAdminControls";
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
@@ -38,7 +39,15 @@ const formatLocation = (location, country) => {
   return `${cleanLoc}, ${countryTrimmed}`;
 };
 
-const MyListingCard = ({ listing: l, busyAction, onAction, onDelete }) => {
+const MyListingCard = ({
+  listing: l,
+  busyAction,
+  onAction,
+  onDelete,
+  variant = "host", // "host" (your own listings) | "admin" (moderating someone's)
+  onChanged, // admin variant: called after suspend / unsuspend
+}) => {
+  const isAdminView = variant === "admin";
   const action = STATUS_ACTION[l.status];
 
   const formatSuspensionSource = (source) => {
@@ -93,26 +102,32 @@ const MyListingCard = ({ listing: l, busyAction, onAction, onDelete }) => {
           <Link to={`/listings/${l.id}`} className={smallBtn}>
             View
           </Link>
-          <Link to={`/listings/${l.id}/edit`} className={smallBtn}>
-            Edit
-          </Link>
-          {action && (
-            <button
-              type="button"
-              onClick={() => onAction(l, action.key)}
-              disabled={Boolean(busyAction)}
-              className={smallBtn}
-            >
-              {busyAction === action.key ? action.busyLabel : action.label}
-            </button>
+          {isAdminView ? (
+            <ListingAdminControls compact listing={l} onChanged={onChanged} />
+          ) : (
+            <>
+              <Link to={`/listings/${l.id}/edit`} className={smallBtn}>
+                Edit
+              </Link>
+              {action && (
+                <button
+                  type="button"
+                  onClick={() => onAction(l, action.key)}
+                  disabled={Boolean(busyAction)}
+                  className={smallBtn}
+                >
+                  {busyAction === action.key ? action.busyLabel : action.label}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onDelete(l)}
+                className={dangerBtn}
+              >
+                Delete
+              </button>
+            </>
           )}
-          <button
-            type="button"
-            onClick={() => onDelete(l)}
-            className={dangerBtn}
-          >
-            Delete
-          </button>
         </div>
       </div>
 

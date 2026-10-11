@@ -58,6 +58,10 @@ const AdminUsers = Loadable(
   lazy(() => import("../features/admin/pages/AdminUsers")),
 );
 
+const ManagerListings = Loadable(
+  lazy(() => import("../features/admin/pages/ManagerListings")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -165,7 +169,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/admin/users/:managerId/listings",
-                element: <ComingSoon title="Host requests" />,
+                element: <ManagerListings />,
               },
               {
                 path: "/admin/host-requests",

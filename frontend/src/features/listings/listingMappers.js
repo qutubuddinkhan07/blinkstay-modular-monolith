@@ -64,3 +64,11 @@ export const toFormData = (l) => ({
   amenities: l.amenities,
   category: l.category,
 });
+
+// normalizeListing may not carry the status fields, so add them from the raw response
+export const toListingRow = (raw) => ({
+  ...normalizeListing(raw),
+  status: raw.status,
+  suspensionReason: raw.suspensionReason ?? null,
+  suspensionSource: raw.suspensionSource ?? null,
+});
