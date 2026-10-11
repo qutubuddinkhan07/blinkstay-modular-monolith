@@ -19,7 +19,7 @@ public class ModelMapper {
 		return userResponseDto;
 	}
 
-	public List<UserResponseDto> usersToResponseDtos(List<User> users) {
+	public List<UserResponseDto> userToResponseDtos(List<User> users) {
 		List<UserResponseDto> userDtos = users.stream().map(user -> userToUserResponseDto(user)).toList();
 
 		return userDtos;

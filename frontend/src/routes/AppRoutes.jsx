@@ -54,6 +54,10 @@ const BlockedPage = Loadable(
   lazy(() => import("../features/auth/pages/BlockedPage")),
 );
 
+const AdminUsers = Loadable(
+  lazy(() => import("../features/admin/pages/AdminUsers")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -157,7 +161,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/admin/users",
-                element: <ComingSoon title="Manage users" />,
+                element: <AdminUsers />,
               },
               {
                 path: "/admin/host-requests",

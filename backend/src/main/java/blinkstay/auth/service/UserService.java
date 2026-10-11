@@ -5,9 +5,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.auth.dtos.AddUserDto;
+import blinkstay.auth.dtos.PageResponseDto;
 import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.entities.User;
@@ -21,7 +23,7 @@ public interface UserService {
 
 	String deleteUserById(UUID userId);
 
-	List<UserResponseDto> getAllUsers();
+	PageResponseDto<UserResponseDto> getAllUsers(Pageable pageable);
 
 	Map<String, Object> getImageDetails(UUID userId);
 

@@ -14,6 +14,8 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.auth.dtos.AddUserDto;
 import blinkstay.auth.dtos.ImageUploadResult;
+import blinkstay.auth.dtos.PageResponseDto;
 import blinkstay.auth.dtos.TempUserRegistrationData;
 import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
@@ -125,11 +128,14 @@ public class UserServiceImpl implements UserService {
 	}
 
 	@Override
-	public List<UserResponseDto> getAllUsers() {
-		List<User> users = userRepository.findAll();
+	public PageResponseDto<UserResponseDto> getAllUsers(Pageable pageable) {
+		Page<User> userPage = userRepository.findAll(pageable);
 
-		List<UserResponseDto> userResponseDtos = modelMapper.usersToResponseDtos(users);
-		return userResponseDtos;
+		// Map User entities to UserReponseDto
+		Page<UserResponseDto> userResponseDtoPage = userPage.map(modelMapper::userToUserResponseDto);
+
+		// Convert to custom PageResponseDto
+		return PageResponseDto.of(userResponseDtoPage);
 	}
 
 	@Override

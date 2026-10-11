@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -29,6 +30,7 @@ import blinkstay.auth.dtos.AddUserDto;
 import blinkstay.auth.dtos.ApiResponse;
 import blinkstay.auth.dtos.ChangePasswordDto;
 import blinkstay.auth.dtos.EmailOtpVerifyDto;
+import blinkstay.auth.dtos.PageResponseDto;
 import blinkstay.auth.dtos.UpdateProfileDto;
 import blinkstay.auth.dtos.UserResponseDto;
 import blinkstay.auth.service.AuthService;
@@ -94,13 +96,13 @@ public class UserController {
 				.message("User profile fetched successfully").data(userDto).build());
 	}
 
-	@GetMapping("/allusers")
+	@GetMapping
 	@PreAuthorize("hasAuthority('ADMIN')")
-	public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsersController() {
-		List<UserResponseDto> serviceReponse = userService.getAllUsers();
-		ApiResponse<List<UserResponseDto>> apiResponse = ApiResponse.<List<UserResponseDto>>builder().success(true)
-				.message("All users").data(serviceReponse).build();
-		return ResponseEntity.ok(apiResponse);
+	public ResponseEntity<ApiResponse<PageResponseDto<UserResponseDto>>> getAllUsers(Pageable pageable) {
+
+		PageResponseDto<UserResponseDto> pagedUsers = userService.getAllUsers(pageable);
+
+		return ResponseEntity.ok(ApiResponse.of(true, pagedUsers, "Users retrieved successfully"));
 	}
 
 	@GetMapping("/{userId}")
@@ -113,10 +115,9 @@ public class UserController {
 		return ResponseEntity.ok(apiResponse);
 	}
 
-	@GetMapping
-	@PreAuthorize("hasAuthority('ADMIN')")
-	public ResponseEntity<ApiResponse<UserResponseDto>> getUserByEmail(@RequestParam String userEmail) {
-		UserResponseDto userResponseDto = userService.getUserByEmail(userEmail);
+	@GetMapping("/email/{email}") // Now it's GET /api/v2/user/email/{email}
+	public ResponseEntity<ApiResponse<UserResponseDto>> getUserByEmail(@PathVariable("email") String email) {
+		UserResponseDto userResponseDto = userService.getUserByEmail(email);
 		ApiResponse<UserResponseDto> apiResponse = ApiResponse.<UserResponseDto>builder().success(true)
 				.message("Response").data(userResponseDto).build();
 

@@ -63,36 +63,70 @@
   --color-muted: #063b5b;
 }
 
-[data-sonner-toast][data-type="success"] [data-icon] {
+/* [data-sonner-toast][data-type="success"] [data-icon] {
   color: var(--color-primary);
 }
 [data-sonner-toast][data-type="error"] [data-icon] {
   color: var(--color-danger);
+} */
+
+/* --- Perfectly Centered Sonner Close Button --- */
+[data-sonner-toast] [data-close-button] {
+  position: absolute !important;
+  top: 25px !important;
+  right: 14px !important;
+  left: auto !important;
+  bottom: auto !important;
+  background: var(--color-muted) !important;
+  color: var(--color-text) !important;
+  border: 1px solid var(--color-border) !important;
+  border-radius: 50% !important;
+  width: 22px !important;
+  height: 22px !important;
+  
+  /* Flex centering setup */
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
 }
 
-/* Bigger toasts on tablets and larger; phones keep Sonner's full-width mobile layout */
+/* Ensure the SVG icon itself is centered and doesn't stretch or offset */
+[data-sonner-toast] [data-close-button] svg {
+  width: 12px !important;
+  height: 12px !important;
+  margin: auto !important;
+  display: block !important;
+}
+
+[data-sonner-toast] [data-close-button]:hover {
+  opacity: 1;
+}
+
+/* --- Responsive Toaster Positioning & Sizing --- */
+/* Mobile: stays top-center (handled by component prop) */
+
+/* Desktop & Tablets (601px and above): Move to Top-Right and make larger */
 @media (min-width: 601px) {
   [data-sonner-toaster] {
-    --width: 440px !important; /* default is 356px */
+    position: fixed !important;
+    top: 24px !important;
+    right: 24px !important;
+    left: auto !important;
+    transform: none !important;
+    --width: 440px !important;
   }
 
   [data-sonner-toast] {
-    padding: 18px 20px !important;
+    padding: 18px 22px !important;
     font-size: 15px !important;
     border-radius: 14px !important;
   }
 
   [data-sonner-toast] [data-description] {
     font-size: 14px !important;
-  }
-
-  [data-sonner-toast] [data-icon] {
-    width: 20px;
-    height: 20px;
-  }
-
-  [data-sonner-toast] [data-icon] svg {
-    width: 20px;
-    height: 20px;
   }
 }
