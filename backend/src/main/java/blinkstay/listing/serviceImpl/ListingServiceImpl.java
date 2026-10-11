@@ -412,7 +412,7 @@ public class ListingServiceImpl implements ListingService {
 
 	// CACHE PUBLISHED LISTINGS PAGINATED FEED
 	@Override
-	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + (#country != null ? #country : 'ALL')")
+	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + #country")
 	public PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
 			String country) {
 
@@ -437,8 +437,8 @@ public class ListingServiceImpl implements ListingService {
 		List<ListingImage> images = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds);
 		List<ListingGeometry> geometries = listingGeometryRepo.findByListingIdIn(listingIds);
 
-		Map<UUID, String> coverImages = images.stream().collect(Collectors.toMap(ListingImage::getListingId,
-				ListingImage::getImageUrl, (existing, replacement) -> existing));
+		Map<UUID, List<String>> imagesByListing = images.stream().collect(Collectors.groupingBy(
+				ListingImage::getListingId, Collectors.mapping(ListingImage::getImageUrl, Collectors.toList())));
 
 		// merge function: never crash on a duplicate geometry row
 		Map<UUID, ListingGeometry> geometryMap = geometries.stream().collect(Collectors
@@ -449,7 +449,8 @@ public class ListingServiceImpl implements ListingService {
 
 			return PublishedListingDto.builder().id(listing.getId()).title(listing.getTitle())
 					.location(listing.getLocation()).country(listing.getCountry()).category(listing.getCategory())
-					.amenities(listing.getAmenities()).coverImageUrl(coverImages.get(listing.getId()))
+					.amenities(listing.getAmenities())
+					.imageUrls(imagesByListing.getOrDefault(listing.getId(), List.of()))
 					.address(geometry != null ? geometry.getAddress() : null)
 					.latitude(geometry != null ? geometry.getLatitude() : null)
 					.longitude(geometry != null ? geometry.getLongitude() : null).build();

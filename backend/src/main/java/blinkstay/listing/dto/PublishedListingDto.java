@@ -29,7 +29,7 @@ public class PublishedListingDto {
 
 	private List<String> amenities;
 
-	private String coverImageUrl;
+	private List<String> imageUrls;
 
 	private String address;
 
