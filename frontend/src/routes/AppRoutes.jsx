@@ -164,6 +164,10 @@ const route = createBrowserRouter([
                 element: <AdminUsers />,
               },
               {
+                path: "/admin/users/:managerId/listings",
+                element: <ComingSoon title="Host requests" />,
+              },
+              {
                 path: "/admin/host-requests",
                 element: <ComingSoon title="Host requests" />,
               },

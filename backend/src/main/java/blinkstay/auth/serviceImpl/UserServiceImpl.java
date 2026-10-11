@@ -177,15 +177,15 @@ public class UserServiceImpl implements UserService {
 		log.info("OTP Holder: {}", otpHolder.size());
 
 		if (tempData == null) {
-			throw new RuntimeException("No registration request found");
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No registration request found");
 		}
 
 		if (tempData.getExpiryTime().isBefore(LocalDateTime.now())) {
-			throw new RuntimeException("OTP expired");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP expired");
 		}
 
 		if (!tempData.getOtp().equals(otp)) {
-			throw new RuntimeException("Invalid OTP");
+			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OTP");
 		}
 
 		AddUserDto dto = tempData.getUserDto();
