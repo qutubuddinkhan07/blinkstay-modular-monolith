@@ -28,6 +28,7 @@ import Logo from "../common/Logo";
 import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { displayRoles, roleLabel } from "../../utils/roles";
+import ZoomImage from "../common/ZoomImage";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -150,28 +151,23 @@ const IconSwap = ({ swapKey, children }) => (
   </AnimatePresence>
 );
 
-const Avatar = ({ user, className = "w-10 h-10" }) => {
-  const [failed, setFailed] = useState(false);
+const Avatar = ({ user, className = "w-10 h-10", zoom = false }) => {
   const initial = user?.username?.[0]?.toUpperCase() ?? "U";
 
-  if (!user?.profileImgUrl || failed) {
-    return (
-      <span
-        className={`${className} flex shrink-0 items-center justify-center rounded-full bg-text font-display font-semibold text-surface`}
-        aria-hidden="true"
-      >
-        {initial}
-      </span>
-    );
-  }
-
   return (
-    <img
-      src={user.profileImgUrl}
-      alt=""
-      referrerPolicy="no-referrer"
-      onError={() => setFailed(true)}
-      className={`${className} shrink-0 rounded-full object-cover`}
+    <ZoomImage
+      src={user?.profileImgUrl}
+      alt={zoom ? `${user?.username ?? "Your"} profile photo` : ""}
+      zoomable={zoom}
+      className={`${className} shrink-0 rounded-full`}
+      fallback={
+        <span
+          className={`${className} flex shrink-0 items-center justify-center rounded-full bg-text font-display font-semibold text-surface`}
+          aria-hidden="true"
+        >
+          {initial}
+        </span>
+      }
     />
   );
 };
@@ -275,6 +271,8 @@ const Navbar = () => {
   /* Close menus on outside click / Escape */
   useEffect(() => {
     const onPointerDown = (e) => {
+      if (e.target.closest?.('[role="dialog"]')) return; // clicks inside the image preview
+
       if (userRef.current && !userRef.current.contains(e.target)) {
         setUserOpen(false);
       }
@@ -419,7 +417,11 @@ const Navbar = () => {
                       userOpen ? "ring-primary" : "ring-transparent"
                     }`}
                   >
-                    <Avatar user={user} className="h-9 w-9" />
+                    <span
+                      className={`rounded-full ring-2 ring-offset-2 ring-offset-surface transition-all duration-200 ${userOpen ? "ring-primary" : "ring-transparent"}`}
+                    >
+                      <Avatar user={user} className="h-9 w-9" />
+                    </span>
                   </span>
                   <span className="hidden max-w-[110px] truncate text-sm font-semibold text-text lg:block">
                     {user?.username}
@@ -441,7 +443,7 @@ const Navbar = () => {
                       className="absolute right-0 top-full mt-3 w-72 rounded-2xl border border-border bg-surface p-2 shadow-xl"
                     >
                       <div className="flex items-center gap-3 px-3 py-3">
-                        <Avatar user={user} className="h-11 w-11" />
+                        <Avatar user={user} className="h-11 w-11" zoom />
                         <div className="min-w-0">
                           <p className="truncate font-display text-base font-medium text-text">
                             {user?.username}
@@ -530,7 +532,7 @@ const Navbar = () => {
                   variants={itemVariants}
                   className="flex items-center gap-3 border-b border-border px-3 py-3"
                 >
-                  <Avatar user={user} className="h-12 w-12" />
+                  <Avatar user={user} className="h-12 w-12" zoom />
                   <div className="min-w-0">
                     <p className="truncate font-display text-base font-medium text-text">
                       {user?.username}

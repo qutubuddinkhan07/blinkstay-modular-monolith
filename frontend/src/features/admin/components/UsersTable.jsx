@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import ClampedText from "../../../components/common/ClampedText";
-import { displayRoles, roleLabel } from "../../../utils/roles";
+import { roleLabel } from "../../../utils/roles";
 import { focusRing } from "../../listings/components/create-listing/formStyles";
+import UserAvatar from "./UserAvatar";
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 const dangerBtn = `cursor-pointer rounded-lg border border-danger/50 bg-bg px-3 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
@@ -17,22 +18,22 @@ const formatDate = (value) => {
       });
 };
 
-const UserAvatar = ({ user }) =>
-  user.profileImgUrl ? (
-    <img
-      src={user.profileImgUrl}
-      alt=""
-      referrerPolicy="no-referrer"
-      className="h-11 w-11 shrink-0 rounded-full object-cover"
-    />
-  ) : (
-    <span
-      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-text font-display font-semibold text-surface"
-      aria-hidden="true"
-    >
-      {user.username?.[0]?.toUpperCase() ?? "U"}
-    </span>
-  );
+// const UserAvatar = ({ user }) =>
+//   user.profileImgUrl ? (
+//     <img
+//       src={user.profileImgUrl}
+//       alt=""
+//       referrerPolicy="no-referrer"
+//       className="h-11 w-11 shrink-0 rounded-full object-cover"
+//     />
+//   ) : (
+//     <span
+//       className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-text font-display font-semibold text-surface"
+//       aria-hidden="true"
+//     >
+//       {user.username?.[0]?.toUpperCase() ?? "U"}
+//     </span>
+//   );
 
 const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
   const isSelf = String(user.id) === String(currentUserId);

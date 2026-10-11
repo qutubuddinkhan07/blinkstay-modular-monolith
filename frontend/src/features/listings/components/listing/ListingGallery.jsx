@@ -1,17 +1,12 @@
 import React from "react";
+import ImageCarousel from "../../../../components/common/ImageCarousel";
 
-/**
- * Airbnb-style gallery:
- *  - col 1 (big, full height)
- *  - col 2 + col 3 (2 stacked images each)
- *
- * Implemented as a 4-column grid where the first image spans 2 columns
- * and 2 rows, so it is visually "one big column + two small columns".
- */
 const ListingGallery = ({ images = [], title }) => {
   const sorted = [...images].sort(
     (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
   );
+
+  const urls = sorted.map((img) => img.imageUrl);
   const [main, ...rest] = sorted;
   const small = rest.slice(0, 4);
 
@@ -24,34 +19,53 @@ const ListingGallery = ({ images = [], title }) => {
   }
 
   return (
-    <div className="grid h-[240px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl sm:h-[360px] lg:h-[460px]">
-      {/* Big image: 2 cols wide, full height */}
-      <img
-        src={main.imageUrl}
-        alt={title}
-        className={`h-full w-full object-cover ${
-          small.length === 0 ? "col-span-4" : "col-span-2"
-        } row-span-2`}
-      />
-
-      {/* Up to 4 small images, 2 per column */}
-      {small.map((img, i) => (
-        <img
-          key={img.id}
-          src={img.imageUrl}
-          alt={`${title} photo ${i + 2}`}
-          className="h-full w-full object-cover"
-          loading="lazy"
+    <>
+      {/* 1. MOBILE: Carousel view (Visible only on small screens) */}
+      <div className="block md:hidden h-[280px] w-full overflow-hidden rounded-2xl">
+        <ImageCarousel
+          images={urls}
+          alt={title}
+          zoomable={true}
+          className="h-full w-full"
+          imgClassName="object-cover h-full w-full"
+          fallback={
+            <div className="flex h-full items-center justify-center text-sm text-subtext">
+              No images
+            </div>
+          }
         />
-      ))}
+      </div>
 
-      {/* Keep the grid shape if there are fewer than 5 images */}
-      {Array.from({ length: Math.max(0, 4 - small.length) }, (_, i) =>
-        small.length > 0 ? (
-          <div key={`empty-${i}`} className="bg-neutral-100" />
-        ) : null,
-      )}
-    </div>
+      {/* 2. DESKTOP: Grid/Collage view (Visible only on medium screens and up) */}
+      <div className="hidden md:grid h-[360px] lg:h-[460px] grid-cols-4 grid-rows-2 gap-2 overflow-hidden rounded-2xl">
+        {/* Big image: 2 cols wide, full height */}
+        <img
+          src={main.imageUrl}
+          alt={title}
+          className={`h-full w-full object-cover ${
+            small.length === 0 ? "col-span-4" : "col-span-2"
+          } row-span-2`}
+        />
+
+        {/* Up to 4 small images, 2 per column */}
+        {small.map((img, i) => (
+          <img
+            key={img.id}
+            src={img.imageUrl}
+            alt={`${title} photo ${i + 2}`}
+            className="h-full w-full object-cover"
+            loading="lazy"
+          />
+        ))}
+
+        {/* Keep the grid shape if there are fewer than 5 images */}
+        {Array.from({ length: Math.max(0, 4 - small.length) }, (_, i) =>
+          small.length > 0 ? (
+            <div key={`empty-${i}`} className="bg-neutral-100" />
+          ) : null,
+        )}
+      </div>
+    </>
   );
 };
 

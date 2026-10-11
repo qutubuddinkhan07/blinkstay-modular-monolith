@@ -4,6 +4,7 @@ import {
   headingClass,
   focusRing,
 } from "../create-listing/formStyles";
+import ZoomImage from "../../../../components/common/ZoomImage";
 
 const ListingImagesManager = ({ images, onUpload, onDelete }) => {
   const [confirmId, setConfirmId] = useState(null);
@@ -54,11 +55,15 @@ const ListingImagesManager = ({ images, onUpload, onDelete }) => {
                   deleting ? "opacity-50" : ""
                 }`}
               >
-                <img
+                <ZoomImage
                   src={image.url}
-                  alt="Listing"
-                  loading="lazy"
-                  className="h-32 w-full object-cover"
+                  alt="Listing image"
+                  className="h-32 w-full"
+                  fallback={
+                    <div className="flex h-32 items-center justify-center text-xs text-subtext">
+                      Image unavailable
+                    </div>
+                  }
                 />
 
                 {confirming ? (

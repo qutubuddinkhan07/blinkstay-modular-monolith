@@ -1,4 +1,6 @@
 import React from "react";
+import { Link, useNavigate } from "react-router-dom";
+import ImageCarousel from "../../../../components/common/ImageCarousel";
 
 // Safely turns a string / object / array into readable text
 const toText = (v) => {
@@ -18,15 +20,30 @@ const toText = (v) => {
 const MAX_AMENITIES = 3;
 
 const Card = ({ listing }) => {
+  const navigate = useNavigate();
   const {
+    id,
     address,
     amenities,
     category,
     country,
-    coverImageUrl,
+    imageUrls,
+    images,
     title,
     location,
   } = listing;
+
+  const to = `/listings/${id}`;
+
+  // Use imageUrls first, then images, then coverImageUrl
+  const slides =
+    Array.isArray(imageUrls) && imageUrls.length > 0
+      ? imageUrls
+      : Array.isArray(images) && images.length > 0
+        ? images
+        : coverImageUrl
+          ? [coverImageUrl]
+          : [];
 
   // Use `location` if present, otherwise fall back to address + country
   const place =
@@ -38,25 +55,28 @@ const Card = ({ listing }) => {
   const extra = amenityList.length - shown.length;
 
   return (
-    <article className="group flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-text/10 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
-      {/* Fixed image height so every card matches */}
-      <div className="relative h-48 w-full shrink-0 overflow-hidden bg-bg">
-        {coverImageUrl ? (
-          <img
-            src={coverImageUrl}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105 motion-reduce:transition-none motion-reduce:group-hover:scale-100"
-          />
-        ) : (
-          <div className="flex h-full items-center justify-center text-sm text-subtext">
-            No image
-          </div>
-        )}
+    <article className="group relative flex h-full w-full flex-col overflow-hidden rounded-2xl border border-border bg-surface transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-text/10 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-offset-4 has-[a:focus-visible]:outline-primary motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+      {/* Image area sits above the stretched link, so the arrows are clickable.
+          Clicking the picture itself opens the listing. */}
+      <div
+        onClick={() => navigate(to)}
+        className="relative z-10 h-48 w-full shrink-0 cursor-pointer bg-bg"
+      >
+        <ImageCarousel
+          images={slides}
+          alt={title}
+          zoomable={false}
+          className="h-full w-full"
+          imgClassName="object-cover h-full w-full"
+          fallback={
+            <div className="flex h-full items-center justify-center text-sm text-subtext">
+              No image
+            </div>
+          }
+        />
 
         {category && (
-          <span className="absolute left-3 top-3 max-w-[70%] truncate rounded-full border border-border bg-surface/90 px-3 py-1 text-xs font-medium text-text shadow-sm backdrop-blur">
+          <span className="pointer-events-none absolute left-3 top-3 max-w-[70%] truncate rounded-full border border-border bg-surface/90 px-3 py-1 text-xs font-medium text-text shadow-sm backdrop-blur">
             {toText(category)}
           </span>
         )}
@@ -68,7 +88,13 @@ const Card = ({ listing }) => {
           title={title}
           className="line-clamp-2 min-h-[2.73rem] font-display text-base font-medium leading-snug text-text"
         >
-          {title}
+          {/* This link is stretched over the whole card (the after: overlay) */}
+          <Link
+            to={to}
+            className="focus-visible:outline-none after:absolute after:inset-0"
+          >
+            {title}
+          </Link>
         </h3>
 
         <p

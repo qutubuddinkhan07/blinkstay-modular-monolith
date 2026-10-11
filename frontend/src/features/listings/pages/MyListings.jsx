@@ -91,8 +91,7 @@ const MyListings = () => {
         (l.country && l.country.toLowerCase().includes(search.toLowerCase()));
 
       const matchesStatus = !statusFilter || l.status === statusFilter;
-      const matchesCategory =
-        !categoryFilter || l.category === categoryFilter;
+      const matchesCategory = !categoryFilter || l.category === categoryFilter;
 
       return matchesSearch && matchesStatus && matchesCategory;
     });
@@ -178,16 +177,18 @@ const MyListings = () => {
           </Link>
         </div>
 
-        {/* Search & Filter Component integrated cleanly here */}
+        {/* Search & Filter Component integrated cleanly with responsive spacing */}
         {!loading && !error && listings.length > 0 && (
-          <ListingFilters
-            search={search}
-            setSearch={setSearch}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            categoryFilter={categoryFilter}
-            setCategoryFilter={setCategoryFilter}
-          />
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <ListingFilters
+              search={search}
+              setSearch={setSearch}
+              statusFilter={statusFilter}
+              setStatusFilter={setStatusFilter}
+              categoryFilter={categoryFilter}
+              setCategoryFilter={setCategoryFilter}
+            />
+          </div>
         )}
 
         {loading && (

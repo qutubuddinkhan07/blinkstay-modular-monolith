@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { focusRing } from "../create-listing/formStyles";
 import StatusBadge from "../../../../components/common/StatusBadge";
 import StatusBanner from "../../../../components/common/StatusBanner";
+import ZoomImage from "../../../../components/common/ZoomImage";
+import ImageCarousel from "../../../../components/common/ImageCarousel";
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
@@ -53,18 +55,16 @@ const MyListingCard = ({ listing: l, busyAction, onAction, onDelete }) => {
     <li className="rounded-2xl border border-border bg-surface p-4 transition-colors duration-300">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="h-32 w-full shrink-0 overflow-hidden rounded-lg bg-bg sm:h-24 sm:w-36">
-          {l.images[0]?.url ? (
-            <img
-              src={l.images[0].url}
-              alt=""
-              loading="lazy"
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center text-sm text-subtext">
-              No image
-            </div>
-          )}
+          <ImageCarousel
+            images={l.images}
+            alt={l.title}
+            className="h-full w-full"
+            fallback={
+              <div className="flex h-full items-center justify-center text-sm text-subtext">
+                No image
+              </div>
+            }
+          />
         </div>
 
         <div className="min-w-0 flex-1">

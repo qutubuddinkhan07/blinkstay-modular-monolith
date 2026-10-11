@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { fetchListings } from "../listingService";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import Card from "../components/explore-page/Card";
@@ -95,15 +94,7 @@ const ExplorePage = () => {
             ? Array.from({ length: PAGE_SIZE }, (_, i) => (
                 <SkeletonCard key={i} />
               ))
-            : listings.map((item) => (
-                <Link
-                  to={`/listings/${item.id}`}
-                  key={item.id}
-                  className={`block rounded-2xl ${focusRing}`}
-                >
-                  <Card listing={item} />
-                </Link>
-              ))}
+            : listings.map((item) => <Card key={item.id} listing={item} />)}
         </div>
 
         {!loading && listings.length === 0 && (

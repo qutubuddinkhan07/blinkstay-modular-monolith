@@ -6,6 +6,7 @@ import { validateImage } from "../userValidation";
 import { errCls, ghostBtn, hintCls, primaryBtn } from "../formStyles";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import ConfirmDialog from "../../../components/common/ConfirmDialogBox";
+import ZoomImage from "../../../components/common/ZoomImage";
 
 const AvatarUploader = ({ onDirtyChange }) => {
   const { user, updateUser } = useAuth();
@@ -84,21 +85,19 @@ const AvatarUploader = ({ onDirtyChange }) => {
 
   return (
     <div className="flex flex-col items-center text-center">
-      {src ? (
-        <img
-          src={src}
-          alt=""
-          referrerPolicy="no-referrer"
-          className="h-28 w-28 rounded-full object-cover ring-4 ring-bg"
-        />
-      ) : (
-        <span
-          className="flex h-28 w-28 items-center justify-center rounded-full bg-text font-display text-4xl font-semibold text-surface ring-4 ring-bg"
-          aria-hidden="true"
-        >
-          {initial}
-        </span>
-      )}
+      <ZoomImage
+        src={src}
+        alt="Your profile photo"
+        className="h-28 w-28 rounded-full ring-4 ring-bg"
+        fallback={
+          <span
+            className="flex h-28 w-28 items-center justify-center rounded-full bg-text font-display text-4xl font-semibold text-surface ring-4 ring-bg"
+            aria-hidden="true"
+          >
+            {initial}
+          </span>
+        }
+      />
 
       <input
         ref={inputRef}
