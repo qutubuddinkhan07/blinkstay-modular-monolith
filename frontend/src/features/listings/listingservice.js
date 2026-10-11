@@ -3,14 +3,24 @@ import axiosInstance from "../../api/axiosInstance";
 
 const LISTING_URL = "/v3/listings";
 
-export const fetchListings = ({ page, size, sortBy, direction, country }) => {
+export const fetchListings = ({
+  page,
+  size,
+  sortBy,
+  direction,
+  location,
+  name,
+  category,
+}) => {
   return axiosInstance.get(`${LISTING_URL}/all`, {
     params: {
       page,
       size,
       sortBy,
       direction,
-      country,
+      location,
+      name,
+      category,
     },
   });
 };

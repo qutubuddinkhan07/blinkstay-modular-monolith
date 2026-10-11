@@ -21,6 +21,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,12 +44,14 @@ import blinkstay.listing.dto.PublishedListingDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
+import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.repository.ListingGeometryRepository;
 import blinkstay.listing.repository.ListingImageRepository;
 import blinkstay.listing.repository.ListingRepository;
+import blinkstay.listing.repository.ListingSpecifications;
 import blinkstay.listing.service.ImageUploadService;
 import blinkstay.listing.service.ListingService;
 import blinkstay.listing.service.MapboxGeocodingService;
@@ -412,20 +415,32 @@ public class ListingServiceImpl implements ListingService {
 
 	// CACHE PUBLISHED LISTINGS PAGINATED FEED
 	@Override
-	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + #country")
+	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + #location + '-' + #name + '-' + #category")
 	public PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
-			String location, String name) {
+			String location, String name, String category) {
 
 		sortBy = validateSortFilter(sortBy);
 		Sort.Direction sortDirection = direction.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
 		Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
 
-		// Clean up empty strings to null so the query handles them cleanly
-		String locQuery = (location != null && !location.isBlank() ? location.trim() : null);
+		String locQuery = (location != null && !location.isBlank()) ? location.trim() : null;
 		String nameQuery = (name != null && !name.isBlank()) ? name.trim() : null;
 
-		Page<Listing> listingPage = listingRepo.findByStatusAndFilters(ListingStatus.PUBLISHED, locQuery, nameQuery,
-				pageable);
+		// Safely parse category string to enum case-insensitively
+		ListingCategory categoryEnum = null;
+		if (category != null && !category.isBlank()) {
+			try {
+				categoryEnum = ListingCategory.valueOf(category.trim().toUpperCase());
+			} catch (IllegalArgumentException e) {
+				categoryEnum = null;
+			}
+		}
+
+		// Build the specification using your new utility class
+		Specification<Listing> spec = ListingSpecifications.publishedSearch(ListingStatus.PUBLISHED, locQuery,
+				nameQuery, categoryEnum);
+
+		Page<Listing> listingPage = listingRepo.findAll(spec, pageable);
 
 		List<Listing> listings = listingPage.getContent();
 

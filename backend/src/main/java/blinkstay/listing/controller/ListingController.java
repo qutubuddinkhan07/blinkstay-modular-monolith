@@ -51,9 +51,10 @@ public class ListingController {
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
 			@RequestParam(defaultValue = "createdAt") String sortBy,
 			@RequestParam(defaultValue = "desc") String direction, @RequestParam(required = false) String location,
-			@RequestParam(required = false) String name) {
+			@RequestParam(required = false) String name, @RequestParam(required = false) String category) {
 
-		return ResponseEntity.ok(listingService.getPublishedListings(page, size, sortBy, direction, location, name));
+		return ResponseEntity
+				.ok(listingService.getPublishedListings(page, size, sortBy, direction, location, name, category));
 	}
 
 	@Operation(summary = "Create a new listing with images")
