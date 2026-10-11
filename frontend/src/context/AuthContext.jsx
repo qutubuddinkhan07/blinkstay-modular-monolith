@@ -12,6 +12,16 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (nextUser) => setUser(nextUser);
 
+  // Re-reads the current user (e.g. after a host request is approved) so roles and the navbar update
+  const refreshUser = async () => {
+    try {
+      const res = await axiosInstance.get("/api/v2/user/me");
+      setUser(res.data?.data ?? res.data);
+    } catch (err) {
+      console.error("Could not refresh the user", err);
+    }
+  };
+
   const clearSession = () => {
     localStorage.removeItem("hasSession");
     setUser(null);
@@ -146,6 +156,7 @@ export const AuthProvider = ({ children }) => {
     loginUser,
     logout,
     updateUser,
+    refreshUser,
     clearSession,
   };
 

@@ -62,6 +62,18 @@ const ManagerListings = Loadable(
   lazy(() => import("../features/admin/pages/ManagerListings")),
 );
 
+const BecomeHost = Loadable(
+  lazy(() => import("../features/host/pages/BecomeHost")),
+);
+
+const BusinessProfile = Loadable(
+  lazy(() => import("../features/host/pages/BusinessProfile")),
+);
+
+const AdminHostRequests = Loadable(
+  lazy(() => import("../features/admin/pages/AdminHostRequests")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -112,12 +124,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/become-host",
-                element: (
-                  <ComingSoon
-                    title="Become a host"
-                    description="Host requests are opening soon. You'll be able to apply right here."
-                  />
-                ),
+                element: <BecomeHost />,
               },
             ],
           },
@@ -152,6 +159,7 @@ const route = createBrowserRouter([
                 path: "/manager/reservations",
                 element: <ComingSoon title="Reservations" />,
               },
+              { path: "/host/business", element: <BusinessProfile /> },
             ],
           },
 
@@ -173,7 +181,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/admin/host-requests",
-                element: <ComingSoon title="Host requests" />,
+                element: <AdminHostRequests />,
               },
             ],
           },

@@ -34,3 +34,29 @@ export const blockUser = (id, reason) => {
 export const unblockUser = (id) => {
   return axiosInstance.post(`${USERS}/${id}/unblock`);
 };
+
+//! --- HOST REQUEST ---
+export const HOST_REQUESTS_CHANGED = "host-requests:changed"; // lets the navbar badge refresh
+
+const HOST_REQUESTS = "/v2/admin/host-requests";
+
+// status: "PENDING" | "APPROVED" | "REJECTED" | "ALL" ("ALL" sends no filter); oldest pending first
+export const fetchHostRequests = ({
+  status = "PENDING",
+  page = 0,
+  size = 10,
+}) => {
+  const params = { page, size };
+  if (status && status !== "ALL") params.status = status;
+  return axiosInstance.get(HOST_REQUESTS, { params });
+};
+
+export const fetchPendingHostRequestCount = () =>
+  axiosInstance.get(`${HOST_REQUESTS}/pending-count`);
+
+export const approveHostRequest = (id) =>
+  axiosInstance.post(`${HOST_REQUESTS}/${id}/approve`);
+
+// reason is required, max 500
+export const rejectHostRequest = (id, reason) =>
+  axiosInstance.post(`${HOST_REQUESTS}/${id}/reject`, { reason });

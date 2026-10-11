@@ -29,6 +29,7 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { displayRoles, roleLabel } from "../../utils/roles";
 import ZoomImage from "../common/ZoomImage";
+import { HOST_REQUESTS_CHANGED } from "../../features/admin/adminService";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -72,6 +73,12 @@ const ACCOUNT_SECTIONS = [
         label: "Reservations",
         to: "/manager/reservations",
         icon: FiCalendar,
+        roles: ["HOTEL_MANAGER"],
+      },
+      {
+        label: "Business profile",
+        to: "/host/business",
+        icon: FiBriefcase,
         roles: ["HOTEL_MANAGER"],
       },
     ],
@@ -187,7 +194,7 @@ const ThemeToggle = ({ isDark, onToggle, className = "" }) => (
   </motion.button>
 );
 
-const AccountSections = ({ sections, onNavigate }) => (
+const AccountSections = ({ sections, onNavigate, badges = {} }) => (
   <div className="divide-y divide-border">
     {sections.map((section) => (
       <div key={section.title} className="py-2">
@@ -206,6 +213,11 @@ const AccountSections = ({ sections, onNavigate }) => (
               className="text-subtext transition-transform duration-200 group-hover:translate-x-0.5"
             />
             {label}
+            {badges[to] > 0 && (
+              <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-on-primary">
+                {badges[to]}
+              </span>
+            )}
           </Link>
         ))}
       </div>
@@ -221,7 +233,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const { isDark, toggleTheme } = useTheme();
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, logout, isAdmin } = useAuth();
 
   const [scrolled, setScrolled] = useState(
     () => typeof window !== "undefined" && window.scrollY > 16,
@@ -236,6 +248,35 @@ const Navbar = () => {
   const lastY = useRef(0);
 
   const roles = user?.roles ?? [];
+
+  const [pendingHosts, setPendingHosts] = useState(0);
+
+  // admins: how many host requests are waiting
+  useEffect(() => {
+    if (!isAdmin) {
+      setPendingHosts(0);
+      return;
+    }
+
+    let ignore = false;
+    const load = async () => {
+      try {
+        const res = await fetchPendingHostRequestCount();
+        const d = res.data?.data;
+        if (!ignore)
+          setPendingHosts(typeof d === "number" ? d : (d?.count ?? 0));
+      } catch {
+        // the badge is optional, so fail quietly
+      }
+    };
+
+    load();
+    window.addEventListener(HOST_REQUESTS_CHANGED, load);
+    return () => {
+      ignore = true;
+      window.removeEventListener(HOST_REQUESTS_CHANGED, load);
+    };
+  }, [isAdmin, pathname]);
 
   const canBecomeHost =
     !roles.includes("HOTEL_MANAGER") && !roles.includes("ADMIN");
@@ -409,11 +450,15 @@ const Navbar = () => {
                   whileTap={{ scale: 0.96 }}
                   aria-expanded={userOpen}
                   aria-haspopup="true"
-                  aria-label="Open account menu"
+                  aria-label={
+                    pendingHosts > 0
+                      ? `Open account menu, ${pendingHosts} pending host requests`
+                      : "Open account menu"
+                  }
                   className={`flex cursor-pointer items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-bg ${focusRing}`}
                 >
                   <span
-                    className={`rounded-full ring-2 ring-offset-2 ring-offset-surface transition-all duration-200 ${
+                    className={`relative rounded-full ring-2 ring-offset-2 ring-offset-surface transition-all duration-200 ${
                       userOpen ? "ring-primary" : "ring-transparent"
                     }`}
                   >
@@ -421,6 +466,12 @@ const Navbar = () => {
                       className={`rounded-full ring-2 ring-offset-2 ring-offset-surface transition-all duration-200 ${userOpen ? "ring-primary" : "ring-transparent"}`}
                     >
                       <Avatar user={user} className="h-9 w-9" />
+                      {pendingHosts > 0 && (
+                        <span
+                          className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-surface"
+                          aria-hidden="true"
+                        />
+                      )}
                     </span>
                   </span>
                   <span className="hidden max-w-[110px] truncate text-sm font-semibold text-text lg:block">
@@ -471,6 +522,7 @@ const Navbar = () => {
                         <AccountSections
                           sections={sections}
                           onNavigate={closeMenus}
+                          badges={{ "/admin/host-requests": pendingHosts }}
                         />
                       </div>
 

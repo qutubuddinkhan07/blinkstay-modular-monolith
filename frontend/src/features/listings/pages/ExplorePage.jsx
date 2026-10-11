@@ -69,8 +69,6 @@ const ExplorePage = () => {
           category: searchParams.get("category") || "",
         });
 
-        console.log("API RESPONSE:", result);
-
         if (!ignore) setData(result);
       } catch (err) {
         if (ignore) return;
