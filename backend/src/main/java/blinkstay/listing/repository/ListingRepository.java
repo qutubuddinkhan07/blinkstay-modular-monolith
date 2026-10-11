@@ -19,7 +19,13 @@ public interface ListingRepository extends JpaRepository<Listing, UUID> {
 
 	Page<Listing> findByStatus(ListingStatus status, Pageable pageable);
 
-	Page<Listing> findByStatusAndCountry(ListingStatus listingStatus, String country, Pageable pageable);
+	@Query("""
+			SELECT l FROM Listing l WHERE l.status = :status
+			AND (:location IS NULL OR LOWER(l.location) LIKE LOWER(CONCAT('%', :location, '%')))
+			AND (:name IS NULL OR LOWER(l.title) LIKE LOWER(CONCAT('%', :name, '%')))
+			""")
+	Page<Listing> findByStatusAndFilters(@Param("status") ListingStatus listingStatus,
+			@Param("location") String location, @Param("name") String name, Pageable pageable);
 
 	List<Listing> findByManagerIdAndStatusNot(UUID managerId, ListingStatus status);
 

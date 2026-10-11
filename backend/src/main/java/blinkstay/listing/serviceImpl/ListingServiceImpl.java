@@ -414,18 +414,18 @@ public class ListingServiceImpl implements ListingService {
 	@Override
 	@Cacheable(value = "publishedListings", key = "#page + '-' + #size + '-' + #sortBy + '-' + #direction + '-' + #country")
 	public PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
-			String country) {
+			String location, String name) {
 
 		sortBy = validateSortFilter(sortBy);
 		Sort.Direction sortDirection = direction.equalsIgnoreCase("asc") ? Sort.Direction.ASC : Sort.Direction.DESC;
 		Pageable pageable = PageRequest.of(page, size, Sort.by(sortDirection, sortBy));
 
-		Page<Listing> listingPage;
-		if (country != null && !country.isBlank()) {
-			listingPage = listingRepo.findByStatusAndCountry(ListingStatus.PUBLISHED, country, pageable);
-		} else {
-			listingPage = listingRepo.findByStatus(ListingStatus.PUBLISHED, pageable);
-		}
+		// Clean up empty strings to null so the query handles them cleanly
+		String locQuery = (location != null && !location.isBlank() ? location.trim() : null);
+		String nameQuery = (name != null && !name.isBlank()) ? name.trim() : null;
+
+		Page<Listing> listingPage = listingRepo.findByStatusAndFilters(ListingStatus.PUBLISHED, locQuery, nameQuery,
+				pageable);
 
 		List<Listing> listings = listingPage.getContent();
 

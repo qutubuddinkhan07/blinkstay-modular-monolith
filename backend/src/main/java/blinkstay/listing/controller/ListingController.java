@@ -50,9 +50,10 @@ public class ListingController {
 	public ResponseEntity<PagedResponse<PublishedListingDto>> getPublishedListings(
 			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
 			@RequestParam(defaultValue = "createdAt") String sortBy,
-			@RequestParam(defaultValue = "desc") String direction, @RequestParam(required = false) String country) {
+			@RequestParam(defaultValue = "desc") String direction, @RequestParam(required = false) String location,
+			@RequestParam(required = false) String name) {
 
-		return ResponseEntity.ok(listingService.getPublishedListings(page, size, sortBy, direction, country));
+		return ResponseEntity.ok(listingService.getPublishedListings(page, size, sortBy, direction, location, name));
 	}
 
 	@Operation(summary = "Create a new listing with images")

@@ -6,7 +6,12 @@ import { FiChevronLeft, FiChevronRight, FiX } from "react-icons/fi";
 const MAX_DOTS = 6; // beyond this, show a "3 / 12" counter instead of dots
 
 const toUrls = (images = []) =>
-  images.map((i) => (typeof i === "string" ? i : i?.url)).filter(Boolean);
+  images
+    .map((i) => {
+      if (typeof i === "string") return i;
+      return i?.imageUrl || i?.url || i?.secure_url || "";
+    })
+    .filter(Boolean);
 
 const arrowBase =
   "absolute top-1/2 z-10 flex -translate-y-1/2 cursor-pointer items-center justify-center rounded-full bg-black/50 text-white transition-opacity hover:bg-black/70 focus-visible:outline-2 focus-visible:outline-white";
@@ -156,19 +161,20 @@ const Lightbox = ({ urls, start, alt, caption, onClose }) => {
 const ImageCarousel = ({
   images,
   alt = "",
-  className = "", // box styles: size, rounding, e.g. "h-32 w-full rounded-lg"
+  className = "",
   imgClassName = "object-cover",
-  zoomable = true, // false: no viewer (use this inside a link)
-  fallback = null, // shown when there are no usable images
-  caption, // optional text under the enlarged image
+  zoomable = true,
+  fallback = null,
+  caption,
 }) => {
   const urls = useMemo(() => toUrls(images), [images]);
   const [index, setIndex] = useState(0);
-  const [lightboxAt, setLightboxAt] = useState(null); // null = closed
+  const [lightboxAt, setLightboxAt] = useState(null);
   const [failed, setFailed] = useState({});
   const trackRef = useRef(null);
   const triggerRef = useRef(null);
   const raf = useRef(0);
+  const isProgrammaticRef = useRef(false); // <--- ADD THIS FLAG
   const reduceMotion = useReducedMotion();
 
   const goTo = useCallback(
@@ -176,11 +182,18 @@ const ImageCarousel = ({
       const el = trackRef.current;
       if (!el) return;
       const next = Math.max(0, Math.min(urls.length - 1, i));
+
+      isProgrammaticRef.current = true; // <--- MARK AS PROGRAMMATIC SCROLL
       el.scrollTo({
         left: next * el.clientWidth,
         behavior: instant || reduceMotion ? "auto" : "smooth",
       });
       setIndex(next);
+
+      // Reset flag after scroll completes
+      setTimeout(() => {
+        isProgrammaticRef.current = false;
+      }, 100);
     },
     [urls.length, reduceMotion],
   );
@@ -196,6 +209,7 @@ const ImageCarousel = ({
 
   // keeps the index in step with swipes
   const onScroll = () => {
+    if (isProgrammaticRef.current) return; // <--- IGNORE IF PROGRAMMATICALLY SCROLLED
     cancelAnimationFrame(raf.current);
     raf.current = requestAnimationFrame(() => {
       const el = trackRef.current;
@@ -207,7 +221,10 @@ const ImageCarousel = ({
   const closeLightbox = useCallback(
     (finalIndex) => {
       setLightboxAt(null);
-      goTo(finalIndex, true); // inline slider follows where the viewer ended
+      // Wait for the lightbox portal to unmount and layout to settle
+      requestAnimationFrame(() => {
+        goTo(finalIndex, true);
+      });
       triggerRef.current?.focus();
     },
     [goTo],

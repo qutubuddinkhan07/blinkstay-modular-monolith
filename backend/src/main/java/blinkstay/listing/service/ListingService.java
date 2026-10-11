@@ -33,7 +33,7 @@ public interface ListingService {
 	void deleteListingImage(UUID userId, UUID listingId, UUID imageId);
 
 	PagedResponse<PublishedListingDto> getPublishedListings(int page, int size, String sortBy, String direction,
-			String country);
+			String location, String name);
 
 	void deleteListing(UUID userId, boolean isAdmin, UUID listingId);
 
