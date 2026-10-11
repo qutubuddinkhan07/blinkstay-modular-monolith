@@ -14,6 +14,7 @@ import { focusRing } from "../components/create-listing/formStyles";
 import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
 import MyListingCard from "../components/my-listings/MyListingCard";
 import ListingFilters from "../components/my-listings/ListingFilters";
+import { FiX } from "react-icons/fi";
 
 // normalizeListing may not carry the status fields, so add them from the raw response
 const toRow = (raw) => ({
@@ -158,6 +159,13 @@ const MyListings = () => {
     }
   };
 
+  // Add a clear filters helper
+  const handleClearFilters = () => {
+    setSearch("");
+    setStatusFilter("");
+    setCategoryFilter("");
+  };
+
   return (
     <div className="min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300">
       <div className="mx-auto max-w-5xl">
@@ -190,6 +198,28 @@ const MyListings = () => {
             />
           </div>
         )}
+
+        {!loading &&
+          !error &&
+          listings.length > 0 &&
+          filteredListings.length === 0 && (
+            <div className="py-16 text-center">
+              <h3 className="font-display text-lg font-medium text-text">
+                No matching listings found
+              </h3>
+              <p className="mt-1 text-sm text-subtext">
+                Try adjusting your search terms or filter options.
+              </p>
+              <button
+                type="button"
+                onClick={handleClearFilters}
+                className={`mt-4 inline-flex items-center gap-2 cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
+              >
+                <FiX size={16} />
+                Clear filters
+              </button>
+            </div>
+          )}
 
         {loading && (
           <ul className="space-y-4" aria-busy="true">
