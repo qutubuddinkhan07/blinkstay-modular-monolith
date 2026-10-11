@@ -9,6 +9,7 @@ import { focusRing } from "../../listings/components/create-listing/formStyles";
 import { blockUser, fetchUsers, unblockUser } from "../adminService";
 import UserFilters from "../components/UserFilters";
 import UsersTable from "../components/UsersTable";
+import { getPrimaryRole } from "../../../utils/roles";
 
 const PAGE_SIZE = 10;
 const NO_FILTERS = { q: "", blocked: "all", role: "" };
@@ -17,6 +18,7 @@ const NO_FILTERS = { q: "", blocked: "all", role: "" };
 const toRow = (u) => ({
   ...u,
   roles: u.roles ?? [],
+  primaryRole: u.primaryRole ?? getPrimaryRole(u.roles ?? []),
   blocked: Boolean(u.blocked ?? u.isBlocked),
   blockReason: u.blockReason ?? null,
   blockedAt: u.blockedAt ?? null,

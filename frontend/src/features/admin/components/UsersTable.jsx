@@ -35,9 +35,11 @@ const UserAvatar = ({ user }) =>
   );
 
 const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
-  const isAdminRow = user.roles.includes("ADMIN");
-  const isHost = user.roles.includes("HOTEL_MANAGER");
   const isSelf = String(user.id) === String(currentUserId);
+  const isAdminRow = user.primaryRole === "ADMIN";
+  const isHost = user.roles.includes("HOTEL_MANAGER"); // admins hold this role too, so they get "View listings"
+
+  const extraRoles = user.roles.filter((r) => r !== user.primaryRole);
 
   // the backend rejects both of these, so don't offer them
   const blockLocked = isSelf
@@ -68,14 +70,21 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 md:w-56 md:justify-start">
-          {displayRoles(user.roles).map((r) => (
-            <span
-              key={r}
-              className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium capitalize text-text"
-            >
-              {roleLabel(r)}
+          {user.primaryRole && (
+            <span className="rounded-full border border-border px-2.5 py-0.5 text-xs font-medium capitalize text-text">
+              {roleLabel(user.primaryRole)}
             </span>
-          ))}
+          )}
+          {extraRoles.length > 0 && (
+            <span
+              title={`Also has: ${extraRoles.map(roleLabel).join(", ")}`}
+              aria-label={`Also has: ${extraRoles.map(roleLabel).join(", ")}`}
+              className="cursor-help rounded-full border border-border px-2 py-0.5 text-xs font-medium text-subtext"
+            >
+              {extraRoles.map(roleLabel).join(", ")}
+            </span>
+          )}
+
           {user.blocked && (
             <span className="rounded-full border border-danger/40 bg-danger/10 px-2.5 py-0.5 text-xs font-semibold text-danger">
               Blocked

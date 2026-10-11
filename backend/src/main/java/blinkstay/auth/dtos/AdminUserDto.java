@@ -1,7 +1,7 @@
 package blinkstay.auth.dtos;
 
 import java.time.LocalDateTime;
-import java.util.Set;
+import java.util.List;
 
 import blinkstay.auth.enums.UserRole;
 import lombok.AllArgsConstructor;
@@ -19,7 +19,8 @@ public class AdminUserDto {
 	private String id;
 	private String username;
 	private String email;
-	private Set<UserRole> roles;
+	private List<UserRole> roles;
+	private UserRole primaryRole;
 	private boolean blocked;
 	private String blockReason;
 	private LocalDateTime blockedAt;

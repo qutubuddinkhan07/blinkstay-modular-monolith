@@ -7,3 +7,6 @@ export const displayRoles = (roles = []) => {
   const top = ROLE_PRIORITY.find((r) => roles.includes(r));
   return top ? [top] : [];
 };
+
+export const getPrimaryRole = (roles = []) =>
+  ROLE_PRIORITY.find((r) => roles.includes(r) ?? null);

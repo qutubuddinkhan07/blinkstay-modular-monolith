@@ -21,6 +21,7 @@ import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
+import blinkstay.auth.repository.UserSpecifications;
 import blinkstay.auth.service.AdminUserService;
 import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.events.UserUnblockedEvent;
@@ -44,7 +45,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 		Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50),
 				Sort.by(Sort.Direction.DESC, "createdAt"));
 
-		Page<User> result = userRepository.search(term, active, role, pageable);
+		Page<User> result = userRepository.findAll(UserSpecifications.adminSearch(term, active, role), pageable);
 		return new PageResult<>(result.getContent().stream().map(modelMapper::userToAdminUserDto).toList(),
 				result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
 	}
