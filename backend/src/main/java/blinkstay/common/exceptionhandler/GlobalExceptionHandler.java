@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -192,6 +193,18 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
 	}
 
+	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
+	public ResponseEntity<ApiResponse<Void>> handleBadId(MethodArgumentTypeMismatchException ex) {
+		return ResponseEntity.badRequest().body(
+				ApiResponse.<Void>builder().success(false).message("Invalid value for '" + ex.getName() + "'").build());
+	}
+
+	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+	public ResponseEntity<ApiResponse<String>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.of(false,
+				"This record was changed by someone else. Please try reload and try again.", null));
+	}
+
 	@ExceptionHandler(RuntimeException.class)
 	public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
 		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
@@ -214,9 +227,4 @@ public class GlobalExceptionHandler {
 		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
 	}
 
-	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
-	public ResponseEntity<ApiResponse<Void>> handleBadId(MethodArgumentTypeMismatchException ex) {
-		return ResponseEntity.badRequest().body(
-				ApiResponse.<Void>builder().success(false).message("Invalid value for '" + ex.getName() + "'").build());
-	}
 }

@@ -17,7 +17,7 @@ public class ApiResponse<T> {
 	private T data;
 
 	// Static helper methods
-	public static <T> ApiResponse<T> of(boolean success, T data, String message) {
+	public static <T> ApiResponse<T> of(boolean success, String message, T data) {
 		return ApiResponse.<T>builder().success(true).message(message).data(data).build();
 	}
 

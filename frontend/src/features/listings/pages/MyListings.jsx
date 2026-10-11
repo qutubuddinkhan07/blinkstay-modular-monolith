@@ -9,7 +9,7 @@ import {
   resumeListing,
   deleteListing,
 } from "../listingService";
-import { toListingsRow } from "../listingMappers";
+import { toListingRow } from "../listingMappers";
 import { focusRing } from "../components/create-listing/formStyles";
 import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
 import MyListingCard from "../components/my-listings/MyListingCard";
@@ -58,7 +58,7 @@ const MyListings = () => {
         setError(null);
 
         const res = await fetchMyListings();
-        if (!ignore) setListings((res.data.data ?? []).map(toListingsRow));
+        if (!ignore) setListings((res.data.data ?? []).map(toListingRow));
       } catch (err) {
         if (ignore) return;
         console.error("Failed to load my listings", err);

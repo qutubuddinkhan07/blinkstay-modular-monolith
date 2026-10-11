@@ -5,8 +5,13 @@ import java.util.Set;
 
 import org.springframework.stereotype.Component;
 
+import blinkstay.auth.dtos.AdminHostRequestDto;
 import blinkstay.auth.dtos.AdminUserDto;
+import blinkstay.auth.dtos.HostProfileDto;
+import blinkstay.auth.dtos.HostRequestResponseDto;
 import blinkstay.auth.dtos.UserResponseDto;
+import blinkstay.auth.entities.HotelManagerProfile;
+import blinkstay.auth.entities.HotelManagerRequest;
 import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 
@@ -43,4 +48,26 @@ public class ModelMapper {
 				.build();
 	}
 
+	public HostRequestResponseDto hostRequestToDto(HotelManagerRequest r) {
+		return HostRequestResponseDto.builder().id(r.getId()).status(r.getStatus()).businessName(r.getBusinessName())
+				.address(r.getAddress()).description(r.getDescription()).website(r.getWebsite())
+				.rejectionReason(r.getRejectionReason()).reviewedAt(r.getReviewedAt()).createdAt(r.getCreatedAt())
+				.build();
+	}
+
+	public AdminHostRequestDto hostRequestToAdminDto(HotelManagerRequest r, User applicant) {
+		return AdminHostRequestDto.builder().id(r.getId()).userId(r.getUserId())
+				.username(applicant == null ? null : applicant.getUsername())
+				.email(applicant == null ? null : applicant.getEmail())
+				.profileImgUrl(applicant == null ? null : applicant.getProfileImgUrl()).status(r.getStatus())
+				.businessName(r.getBusinessName()).address(r.getAddress()).description(r.getDescription())
+				.website(r.getWebsite()).rejectionReason(r.getRejectionReason()).reviewedAt(r.getReviewedAt())
+				.createdAt(r.getCreatedAt()).build();
+	}
+
+	public HostProfileDto hostProfileToDto(HotelManagerProfile p) {
+		return HostProfileDto.builder().businessName(p.getBusinessName()).address(p.getAddress())
+				.description(p.getDescription()).website(p.getWebsite()).approvedAt(p.getApprovedAt())
+				.updatedAt(p.getUpdatedAt()).build();
+	}
 }

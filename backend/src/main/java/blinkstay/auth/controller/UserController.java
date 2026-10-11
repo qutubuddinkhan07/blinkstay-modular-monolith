@@ -102,7 +102,7 @@ public class UserController {
 
 		PageResponseDto<UserResponseDto> pagedUsers = userService.getAllUsers(pageable);
 
-		return ResponseEntity.ok(ApiResponse.of(true, pagedUsers, "Users retrieved successfully"));
+		return ResponseEntity.ok(ApiResponse.of(true, "Users retrieved successfully", pagedUsers));
 	}
 
 	@GetMapping("/{userId}")
