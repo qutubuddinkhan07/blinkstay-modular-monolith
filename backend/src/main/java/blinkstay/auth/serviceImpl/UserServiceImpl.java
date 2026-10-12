@@ -41,6 +41,8 @@ import blinkstay.auth.service.UserService;
 import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
+import blinkstay.notification.event.SimpleMessageEvent;
+import blinkstay.notification.util.EmailMessageBuilderUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -65,6 +67,8 @@ public class UserServiceImpl implements UserService {
 	private final ModelMapper modelMapper;
 
 	private final ApplicationEventPublisher publisher;
+
+	private final EmailMessageBuilderUtil emailMessageBuilderUtil;
 
 	private static final int OTP_VALID_MINUTES = 6;
 	private static final int OTP_RESEND_SECONDS = 60;
@@ -157,6 +161,13 @@ public class UserServiceImpl implements UserService {
 
 		// TODO Step 6: send by email, then delete this log line
 		log.info("Registration OTP for {}: {}", email, otp);
+
+		// User registered email
+		String message = emailMessageBuilderUtil.otpMessageBuilder(addUserDto.getUsername(), addUserDto.getEmail(),
+				otp);
+		SimpleMessageEvent event = SimpleMessageEvent.builder().receiverId(addUserDto.getEmail())
+				.subject("ALERT: User Registration").message(message).build();
+		publisher.publishEvent(event);
 
 		return "OTP sent successfully";
 	}
