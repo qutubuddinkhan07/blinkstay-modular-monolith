@@ -35,7 +35,8 @@ public class SpringSecurityConfiguration {
 		http
 				// CSRF PROTECTION
 				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/auth/logout",
-						"/api/v1/auth/csrf", "/api/v2/user/register-init", "/api/v2/user/verify-otp").spa())
+						"/api/v1/auth/csrf", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
+						"/api/v2/user/register-init", "/api/v2/user/verify-otp").spa())
 
 				// CORS
 				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -48,14 +49,9 @@ public class SpringSecurityConfiguration {
 						// Preflight requests
 						.requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
 
-						// Public requests
-//						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v2/user/register-init",
-//								"/api/v2/user/verify-otp", "/api/v3/listings/:id", "/swagger-ui/**", "/swagger-ui.html",
-//								"/v3/api-docs/**")
-//						.permitAll() ============
-
-						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v2/user/register-init",
-								"/api/v2/user/verify-otp", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+						.requestMatchers("/api/v1/auth/login", "/api/v1/auth/csrf", "/api/v1/auth/forgot-password",
+								"/api/v1/auth/reset-password", "/api/v2/user/register-init", "/api/v2/user/verify-otp",
+								"/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
 						.permitAll()
 
 						.requestMatchers(HttpMethod.POST, "/api/v1/auth/logout").permitAll()

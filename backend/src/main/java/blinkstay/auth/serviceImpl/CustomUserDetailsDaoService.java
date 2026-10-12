@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import blinkstay.auth.entities.User;
 import blinkstay.auth.repository.UserRepository;
+import blinkstay.auth.security.AuthUser.AuthUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -34,9 +35,8 @@ public class CustomUserDetailsDaoService implements UserDetailsService {
 		List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
 				.map(role -> new SimpleGrantedAuthority(role.name())).toList();
 
-		return org.springframework.security.core.userdetails.User.withUsername(user.getId().toString())
-				.password(user.getPassword()).authorities(authorities)
-				.disabled(Boolean.FALSE.equals(user.getIsActive())).build();
+		return new AuthUser(user.getId().toString(), user.getPassword(), !Boolean.FALSE.equals(user.getIsActive()),
+				authorities, user.getPasswordChangedAt());
 	}
 
 	private Optional<User> findUser(String id) {

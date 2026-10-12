@@ -1,5 +1,6 @@
 package blinkstay.auth.entities;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -60,6 +61,8 @@ public class User {
 	@Column(nullable = false)
 	@ToString.Exclude
 	private String password;
+
+	private Instant passwordChangedAt;
 
 	@Column(length = 20)
 	private String phone;

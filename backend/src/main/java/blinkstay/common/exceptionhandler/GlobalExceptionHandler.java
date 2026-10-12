@@ -28,8 +28,10 @@ import blinkstay.common.exception.ManagerNotOwnerException;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
 	@ExceptionHandler(IllegalArgumentException.class)
@@ -218,6 +220,7 @@ public class GlobalExceptionHandler {
 
 	@ExceptionHandler(Exception.class)
 	public ResponseEntity<ApiResponse<String>> handleGeneralException(Exception ex) {
+		log.error("Unhandled exception", ex);
 		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
 				: "An unexpected error occurred";
 

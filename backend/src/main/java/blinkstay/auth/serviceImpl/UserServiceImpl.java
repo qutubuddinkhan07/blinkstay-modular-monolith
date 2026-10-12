@@ -1,11 +1,13 @@
 package blinkstay.auth.serviceImpl;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.security.SecureRandom;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -14,6 +16,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -38,7 +41,6 @@ import blinkstay.auth.service.UserService;
 import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
-import blinkstay.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -54,8 +56,6 @@ public class UserServiceImpl implements UserService {
 	@Qualifier("otpHolder")
 	private final Map<String, TempUserRegistrationData> otpHolder;
 
-	private final NotificationService notificationService;
-
 	@Qualifier("authImageUploadService")
 	private final ImageUploadService imageUploadService;
 
@@ -66,16 +66,9 @@ public class UserServiceImpl implements UserService {
 
 	private final ApplicationEventPublisher publisher;
 
-//	public UserServiceImpl(UserRepository userRepository, SecureRandom random,
-//			Map<String, TempUserRegistrationData> otpHolder, NotificationService notificationService,
-//			ImageUploadService imageUploadService,PasswordEncoder passwordEncoder) {
-//		this.userRepository = userRepository;
-//		this.otpHolder = otpHolder;
-//		this.random = random;
-//		this.notificationService = notificationService;
-//		this.imageUploadService = imageUploadService;
-//		this.passwordEncoder = passwordEncoder;
-//	}
+	private static final int OTP_VALID_MINUTES = 6;
+	private static final int OTP_RESEND_SECONDS = 60;
+	private static final int OTP_MAX_ATTEMPTS = 5;
 
 	@Override
 	public User helperGetUserId(UUID userId) {
@@ -140,80 +133,104 @@ public class UserServiceImpl implements UserService {
 
 	@Override
 	public String initiateUserRegistration(AddUserDto addUserDto, MultipartFile profileImg) throws IOException {
-		Optional<User> optUser = userRepository.findByEmail(addUserDto.getEmail());
-		if (optUser.isPresent()) {
-			throw new UserAlreadyExistsException("User with the same email already exits!");
+		String email = normalizeEmail(addUserDto.getEmail());
+
+		if (userRepository.findByEmail(email).isPresent()) {
+			throw new UserAlreadyExistsException("User with the same email already exists!");
 		}
 
-		// OTP generation
-		Integer otp = random.nextInt(100000, 999999);
-		String emailSubject = "User Registration OTP";
+		TempUserRegistrationData exisiting = otpHolder.get(email);
+		if (exisiting != null && exisiting.getExpiryTime().minusMinutes(OTP_VALID_MINUTES)
+				.plusSeconds(OTP_RESEND_SECONDS).isAfter(LocalDateTime.now())) {
+			throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+					"A code was just sent. Please wait a minute before requesting another.");
+		}
 
-		// Image details
-		byte[] imgBytes = profileImg.getBytes();
-		String fileName = profileImg.getOriginalFilename();
-		String contentType = profileImg.getContentType();
+		String otp = String.valueOf(random.nextInt(100000, 1000000));
 
-		// Call the notification module sendOtpUserRegistration()
-		// notificationService.sendOtpUserRegistration(addUserDto.getUsername(),
-		// addUserDto.getEmail(), emailSubject, String.valueOf(otp));
+		TempUserRegistrationData tempData = TempUserRegistrationData.builder().otp(otp)
+				.expiryTime(LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES)).userDto(addUserDto)
+				.imageBytes(profileImg.getBytes()).originalFilename(profileImg.getOriginalFilename())
+				.contentType(profileImg.getContentType()).build();
 
-		// Storing the details temporarily
-		TempUserRegistrationData tempData = TempUserRegistrationData.builder().otp(String.valueOf(otp))
-				.expiryTime(LocalDateTime.now().plusMinutes(6)).userDto(addUserDto).imageBytes(imgBytes)
-				.originalFilename(fileName).contentType(contentType).build();
+		otpHolder.put(email, tempData);
 
-		otpHolder.put(addUserDto.getEmail(), tempData);
-
-		log.info("Temp registration data stored for email: {}", addUserDto.getEmail());
-		log.info("Temp user OTP {}", otp);
+		// TODO Step 6: send by email, then delete this log line
+		log.info("Registration OTP for {}: {}", email, otp);
 
 		return "OTP sent successfully";
 	}
 
 	@Override
 	public UserResponseDto verifyOtpAndRegister(String email, String otp) {
-		TempUserRegistrationData tempData = otpHolder.get(email);
-		log.info("OTP Holder: {}", otpHolder.size());
+		String key = normalizeEmail(email);
+
+		TempUserRegistrationData tempData = otpHolder.get(key);
 
 		if (tempData == null) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No registration request found");
 		}
 
 		if (tempData.getExpiryTime().isBefore(LocalDateTime.now())) {
+			otpHolder.remove(key);
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "OTP expired");
 		}
 
-		if (!tempData.getOtp().equals(otp)) {
+		if (tempData.getAttempts().incrementAndGet() > OTP_MAX_ATTEMPTS) {
+			otpHolder.remove(key);
+			throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS,
+					"Too many wrong codes. Please start registration again.");
+		}
+
+		String given = otp == null ? "" : otp.trim();
+		if (!MessageDigest.isEqual(tempData.getOtp().getBytes(StandardCharsets.UTF_8),
+				given.getBytes(StandardCharsets.UTF_8))) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OTP");
 		}
 
-		AddUserDto dto = tempData.getUserDto();
-		String encodedPassword = passwordEncoder.encode(dto.getPassword());
+		// the email may have been taken since the code was requested
+		if (userRepository.findByEmail(key).isPresent()) {
+			otpHolder.remove(key);
+			throw new UserAlreadyExistsException("User with the same email already exits!");
+		}
 
-		User user = User.builder().username(dto.getUsername()).email(dto.getEmail()).password(encodedPassword)
-				.roles(Set.of(UserRole.USER)).build();
+		AddUserDto dto = tempData.getUserDto();
+		User user = User.builder().username(dto.getUsername()).email(key)
+				.password(passwordEncoder.encode(dto.getPassword())).roles(new HashSet<>(Set.of(UserRole.USER)))
+				.build();
 
 		if (tempData.getImageBytes() != null) {
-			String public_id = "user_" + System.currentTimeMillis() + "_" + user.getEmail();
-			ImageUploadResult result = imageUploadService.uploadImage(tempData.getImageBytes(), public_id);
-
+			String publicId = "user_" + System.currentTimeMillis(); // never put the email in a public URL
+			ImageUploadResult result = imageUploadService.uploadImage(tempData.getImageBytes(), publicId);
 			user.setProfileImgUrl(result.getUrl());
 			user.setImagePublicId(result.getPublicId());
 		}
 
-		User saved = userRepository.save(user);
+		User saved;
+		try {
+			saved = userRepository.save(user);
 
-		// User registered notification
-		// notificationService.sendMailUserRegistered(user.getUsername(),
-		// user.getEmail(), "ALERT: User Registration");
+			// TODO Step 6: send by email, then delete this log line
+			log.info("Registration successfull for {}", email);
+		} catch (DataIntegrityViolationException e) {
+			// two verifications at once: the unique email constraint let only one through
+			if (user.getImagePublicId() != null) {
+				try {
+					imageUploadService.deleteImage(user.getImagePublicId());
+				} catch (Exception ex) {
+					log.warn("Could not remove the orphaned image {}", user.getImagePublicId());
+				}
+			}
+			otpHolder.remove(key);
+			throw new UserAlreadyExistsException("User with the same email already exits!");
+		}
 
-		// Cleanup memory
-		otpHolder.remove(email);
+		otpHolder.remove(key);
+		return modelMapper.userToUserResponseDto(saved);
+	}
 
-		UserResponseDto userResponseDto = modelMapper.userToUserResponseDto(saved);
-
-		return userResponseDto;
+	private static String normalizeEmail(String email) {
+		return email == null ? "" : email.trim().toLowerCase();
 	}
 
 	@Override

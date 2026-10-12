@@ -1,26 +1,28 @@
 package blinkstay.auth.config;
 
+import java.security.SecureRandom;
+import java.time.Duration;
+import java.util.Map;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
 
-import blinkstay.auth.dtos.TempUserRegistrationData;
+import com.github.benmanes.caffeine.cache.Caffeine;
 
-import java.security.SecureRandom;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import blinkstay.auth.dtos.TempUserRegistrationData;
 
 @Configuration
 public class SystemClassConfiguration {
-    @Bean("random")
-    @Lazy(value = true)
-    public SecureRandom getRandom() {
-        return new SecureRandom();
-    }
+	@Bean("random")
+	@Lazy(value = true)
+	public SecureRandom getRandom() {
+		return new SecureRandom();
+	}
 
-    @Bean("otpHolder")
-//    @Lazy(value = true)
-    public Map<String, TempUserRegistrationData> getOtpHolder() {
-        return new ConcurrentHashMap<>();
-    }
+	@Bean("otpHolder")
+	public Map<String, TempUserRegistrationData> otpHolder() {
+		return Caffeine.newBuilder().maximumSize(1_000).expireAfterWrite(Duration.ofMinutes(10))
+				.<String, TempUserRegistrationData>build().asMap();
+	}
 }

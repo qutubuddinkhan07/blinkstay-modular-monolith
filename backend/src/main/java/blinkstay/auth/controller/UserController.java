@@ -172,8 +172,9 @@ public class UserController {
 
 	@PutMapping("/me/password")
 	public ResponseEntity<ApiResponse<String>> changeMyPassword(@AuthenticationPrincipal UserDetails ud,
-			@Valid @RequestBody ChangePasswordDto dto) {
+			@Valid @RequestBody ChangePasswordDto dto, HttpServletResponse response) {
 		userService.changePassword(UUID.fromString(ud.getUsername()), dto.getCurrentPassword(), dto.getNewPassword());
+		authService.reissueSession(ud, response); // other devices are logged out, this one stays in
 		return ResponseEntity
 				.ok(ApiResponse.<String>builder().success(true).message("Password changed").data(null).build());
 	}

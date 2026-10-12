@@ -157,4 +157,16 @@ public class AuthServiceImpl implements AuthService {
 		response.addHeader(HttpHeaders.SET_COOKIE, expiredCookie.toString());
 	}
 
+	private void writeAuthCookie(String jwt, HttpServletResponse response) {
+		ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
+				.sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
+		response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
+	}
+
+	@Override
+	public void reissueSession(UserDetails userDetails, HttpServletResponse response) {
+		List<String> roles = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+		writeAuthCookie(jwtUtil.generateToken(userDetails.getUsername(), roles), response);
+	}
+
 }

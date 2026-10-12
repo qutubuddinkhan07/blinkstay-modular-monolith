@@ -1,6 +1,7 @@
 package blinkstay.auth.filter;
 
 import java.io.IOException;
+import java.time.Instant;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -13,9 +14,11 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import blinkstay.auth.security.AuthUser.AuthUser;
 import blinkstay.auth.service.BlockedTokenService;
 import blinkstay.auth.serviceImpl.CustomUserDetailsDaoService;
 import blinkstay.auth.util.JWTUtil;
+import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
@@ -73,7 +76,8 @@ public class JWTFilter extends OncePerRequestFilter {
 
 	private void authenticate(String jwt, HttpServletRequest request, HttpServletResponse response) {
 		try {
-			String userIdStr = jwtUtil.extractUserId(jwt); // throws if expired / invalid
+			Claims claims = jwtUtil.extractClaims(jwt); // throws if expired / invalid
+			String userIdStr = claims.getSubject();
 
 			if (blockedTokenService.checkIfPresent(jwt)) {
 				reject(request, response, "TOKEN_REVOKED");
@@ -89,6 +93,13 @@ public class JWTFilter extends OncePerRequestFilter {
 			// A blocked / deactivated account must stop working immediately
 			if (!userDetails.isEnabled()) {
 				reject(request, response, "ACCOUNT_BLOCKED");
+				return;
+			}
+
+			Instant changedAt = userDetails instanceof AuthUser a ? a.getPasswordChangedAt() : null;
+			if (changedAt != null
+					&& (claims.getIssuedAt() == null || claims.getIssuedAt().toInstant().isBefore(changedAt))) {
+				reject(request, response, "PASSWORD_CHANGED");
 				return;
 			}
 
@@ -146,6 +157,7 @@ public class JWTFilter extends OncePerRequestFilter {
 
 		return "OPTIONS".equalsIgnoreCase(request.getMethod()) // CORS preflight
 				|| path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
+				|| path.startsWith("/api/v1/auth/forgot-password") || path.startsWith("/api/v1/auth/reset-password")
 				|| path.startsWith("/api/v2/user/verify-otp");
 	}
 }
