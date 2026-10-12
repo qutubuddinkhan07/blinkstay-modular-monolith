@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { FiMail } from "react-icons/fi";
+import { FiMail, FiX } from "react-icons/fi";
 import { handleApiError } from "../../../api/errors/handleApiError";
 
 const formatTime = (ms) => {
@@ -11,8 +11,7 @@ const formatTime = (ms) => {
 const primaryBtn =
   "w-full cursor-pointer rounded-full bg-primary py-3 text-sm font-semibold text-white transition-colors duration-200 hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
 
-// Deliberately has no backdrop-click or Escape handling: it can only be left on purpose.
-const OtpDialog = ({ email, expiresAt, onVerify, onStartOver }) => {
+const OtpDialog = ({ email, expiresAt, onVerify, onStartOver, onClose }) => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   const [verifying, setVerifying] = useState(false);
@@ -25,14 +24,12 @@ const OtpDialog = ({ email, expiresAt, onVerify, onStartOver }) => {
   const remaining = expiresAt - now;
   const expired = remaining <= 0;
 
-  // countdown
   useEffect(() => {
     if (expired) return;
     const t = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(t);
   }, [expired]);
 
-  // lock page scroll, warn before a refresh or tab close, keep focus inside
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -44,29 +41,9 @@ const OtpDialog = ({ email, expiresAt, onVerify, onStartOver }) => {
     };
     window.addEventListener("beforeunload", warn);
 
-    const onKey = (e) => {
-      if (e.key !== "Tab") return;
-      const items = [
-        ...(dialogRef.current?.querySelectorAll("button, input") ?? []),
-      ].filter((el) => !el.disabled);
-      if (items.length === 0) return;
-
-      const first = items[0];
-      const last = items[items.length - 1];
-      if (e.shiftKey && document.activeElement === first) {
-        e.preventDefault();
-        last.focus();
-      } else if (!e.shiftKey && document.activeElement === last) {
-        e.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-
     return () => {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener("beforeunload", warn);
-      document.removeEventListener("keydown", onKey);
     };
   }, []);
 
@@ -83,7 +60,7 @@ const OtpDialog = ({ email, expiresAt, onVerify, onStartOver }) => {
     setVerifying(true);
     setError("");
     try {
-      await onVerify(code); // on success the parent navigates away
+      await onVerify(code);
     } catch (err) {
       setError(handleApiError(err));
       setVerifying(false);
@@ -97,8 +74,18 @@ const OtpDialog = ({ email, expiresAt, onVerify, onStartOver }) => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="otp-title"
-        className="w-full max-w-sm rounded-3xl border border-border bg-surface p-8 font-body shadow-2xl"
+        className="relative w-full max-w-sm rounded-3xl border border-border bg-surface p-8 font-body shadow-2xl"
       >
+        {/* Close Button allowing user to return to signup form view */}
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute top-4 right-4 text-subtext hover:text-text transition-colors"
+          aria-label="Close dialog"
+        >
+          <FiX size={20} />
+        </button>
+
         <div className="mb-6 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <FiMail className="h-8 w-8 text-primary" aria-hidden="true" />

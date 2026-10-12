@@ -5,6 +5,7 @@ import {
   FiSun,
   FiCamera,
   FiUser,
+  FiClock,
 } from "react-icons/fi";
 import { registerInit, verifyOtp } from "../authService";
 import { handleApiError } from "../../../api/errors/handleApiError";
@@ -12,36 +13,86 @@ import { notify } from "../../../utils/notify";
 import Logo from "../../../components/common/Logo";
 import { useTheme } from "../../../context/ThemeContext";
 import OtpDialog from "../components/OtpDialog";
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { useNavigate, Link, useBlocker } from "react-router-dom";
 import ConfirmDialog from "../../../components/common/ConfirmDialogBox";
+import ZoomImage from "../../../components/common/ZoomImage";
 
-const OTP_TTL_MS = 3 * 60 * 1000; // matches the "valid for 3 minutes" the backend uses
+const OTP_TTL_MS = 3 * 60 * 1000;
 
-/* ---------- Signup ---------- */
+const formatTime = (ms) => {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+};
 
 const Signup = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
-  const [formData, setFormData] = useState({
-    username: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    profilePicture: null,
-  });
+
+  // Helper to safely load saved session & form data from localStorage
+  const loadSavedSession = () => {
+    try {
+      const savedSession = localStorage.getItem("blinkstay_otp_session");
+      const savedForm = localStorage.getItem("blinkstay_signup_form");
+      if (savedSession && savedForm) {
+        const parsedSession = JSON.parse(savedSession);
+        if (parsedSession.expiresAt > Date.now()) {
+          return {
+            session: parsedSession,
+            form: JSON.parse(savedForm),
+          };
+        } else {
+          localStorage.removeItem("blinkstay_otp_session");
+          localStorage.removeItem("blinkstay_signup_form");
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
+    return null;
+  };
+
+  const initialData = loadSavedSession();
+
+  const [formData, setFormData] = useState(
+    initialData?.form || {
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      profilePicture: null,
+    },
+  );
+
   const [errors, setErrors] = useState({});
   const [showPassword, setShowPassword] = useState(false);
-  const [previewUrl, setPreviewUrl] = useState(null);
-
+  const [previewUrl, setPreviewUrl] = useState(
+    initialData?.form?.previewUrl || null,
+  );
   const [isSubmitting, setIsSubmitting] = useState(false);
-  // Set once the registration request succeeds. While it exists the OTP dialog is up
-  // and no second registration can be sent.
-  const [otpSession, setOtpSession] = useState(null); // { email, expiresAt }
 
-  const leavingRef = useRef(false); // set right before we navigate away on purpose
+  const [otpSession, setOtpSession] = useState(initialData?.session || null);
+  const [isOtpModalOpen, setIsOtpModalOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
 
-  // While the OTP dialog is open, any in-app navigation (browser back/forward, links) asks first
+  // Timer loop for countdown
+  useEffect(() => {
+    if (!otpSession) return;
+    const t = setInterval(() => {
+      const currentNow = Date.now();
+      setNow(currentNow);
+      if (currentNow >= otpSession.expiresAt) {
+        setOtpSession(null);
+        localStorage.removeItem("blinkstay_otp_session");
+        localStorage.removeItem("blinkstay_signup_form");
+        setIsOtpModalOpen(false);
+      }
+    }, 1000);
+    return () => clearInterval(t);
+  }, [otpSession]);
+
+  const leavingRef = useRef(false);
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       Boolean(otpSession) &&
@@ -51,39 +102,32 @@ const Signup = () => {
 
   const validateForm = () => {
     const newErrors = {};
-
     if (!formData.username) {
       newErrors.username = "Username is required";
     } else if (formData.username.length < 3) {
       newErrors.username = "Username must be at least 3 characters";
     }
-
     if (!formData.email) {
       newErrors.email = "Email is required";
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
       newErrors.email = "Email is invalid";
     }
-
     if (!formData.password) {
       newErrors.password = "Password is required";
     }
-
     if (!formData.confirmPassword) {
       newErrors.confirmPassword = "Please confirm your password";
     } else if (formData.password !== formData.confirmPassword) {
       newErrors.confirmPassword = "Passwords do not match";
     }
-
-    if (!formData.profilePicture) {
+    if (!formData.profilePicture && !previewUrl) {
       newErrors.profilePicture = "Profile picture is required";
-    } else if (formData.profilePicture.size > 5 * 1024 * 1024) {
-      newErrors.profilePicture = "File size must be less than 5MB";
     }
-
     return newErrors;
   };
 
   const handleChange = (e) => {
+    if (otpSession) return;
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (errors[name]) {
@@ -92,6 +136,7 @@ const Signup = () => {
   };
 
   const handleFileChange = (e) => {
+    if (otpSession) return;
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
@@ -105,7 +150,9 @@ const Signup = () => {
 
       setFormData((prev) => ({ ...prev, profilePicture: file }));
       const reader = new FileReader();
-      reader.onloadend = () => setPreviewUrl(reader.result);
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result);
+      };
       reader.readAsDataURL(file);
       if (errors.profilePicture) {
         setErrors((prev) => ({ ...prev, profilePicture: "" }));
@@ -115,7 +162,7 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting || otpSession) return; // never send a second registration while one is pending
+    if (isSubmitting || otpSession) return;
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -134,20 +181,27 @@ const Signup = () => {
         formData.profilePicture,
       );
 
+      const newSession = {
+        email: formData.email,
+        expiresAt: Date.now() + OTP_TTL_MS,
+      };
+
+      // Save session and form data (omitting the raw File object) to localStorage
+      localStorage.setItem("blinkstay_otp_session", JSON.stringify(newSession));
       localStorage.setItem(
-        "user",
+        "blinkstay_signup_form",
         JSON.stringify({
           username: formData.username,
           email: formData.email,
-          profilePicture: previewUrl,
+          password: formData.password,
+          confirmPassword: formData.confirmPassword,
+          previewUrl: previewUrl,
         }),
       );
 
+      setOtpSession(newSession);
+      setIsOtpModalOpen(true);
       notify.success("OTP sent to your email!");
-      setOtpSession({
-        email: formData.email,
-        expiresAt: Date.now() + OTP_TTL_MS,
-      });
     } catch (err) {
       const errorMsg = handleApiError(err);
       setErrors({ api: errorMsg });
@@ -157,31 +211,43 @@ const Signup = () => {
     }
   };
 
-  // Errors are thrown to the dialog, which shows them next to the input
   const handleVerifyOtp = async (code) => {
     await verifyOtp(otpSession.email, code);
+    localStorage.removeItem("blinkstay_otp_session");
+    localStorage.removeItem("blinkstay_signup_form");
     notify.success("Account verified successfully! Please login.");
-    leavingRef.current = true; // <- add this line: this exit is intended, so don't ask
+    leavingRef.current = true;
     navigate("/login");
   };
 
   const handleStartOver = () => {
     setOtpSession(null);
+    setIsOtpModalOpen(false);
+    localStorage.removeItem("blinkstay_otp_session");
+    localStorage.removeItem("blinkstay_signup_form");
+    setFormData({
+      username: "",
+      email: "",
+      password: "",
+      confirmPassword: "",
+      profilePicture: null,
+    });
+    setPreviewUrl(null);
     setErrors({});
   };
 
+  const remaining = otpSession ? otpSession.expiresAt - now : 0;
+  const isExpired = remaining <= 0;
+
   return (
     <div className="min-h-screen flex items-center justify-center p-6 py-12 relative overflow-hidden transition-colors duration-500 bg-bg">
-      {/* ambient glow */}
       <div className="pointer-events-none absolute -top-32 -right-24 w-96 h-96 rounded-full blur-3xl opacity-30 transition-colors duration-500 bg-primary" />
       <div className="pointer-events-none absolute -bottom-32 -left-24 w-96 h-96 rounded-full blur-3xl opacity-20 transition-colors duration-500 bg-danger" />
 
-      {/* Blinkstay logo, top-left */}
       <Link to={"/"}>
         <Logo isDark={isDark} positioning={"absolute top-6 left-6 z-10"} />
       </Link>
 
-      {/* dark mode toggle */}
       <button
         type="button"
         onClick={toggleTheme}
@@ -210,8 +276,38 @@ const Signup = () => {
           </p>
         </div>
 
+        {/* Active OTP Session Banner */}
+        {otpSession && !isExpired && (
+          <div className="mb-6 rounded-2xl border border-primary/30 bg-primary/5 p-4 text-center">
+            <div className="flex items-center justify-center gap-1.5 text-xs font-semibold text-primary mb-1">
+              <FiClock className="w-4 h-4" />
+              <span>Verification pending ({formatTime(remaining)})</span>
+            </div>
+            <p className="text-xs text-subtext mb-3">
+              An OTP was sent to{" "}
+              <span className="font-medium text-text">{otpSession.email}</span>.
+              Form inputs are locked.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsOtpModalOpen(true)}
+                className="flex-1 py-2 rounded-full text-xs font-semibold bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer"
+              >
+                Enter OTP Code
+              </button>
+              <button
+                type="button"
+                onClick={handleStartOver}
+                className="py-2 px-3 rounded-full text-xs font-semibold border border-danger/40 text-danger hover:bg-danger/10 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-5 font-body">
-          {/* Profile Picture Upload */}
           <div className="flex justify-center">
             <div className="relative">
               <div
@@ -222,24 +318,28 @@ const Signup = () => {
                 }`}
               >
                 {previewUrl ? (
-                  <img
+                  <ZoomImage
                     src={previewUrl}
                     alt="Profile preview"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full"
+                    imgClassName="object-cover"
+                    zoomable={true}
                   />
                 ) : (
                   <FiUser className="w-11 h-11 text-subtext" />
                 )}
               </div>
-              <label className="absolute bottom-0 right-0 rounded-full p-1.5 cursor-pointer transition-colors duration-200 bg-primary">
-                <FiCamera className="w-4 h-4 text-white" />
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="hidden"
-                />
-              </label>
+              {!otpSession && (
+                <label className="absolute bottom-0 right-0 rounded-full p-1.5 cursor-pointer transition-colors duration-200 bg-primary">
+                  <FiCamera className="w-4 h-4 text-white" />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+              )}
             </div>
           </div>
           {errors.profilePicture && (
@@ -262,10 +362,11 @@ const Signup = () => {
             <input
               type="text"
               name="username"
+              disabled={Boolean(otpSession)}
               value={formData.username}
               onChange={handleChange}
               placeholder="Choose a username"
-              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border disabled:opacity-60 disabled:cursor-not-allowed ${
                 errors.username ? "border-danger" : "border-border"
               }`}
             />
@@ -282,10 +383,11 @@ const Signup = () => {
             <input
               type="email"
               name="email"
+              disabled={Boolean(otpSession)}
               value={formData.email}
               onChange={handleChange}
               placeholder="you@example.com"
-              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border disabled:opacity-60 disabled:cursor-not-allowed ${
                 errors.email ? "border-danger" : "border-border"
               }`}
             />
@@ -303,10 +405,11 @@ const Signup = () => {
               <input
                 type={showPassword ? "text" : "password"}
                 name="password"
+                disabled={Boolean(otpSession)}
                 value={formData.password}
                 onChange={handleChange}
                 placeholder="Create a password"
-                className={`w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+                className={`w-full px-4 py-2.5 pr-11 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border disabled:opacity-60 disabled:cursor-not-allowed ${
                   errors.password ? "border-danger" : "border-border"
                 }`}
               />
@@ -336,10 +439,11 @@ const Signup = () => {
             <input
               type="password"
               name="confirmPassword"
+              disabled={Boolean(otpSession)}
               value={formData.confirmPassword}
               onChange={handleChange}
               placeholder="Confirm your password"
-              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border ${
+              className={`w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200 focus:ring-2 focus:ring-primary/30 bg-input text-text border disabled:opacity-60 disabled:cursor-not-allowed ${
                 errors.confirmPassword ? "border-danger" : "border-border"
               }`}
             />
@@ -373,12 +477,14 @@ const Signup = () => {
           By signing up, you agree to our Terms of Service and Privacy Policy
         </div>
       </div>
-      {otpSession && (
+
+      {otpSession && isOtpModalOpen && (
         <OtpDialog
           email={otpSession.email}
           expiresAt={otpSession.expiresAt}
           onVerify={handleVerifyOtp}
           onStartOver={handleStartOver}
+          onClose={() => setIsOtpModalOpen(false)}
         />
       )}
 
