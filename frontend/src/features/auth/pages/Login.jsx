@@ -157,12 +157,12 @@ const Login = () => {
               >
                 Password
               </label>
-              <a
-                href="#"
+              <Link
+                to="/forgot-password"
                 className="text-xs font-medium hover:underline text-primary"
               >
                 Forgot password?
-              </a>
+              </Link>
             </div>
             <div className="relative">
               <input

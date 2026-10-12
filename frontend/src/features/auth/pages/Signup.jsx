@@ -17,6 +17,7 @@ import React, { useRef, useState, useEffect } from "react";
 import { useNavigate, Link, useBlocker } from "react-router-dom";
 import ConfirmDialog from "../../../components/common/ConfirmDialogBox";
 import ZoomImage from "../../../components/common/ZoomImage";
+import { useCooldown } from "../../../utils/useCooldown";
 
 const OTP_TTL_MS = 3 * 60 * 1000;
 
@@ -28,6 +29,7 @@ const formatTime = (ms) => {
 const Signup = () => {
   const navigate = useNavigate();
   const { isDark, toggleTheme } = useTheme();
+  const cooldown = useCooldown(); // register-init can answer 429 ("wait a minute")
 
   // Helper to safely load saved session & form data from localStorage
   const loadSavedSession = () => {
@@ -162,7 +164,7 @@ const Signup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (isSubmitting || otpSession) return;
+    if (isSubmitting || otpSession || cooldown.active) return;
     const validationErrors = validateForm();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
@@ -186,7 +188,7 @@ const Signup = () => {
         expiresAt: Date.now() + OTP_TTL_MS,
       };
 
-      // Save session and form data (omitting the raw File object) to localStorage
+      // Save session and form data to localStorage
       localStorage.setItem("blinkstay_otp_session", JSON.stringify(newSession));
       localStorage.setItem(
         "blinkstay_signup_form",
@@ -204,6 +206,7 @@ const Signup = () => {
       notify.success("OTP sent to your email!");
     } catch (err) {
       const errorMsg = handleApiError(err);
+      if (err.response?.status === 429) cooldown.start(60); // lock button for a minute
       setErrors({ api: errorMsg });
       notify.error(errorMsg);
     } finally {
@@ -212,7 +215,26 @@ const Signup = () => {
   };
 
   const handleVerifyOtp = async (code) => {
-    await verifyOtp(otpSession.email, code);
+    try {
+      await verifyOtp(otpSession.email, code);
+    } catch (err) {
+      const status = err.response?.status;
+      const message = handleApiError(err);
+      if (status === 429) {
+        handleStartOver();
+        notify.error(message);
+        return;
+      }
+      if (status === 404 || (status === 400 && /expired/i.test(message))) {
+        handleStartOver();
+        notify.error(
+          "That code has expired. Please sign up again to get a new one.",
+        );
+        return;
+      }
+      throw err; // wrong code: stay in the dialog
+    }
+
     localStorage.removeItem("blinkstay_otp_session");
     localStorage.removeItem("blinkstay_signup_form");
     notify.success("Account verified successfully! Please login.");
@@ -456,10 +478,14 @@ const Signup = () => {
 
           <button
             type="submit"
-            disabled={isSubmitting || Boolean(otpSession)}
+            disabled={isSubmitting || Boolean(otpSession) || cooldown.active}
             className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 !bg-primary hover:!bg-primary-hover text-white cursor-pointer"
           >
-            {isSubmitting ? "Sending OTP…" : "Sign up"}
+            {isSubmitting
+              ? "Sending OTP…"
+              : cooldown.active
+                ? `Try again in ${cooldown.secondsLeft}s`
+                : "Sign up"}
           </button>
         </form>
 

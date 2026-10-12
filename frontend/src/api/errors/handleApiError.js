@@ -27,6 +27,11 @@ export const handleApiError = (error, context = "") => {
       return serverMessage || "Conflict. Resource already exists.";
     case 413:
       return "That file is too large. Please choose a smaller image.";
+    case 429:
+      return (
+        serverMessage ||
+        "Too many attempts. Please wait a minute and try again."
+      );
     case 500:
       if (serverMessage?.toLowerCase().includes("bad credentials")) {
         return "Invalid email or password.";

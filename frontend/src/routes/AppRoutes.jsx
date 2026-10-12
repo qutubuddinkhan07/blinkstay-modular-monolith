@@ -74,6 +74,10 @@ const AdminHostRequests = Loadable(
   lazy(() => import("../features/admin/pages/AdminHostRequests")),
 );
 
+const ForgotPassword = Loadable(
+  lazy(() => import("../features/auth/pages/ForgotPassword")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -194,6 +198,7 @@ const route = createBrowserRouter([
         children: [
           { path: "login", element: <Login /> },
           { path: "signup", element: <Signup /> },
+          { path: "forgot-password", element: <ForgotPassword /> },
         ],
       },
       { path: "blocked", element: <BlockedPage /> },
