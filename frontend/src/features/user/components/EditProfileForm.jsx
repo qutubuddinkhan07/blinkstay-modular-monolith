@@ -19,22 +19,28 @@ import { handleApiError } from "../../../api/errors/handleApiError";
 
 const EditProfileForm = ({ onDirtyChange }) => {
   const { user, updateUser } = useAuth();
+
+  // Safely normalize initial values to strings to avoid undefined/null !== "" issues
   const initial = {
-    username: user.username ?? "",
-    phone: user.phone ?? "",
-    bio: user.bio ?? "",
+    username: user?.username ?? "",
+    phone: user?.phone ?? "",
+    bio: user?.bio ?? "",
   };
+
   const [form, setForm] = useState(initial);
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
 
   const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
 
+  // Strict comparison against initial state
   const changes = {};
-  if (form.username.trim() !== initial.username)
+  if (form.username.trim() !== initial.username.trim())
     changes.username = form.username.trim();
-  if (form.phone.trim() !== initial.phone) changes.phone = form.phone.trim();
+  if (form.phone.trim() !== initial.phone.trim())
+    changes.phone = form.phone.trim();
   if (form.bio !== initial.bio) changes.bio = form.bio;
+
   const dirty = Object.keys(changes).length > 0;
 
   useEffect(() => {
@@ -86,7 +92,7 @@ const EditProfileForm = ({ onDirtyChange }) => {
         </label>
         <input
           id="email"
-          value={user.email}
+          value={user?.email ?? ""}
           readOnly
           aria-readonly="true"
           className={inputCls}

@@ -42,7 +42,6 @@ import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
 import blinkstay.notification.service.NotificationService;
-import blinkstay.notification.util.EmailMessageBuilderUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -69,8 +68,6 @@ public class UserServiceImpl implements UserService {
 	private final NotificationService notificationService;
 
 	private final ApplicationEventPublisher publisher;
-
-	private final EmailMessageBuilderUtil emailMessageBuilderUtil;
 
 	private static final int OTP_VALID_MINUTES = 6;
 	private static final int OTP_RESEND_SECONDS = 60;

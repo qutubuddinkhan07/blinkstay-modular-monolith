@@ -41,6 +41,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 	@Override
 	@Transactional(readOnly = true)
 	public void requestReset(String username, String email) {
+		log.info("password reset requset for username: {} & email: {}", username, email);
 		String key = normalize(email);
 
 		// Generate and hash the code before looking at the account, so the response
@@ -49,7 +50,7 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 		String otpHash = passwordEncoder.encode(otp);
 
 		Optional<User> match = userRepository.findByEmail(email.trim()).filter(this::isEligible)
-				.filter((u) -> u.getUsername().equalsIgnoreCase(username.trim()));
+				.filter((u) -> u.getUsername().trim().equalsIgnoreCase(username.trim()));
 
 		if (match.isEmpty()) {
 			log.info("Password reset requested for an unknown or ineligible account");

@@ -1,8 +1,16 @@
 package blinkstay.auth.dtos;
 
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+
+import blinkstay.auth.util.TrimmedStringDeserializer;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+import lombok.ToString;
 
 @Getter
 @Setter
@@ -11,15 +19,18 @@ import lombok.*;
 @Builder
 @ToString
 public class AddUserDto {
-    @NotBlank(message = "username can't be empty")
-    private String username;
+	@NotBlank(message = "username can't be empty")
+	@JsonDeserialize(using = TrimmedStringDeserializer.class)
+	private String username;
 
-    @NotBlank(message = "email can't be empty")
-    @Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$", message = "Invalid email format")
-    private String email;
+	@NotBlank(message = "email can't be empty")
+	@Pattern(regexp = "^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,6}$", message = "Invalid email format")
+	@JsonDeserialize(using = TrimmedStringDeserializer.class)
+	private String email;
 
-    @NotBlank(message = "password can't be empty")
-    private String password;
+	@NotBlank(message = "password can't be empty")
+	@JsonDeserialize(using = TrimmedStringDeserializer.class)
+	private String password;
 }
 
 /*-
