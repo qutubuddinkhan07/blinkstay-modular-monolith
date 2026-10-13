@@ -368,6 +368,10 @@ public class UserServiceImpl implements UserService {
 		if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
 			throw new IllegalArgumentException("Current password is incorrect");
 		}
+
+		if (passwordEncoder.matches(newPassword, user.getPassword())) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "Entered new password same as current password");
+		}
 		user.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.save(user);
 
