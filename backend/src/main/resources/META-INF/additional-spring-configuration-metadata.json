@@ -43,5 +43,40 @@
     "name": "auth.cloudinary-cleanup.enabled",
     "type": "java.lang.String",
     "description": "A description for 'auth.cloudinary-cleanup.enabled'"
+  },
+  {
+    "name": "app.mail.enabled",
+    "type": "java.lang.String",
+    "description": "A description for 'app.mail.enabled'"
+  },
+  {
+    "name": "app.support.email",
+    "type": "java.lang.String",
+    "description": "A description for 'app.support.email'"
+  },
+  {
+    "name": "app.cookie.max-age",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cookie.max-age'"
+  },
+  {
+    "name": "app.cookie.same-site",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cookie.same-site'"
+  },
+  {
+    "name": "app.cookie.name",
+    "type": "java.lang.String",
+    "description": "A description for 'app.cookie.name'"
+  },
+  {
+    "name": "listing.cloudinary-cleanup.folder",
+    "type": "java.lang.String",
+    "description": "A description for 'listing.cloudinary-cleanup.folder'"
+  },
+  {
+    "name": "auth.cloudinary-cleanup.folder",
+    "type": "java.lang.String",
+    "description": "A description for 'auth.cloudinary-cleanup.folder'"
   }
 ]}

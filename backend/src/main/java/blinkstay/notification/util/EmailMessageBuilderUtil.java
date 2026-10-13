@@ -4,7 +4,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 
 @Component
-@Lazy(value = true)
+@Lazy(true)
 public class EmailMessageBuilderUtil {
 	private static final String FOOTER = "\n\nThis is an automated message from BlinkStay. Please do not reply.";
 

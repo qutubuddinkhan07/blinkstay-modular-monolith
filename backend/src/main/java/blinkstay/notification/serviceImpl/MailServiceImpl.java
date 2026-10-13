@@ -3,11 +3,13 @@ package blinkstay.notification.serviceImpl;
 import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.MailException;
-import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.mail.javamail.MimeMessageHelper;
 import org.springframework.stereotype.Service;
 
 import blinkstay.notification.service.MailService;
+import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,7 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 public class MailServiceImpl implements MailService {
 	private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
-	@Value("${app.mail.enable:false}")
+	@Value("${app.mail.enabled:false}")
 	private boolean enabled;
 
 	@Value("${spring.mail.username:noreply@blinkstay.local}")
@@ -37,14 +39,16 @@ public class MailServiceImpl implements MailService {
 		}
 
 		try {
-			SimpleMailMessage mail = new SimpleMailMessage();
-			mail.setTo(receiverId);
-			mail.setFrom(senderId);
-			mail.setSubject(subject);
-			mail.setText(message);
-			sender.send(mail);
+			MimeMessage mimeMessage = sender.createMimeMessage();
+			MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
+
+			helper.setTo(receiverId);
+			helper.setFrom(senderId);
+			helper.setSubject(subject);
+			helper.setText(message, true); // true = HTML content
+			sender.send(mimeMessage);
 			return true;
-		} catch (MailException e) {
+		} catch (MessagingException | MailException e) {
 			// TODO: handle exception
 			log.error("Failed to send email to {}: {}", receiverId, e.getMessage());
 			return false;
