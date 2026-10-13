@@ -1,14 +1,18 @@
 package blinkstay.notification.event;
 
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Getter
 @Setter
-@Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class SimpleMessageEvent {
-    private String receiverId;
-    private String subject;
-    private String message;
+	String receiverId;
+	String subject;
+	String message;
 }

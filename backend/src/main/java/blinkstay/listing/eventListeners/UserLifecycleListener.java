@@ -4,6 +4,7 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 import blinkstay.common.events.UserBlockedEvent;
+import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.events.UserUnblockedEvent;
 import blinkstay.listing.serviceImpl.ListingModerationService;
 import lombok.RequiredArgsConstructor;
@@ -23,5 +24,10 @@ public class UserLifecycleListener {
 	@EventListener
 	public void on(UserUnblockedEvent e) {
 		moderation.restoreAfterUnblock(e.userId());
+	}
+
+	@EventListener
+	public void on(UserDeletedEvent e) {
+		moderation.suspendAllByManager(e.userId(), "Account deleted"); // same effect as before
 	}
 }

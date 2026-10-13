@@ -38,10 +38,10 @@ import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
-import blinkstay.common.events.UserBlockedEvent;
+import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
-import blinkstay.notification.event.SimpleMessageEvent;
+import blinkstay.notification.service.NotificationService;
 import blinkstay.notification.util.EmailMessageBuilderUtil;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -65,6 +65,8 @@ public class UserServiceImpl implements UserService {
 
 	@Qualifier("authModelMapper")
 	private final ModelMapper modelMapper;
+
+	private final NotificationService notificationService;
 
 	private final ApplicationEventPublisher publisher;
 
@@ -120,7 +122,7 @@ public class UserServiceImpl implements UserService {
 		user.setDeletedAt(LocalDateTime.now());
 		userRepository.save(user);
 
-		publisher.publishEvent(new UserBlockedEvent(userId, "Account deleted"));
+		publisher.publishEvent(new UserDeletedEvent(userId));
 		return "User deleted";
 	}
 
@@ -159,15 +161,8 @@ public class UserServiceImpl implements UserService {
 
 		otpHolder.put(email, tempData);
 
-		// TODO Step 6: send by email, then delete this log line
-		log.info("Registration OTP for {}: {}", email, otp);
-
-		// User otp email
-		String message = emailMessageBuilderUtil.otpMessageBuilder(addUserDto.getUsername(), addUserDto.getEmail(),
-				otp);
-		SimpleMessageEvent event = SimpleMessageEvent.builder().receiverId(addUserDto.getEmail())
-				.subject("ALERT: User Registration").message(message).build();
-		publisher.publishEvent(event);
+		notificationService.sendOtpUserRegistration(addUserDto.getUsername(), email, "Your Blinkstay verification code",
+				otp, OTP_VALID_MINUTES);
 
 		return "OTP sent successfully";
 	}
@@ -220,15 +215,6 @@ public class UserServiceImpl implements UserService {
 		User saved;
 		try {
 			saved = userRepository.save(user);
-
-			// TODO Step 6: send by email, then delete this log line
-			log.info("Registration successfull for {}", email);
-
-			// User registered email
-			String message = emailMessageBuilderUtil.userRegisteredMessageBuilder(user.getUsername());
-			SimpleMessageEvent event = SimpleMessageEvent.builder().receiverId(user.getEmail())
-					.subject("User Registration Successful").message(message).build();
-			publisher.publishEvent(event);
 		} catch (DataIntegrityViolationException e) {
 			// two verifications at once: the unique email constraint let only one through
 			if (user.getImagePublicId() != null) {
@@ -243,6 +229,9 @@ public class UserServiceImpl implements UserService {
 		}
 
 		otpHolder.remove(key);
+
+		notificationService.sendMailUserRegistered(saved.getUsername(), saved.getEmail(), "Welcome to Blinkstay");
+
 		return modelMapper.userToUserResponseDto(saved);
 	}
 
@@ -384,6 +373,9 @@ public class UserServiceImpl implements UserService {
 		}
 		user.setPassword(passwordEncoder.encode(newPassword));
 		userRepository.save(user);
+
+		notificationService.sendPasswordChanged(user.getUsername(), user.getEmail(),
+				"Your Blinkstay password was changed");
 	}
 
 }

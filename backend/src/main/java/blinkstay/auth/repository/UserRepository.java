@@ -22,4 +22,7 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
 	@Query("SELECT COUNT(DISTINCT u) FROM User u JOIN u.roles r WHERE r = :role AND u.isActive = true")
 	long countActiveByRole(@Param("role") UserRole role);
+
+	@Query("SELECT DISTINCT u FROM User u JOIN u.roles r WHERE r = :role AND u.isActive = true")
+	List<User> findActiveByRole(@Param("role") UserRole role);
 }

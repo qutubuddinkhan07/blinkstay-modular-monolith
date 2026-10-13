@@ -17,6 +17,7 @@ import blinkstay.auth.entities.User;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.PasswordResetService;
 import blinkstay.auth.util.PasswordResetOtpStore;
+import blinkstay.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,6 +32,8 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 	private final UserRepository userRepository;
 	private final PasswordEncoder passwordEncoder;
 	private final PasswordResetOtpStore store;
+
+	private final NotificationService notificationService;
 
 	@Qualifier("random")
 	private final SecureRandom random;
@@ -92,13 +95,13 @@ public class PasswordResetServiceImpl implements PasswordResetService {
 
 		userRepository.save(user);
 		store.remove(key);
-		log.info("Password reset completed for user {}", user.getId());
+
+		notificationService.sendPasswordChanged(user.getUsername(), user.getEmail(),
+				"Your Blinkstay password was changed");
 	}
 
-	// TODO Step 6: replace this log line with an email through the notification
-	// module
 	private void deliverOtp(String username, String email, String otp) {
-		log.info("PASSWORD RESET OTP for {} ({}): {}", username, email, otp);
+		notificationService.sendPasswordResetOtp(username, email, otp, 10);
 	}
 
 	private boolean isEligible(User u) {
