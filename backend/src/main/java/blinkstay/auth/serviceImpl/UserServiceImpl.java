@@ -162,7 +162,7 @@ public class UserServiceImpl implements UserService {
 		// TODO Step 6: send by email, then delete this log line
 		log.info("Registration OTP for {}: {}", email, otp);
 
-		// User registered email
+		// User otp email
 		String message = emailMessageBuilderUtil.otpMessageBuilder(addUserDto.getUsername(), addUserDto.getEmail(),
 				otp);
 		SimpleMessageEvent event = SimpleMessageEvent.builder().receiverId(addUserDto.getEmail())
@@ -223,6 +223,12 @@ public class UserServiceImpl implements UserService {
 
 			// TODO Step 6: send by email, then delete this log line
 			log.info("Registration successfull for {}", email);
+
+			// User registered email
+			String message = emailMessageBuilderUtil.userRegisteredMessageBuilder(user.getUsername());
+			SimpleMessageEvent event = SimpleMessageEvent.builder().receiverId(user.getEmail())
+					.subject("User Registration Successful").message(message).build();
+			publisher.publishEvent(event);
 		} catch (DataIntegrityViolationException e) {
 			// two verifications at once: the unique email constraint let only one through
 			if (user.getImagePublicId() != null) {

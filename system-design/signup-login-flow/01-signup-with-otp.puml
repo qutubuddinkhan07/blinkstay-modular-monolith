@@ -1,0 +1,50 @@
+@startuml 01-signup-with-otp
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Visitor\n(not logged in)" as V
+actor "Timer\n(system clock)" as T
+
+rectangle "Sign up with OTP" {
+  usecase "Register\n(details + photo)" as S1
+  usecase "Check 60 s\nresend cooldown" as S2
+  usecase "Generate OTP and store it\n(6 digits)" as S3
+  usecase "Verify OTP" as S4
+  usecase "Check code and\nattempt count" as S5
+  usecase "Create account" as S6
+  usecase "Request a new code\n(resend)" as S7 #LightYellow
+  usecase "OTP expired\n(after 6 min)" as S8 #LightYellow
+  usecase "Too many wrong codes\n(more than 5)" as S9 #LightYellow
+  usecase "Abandoned sign-up data\ndeleted (10 min cap)" as S10 #LightSalmon
+}
+
+V --> S1
+V --> S4
+S1 .> S2 : <<include>>
+S1 .> S3 : <<include>>
+S4 .> S5 : <<include>>
+S4 .> S6 : <<include>>
+S7 .> S1 : <<extend>>
+S8 .> S4 : <<extend>>
+S9 .> S4 : <<extend>>
+T --> S8
+T --> S10
+
+note right of S2
+  Too soon: 429
+  "wait a minute"
+end note
+
+note right of S5
+  Wrong code: 400.
+  After 5 wrong codes: 429,
+  start the sign-up again.
+end note
+
+note right of S6
+  Only after a correct code.
+  The email is checked once more
+  before the account is saved.
+end note
+@enduml

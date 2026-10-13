@@ -1,0 +1,69 @@
+@startuml 02-login-session-logout
+left to right direction
+skinparam shadowing false
+skinparam packageStyle rectangle
+
+actor "Visitor\n(not logged in)" as V
+actor "Logged-in user" as U
+actor "Timer\n(system clock)" as T
+
+rectangle "Login" {
+  usecase "Log in\n(email + password)" as L1
+  usecase "Check password and\nthat the account is active" as L2
+  usecase "Issue session cookie\n(HttpOnly JWT, 24 h)" as L3
+  usecase "Blocked account:\nshow reason (403)" as L4 #LightYellow
+}
+
+rectangle "Session" {
+  usecase "Use the app\n(every request)" as L5
+  usecase "Check cookie, logged-out list\nand account on every request" as L6
+  usecase "Session expires\n(24 h, 401 TOKEN_EXPIRED)" as L7 #LightSalmon
+  usecase "Rejected: account blocked\n(401 ACCOUNT_BLOCKED)" as L8 #LightYellow
+  usecase "Rejected: password changed\n(401 PASSWORD_CHANGED)" as L9 #LightYellow
+}
+
+rectangle "Logout and password change" {
+  usecase "Log out" as L10
+  usecase "Revoke the token and\nclear the cookie" as L11
+  usecase "Change password\n(logged in)" as L12
+  usecase "Re-issue a fresh cookie\nfor this device" as L13
+}
+
+V --> L1
+L1 .> L2 : <<include>>
+L1 .> L3 : <<include>>
+L4 .> L1 : <<extend>>
+
+U --> L5
+L5 .> L6 : <<include>>
+L7 .> L5 : <<extend>>
+L8 .> L5 : <<extend>>
+L9 .> L5 : <<extend>>
+T --> L7
+
+U --> L10
+L10 .> L11 : <<include>>
+U --> L12
+L12 .> L13 : <<include>>
+
+note right of L4
+  Shown only when the password is right.
+  Otherwise: 401 "Invalid credentials".
+end note
+
+note right of L6
+  A token that was logged out
+  is refused (401 TOKEN_REVOKED).
+end note
+
+note right of L11
+  An already expired cookie is
+  simply cleared.
+end note
+
+note right of L12
+  All other devices get 401
+  PASSWORD_CHANGED. This device
+  stays logged in.
+end note
+@enduml
