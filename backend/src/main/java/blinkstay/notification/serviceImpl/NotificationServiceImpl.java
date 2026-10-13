@@ -45,4 +45,48 @@ public class NotificationServiceImpl implements NotificationService {
 		log.info("Email queued for {}: {}", receiverId, subject);
 	}
 
+	@Override
+	public void sendAccountDeleted(String username, String receiverId) {
+		publish(receiverId, "Your Blinkstay account was deleted", messages.accountDeletedMessage(username));
+	}
+
+	@Override
+	public void sendAccountBlocked(String username, String receiverId, String reason) {
+		publish(receiverId, "Your Blinkstay account has been blocked",
+				messages.accountBlockedMessage(username, reason));
+	}
+
+	@Override
+	public void sendAccountUnblocked(String username, String receiverId) {
+		publish(receiverId, "Your Blinkstay account has been unblocked", messages.accountUnblockedMessage(username));
+	}
+
+	@Override
+	public void sendHostRequestSubmitted(String adminName, String adminEmail, String applicantName) {
+		publish(adminEmail, "New host request to review",
+				messages.hostRequestSubmittedAdminMessage(adminName, applicantName));
+	}
+
+	@Override
+	public void sendHostRequestApproved(String username, String receiverId) {
+		publish(receiverId, "Your host request was approved", messages.hostRequestApprovedMessage(username));
+	}
+
+	@Override
+	public void sendHostRequestRejected(String username, String receiverId, String reason) {
+		publish(receiverId, "Your host request was not approved",
+				messages.hostRequestRejectedMessage(receiverId, reason));
+	}
+
+	@Override
+	public void sendListingSuspended(String username, String receiverId, String title, String reason) {
+		publish(receiverId, "Your listing was suspended", messages.listingSuspendedMessage(username, title, reason));
+	}
+
+	@Override
+	public void sendListingRestored(String username, String receiverId, String title, String restoredStatus) {
+		publish(receiverId, "Your listing was restored",
+				messages.listingRestoredMessage(username, title, restoredStatus));
+	}
+
 }

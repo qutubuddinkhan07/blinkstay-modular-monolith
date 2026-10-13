@@ -8,4 +8,24 @@ public interface NotificationService {
 	void sendPasswordResetOtp(String username, String receiverId, String otp, int validMinutes);
 
 	void sendPasswordChanged(String username, String receiverId, String subject);
+
+	void sendAccountDeleted(String username, String receiverId);
+
+	/*
+	 * Event email - blocked, unblocked, host request submitted (to admins), host
+	 * request approved or rejected, and listing suspended or restored
+	 */
+	void sendAccountBlocked(String username, String receiverId, String reason);
+
+	void sendAccountUnblocked(String username, String receiverId);
+
+	void sendHostRequestSubmitted(String adminName, String adminEmail, String applicantName);
+
+	void sendHostRequestApproved(String username, String receiverId);
+
+	void sendHostRequestRejected(String username, String receiverId, String reason);
+
+	void sendListingSuspended(String username, String receiverId, String title, String reason);
+
+	void sendListingRestored(String username, String receiverId, String title, String restoredStatus);
 }
