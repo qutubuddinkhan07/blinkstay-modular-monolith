@@ -12,13 +12,19 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (nextUser) => setUser(nextUser);
 
-  // Re-reads the current user (e.g. after a host request is approved) so roles and the navbar update
+  // Prevent concurrent duplicate calls to refreshUser
+  const isRefreshingRef = useRef(false);
+
   const refreshUser = async () => {
+    if (isRefreshingRef.current) return;
+    isRefreshingRef.current = true;
     try {
-      const res = await axiosInstance.get("/api/v2/user/me");
+      const res = await axiosInstance.get("/v2/user/me");
       setUser(res.data?.data ?? res.data);
     } catch (err) {
       console.error("Could not refresh the user", err);
+    } finally {
+      isRefreshingRef.current = false;
     }
   };
 
@@ -31,9 +37,8 @@ export const AuthProvider = ({ children }) => {
   userRef.current = user;
   const loadingRef = useRef(true);
   loadingRef.current = loading;
-  const expiredNoticeRef = useRef(false); // toast waiting for loading to finish
+  const expiredNoticeRef = useRef(false);
 
-  // Lets the axios interceptor tell React that the session is gone or blocked
   useEffect(() => {
     setAuthFailureHandler(({ type, message }) => {
       const hadSession =
@@ -43,15 +48,13 @@ export const AuthProvider = ({ children }) => {
       if (type === "blocked") {
         sessionStorage.setItem("blockedMessage", message || "");
         setUser(null);
-        window.location.replace("/blocked"); // full reload: clean slate
+        window.location.replace("/blocked");
         return;
       }
 
-      // Only tell people who were actually logged in.
-      // ProtectedRoute redirects to /login once user becomes null.
       if (hadSession) {
         if (loadingRef.current) {
-          expiredNoticeRef.current = true; // show it once the app has rendered
+          expiredNoticeRef.current = true;
         } else {
           notify.info("Your session has expired. Please log in again.");
         }
@@ -62,7 +65,6 @@ export const AuthProvider = ({ children }) => {
     return () => setAuthFailureHandler(null);
   }, []);
 
-  // Shows the toast that was held back while the app was still loading
   useEffect(() => {
     if (!loading && expiredNoticeRef.current) {
       expiredNoticeRef.current = false;
@@ -70,9 +72,14 @@ export const AuthProvider = ({ children }) => {
     }
   }, [loading]);
 
-  // Session re-hydration on app start / refresh
+  // Session re-hydration on app start / refresh with concurrency lock
+  const hasInitializedRef = useRef(false);
+
   useEffect(() => {
-    let ignore = false; // must live in the effect scope so the cleanup can see it
+    if (hasInitializedRef.current) return;
+    hasInitializedRef.current = true;
+
+    let ignore = false;
 
     const initializeAuth = async () => {
       try {
@@ -81,13 +88,12 @@ export const AuthProvider = ({ children }) => {
         console.error("CSRF fetch failed", error);
       }
 
-      // Only ask the server if this browser has logged in before
       if (localStorage.getItem("hasSession") === "1") {
         try {
           const response = await axiosInstance.get("/v2/user/me");
           if (!ignore) setUser(response.data.data);
         } catch (error) {
-          localStorage.removeItem("hasSession"); // cookie expired or revoked
+          localStorage.removeItem("hasSession");
           if (error.response?.status === 401) expiredNoticeRef.current = true;
           if (!ignore) setUser(null);
         }
@@ -105,8 +111,6 @@ export const AuthProvider = ({ children }) => {
 
   const loginUser = async (email, password) => {
     let response;
-
-    // Step 1: the login request itself
     try {
       response = await authService.login(email, password);
     } catch (error) {
@@ -114,10 +118,8 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error };
     }
 
-    // The server accepted us and set the cookie: remember that right away
     localStorage.setItem("hasSession", "1");
 
-    // Step 2: load the profile, reported separately so we know which step failed
     try {
       const profileResponse = await axiosInstance.get("/v2/user/me");
       setUser(profileResponse.data?.data ?? profileResponse.data);
@@ -167,12 +169,11 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => {
+// Separated clearly to ensure Vite Fast Refresh compatibility
+export function useAuth() {
   const context = useContext(AuthContext);
-
   if (context === undefined) {
     throw new Error("useAuth must be used within an AuthProvider");
   }
-
   return context;
-};
+}
