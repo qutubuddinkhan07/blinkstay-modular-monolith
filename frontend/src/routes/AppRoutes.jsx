@@ -78,6 +78,10 @@ const ForgotPassword = Loadable(
   lazy(() => import("../features/auth/pages/ForgotPassword")),
 );
 
+const NotificationsPage = Loadable(
+  lazy(() => import("../features/notifications/pages/NotificationsPage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -129,6 +133,10 @@ const route = createBrowserRouter([
               {
                 path: "/become-host",
                 element: <BecomeHost />,
+              },
+              {
+                path: "/notifications",
+                element: <NotificationsPage />,
               },
             ],
           },

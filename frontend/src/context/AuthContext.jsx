@@ -1,4 +1,11 @@
-import { createContext, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import * as authService from "../features/auth/authService";
 import { notify } from "../utils/notify";
 import axiosInstance from "../api/axiosInstance";
@@ -15,7 +22,7 @@ export const AuthProvider = ({ children }) => {
   // Prevent concurrent duplicate calls to refreshUser
   const isRefreshingRef = useRef(false);
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
     try {
@@ -26,7 +33,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       isRefreshingRef.current = false;
     }
-  };
+  });
 
   const clearSession = () => {
     localStorage.removeItem("hasSession");

@@ -10,6 +10,7 @@ import {
 import { FaMoon } from "react-icons/fa";
 import { IoSunny } from "react-icons/io5";
 import {
+  FiBell,
   FiBriefcase,
   FiCalendar,
   FiChevronDown,
@@ -29,7 +30,11 @@ import { useTheme } from "../../context/ThemeContext";
 import { useAuth } from "../../context/AuthContext";
 import { displayRoles, roleLabel } from "../../utils/roles";
 import ZoomImage from "../common/ZoomImage";
-import { HOST_REQUESTS_CHANGED } from "../../features/admin/adminService";
+import {
+  HOST_REQUESTS_CHANGED,
+  fetchPendingHostRequestCount,
+} from "../../features/admin/adminService";
+import NotificationBell from "../../features/notifications/components/NotificationBell";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -50,6 +55,7 @@ const ACCOUNT_SECTIONS = [
     title: "My account",
     links: [
       { label: "My profile", to: "/profile", icon: FiUser },
+      { label: "Notifications", to: "/notifications", icon: FiBell },
       { label: "My bookings", to: "/bookings", icon: FiCalendar },
       { label: "Saved hotels", to: "/favorites", icon: FiHeart },
     ],
@@ -194,6 +200,7 @@ const ThemeToggle = ({ isDark, onToggle, className = "" }) => (
   </motion.button>
 );
 
+// badges: { [path]: number | "9+" }; a falsy value (0, "") shows nothing
 const AccountSections = ({ sections, onNavigate, badges = {} }) => (
   <div className="divide-y divide-border">
     {sections.map((section) => (
@@ -213,7 +220,7 @@ const AccountSections = ({ sections, onNavigate, badges = {} }) => (
               className="text-subtext transition-transform duration-200 group-hover:translate-x-0.5"
             />
             {label}
-            {badges[to] > 0 && (
+            {Boolean(badges[to]) && (
               <span className="ml-auto rounded-full bg-primary px-2 py-0.5 text-[11px] font-semibold text-on-primary">
                 {badges[to]}
               </span>
@@ -241,6 +248,9 @@ const Navbar = () => {
   const [hidden, setHidden] = useState(false); // slides away on scroll down
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
+  const [bellOpen, setBellOpen] = useState(false);
+  const [unread, setUnread] = useState(0); // reported by the bell (also used by the mobile menu)
+  const [pendingHosts, setPendingHosts] = useState(0);
 
   const headerRef = useRef(null);
   const userRef = useRef(null);
@@ -248,8 +258,6 @@ const Navbar = () => {
   const lastY = useRef(0);
 
   const roles = user?.roles ?? [];
-
-  const [pendingHosts, setPendingHosts] = useState(0);
 
   // admins: how many host requests are waiting
   useEffect(() => {
@@ -281,6 +289,13 @@ const Navbar = () => {
   const canBecomeHost =
     !roles.includes("HOTEL_MANAGER") && !roles.includes("ADMIN");
 
+  const unreadShown = isAuthenticated ? unread : 0;
+  const menuAlert = unreadShown > 0 || pendingHosts > 0; // dot on the closed hamburger
+  const menuBadges = {
+    "/admin/host-requests": pendingHosts,
+    "/notifications": unreadShown > 9 ? "9+" : unreadShown,
+  };
+
   const sections = ACCOUNT_SECTIONS.map((section) => ({
     ...section,
     links: section.links.filter(
@@ -290,9 +305,17 @@ const Navbar = () => {
 
   /* Don't hide the bar while a menu is open */
   useEffect(() => {
-    lockRef.current = mobileOpen || userOpen;
+    lockRef.current = mobileOpen || userOpen || bellOpen;
     if (lockRef.current) setHidden(false);
-  }, [mobileOpen, userOpen]);
+  }, [mobileOpen, userOpen, bellOpen]);
+
+  /* Opening the bell closes the other menus (they would overlap) */
+  useEffect(() => {
+    if (bellOpen) {
+      setMobileOpen(false);
+      setUserOpen(false);
+    }
+  }, [bellOpen]);
 
   /* Scroll behaviour: pill after 16px, hide going down, show going up */
   const { scrollY } = useScroll();
@@ -441,6 +464,17 @@ const Navbar = () => {
               </MotionLink>
             )}
 
+            {/* Desktop only. On phones the count shows on the "Notifications" row of the menu.
+                Hidden with CSS (not unmounted) so the unread count keeps updating. */}
+            {isAuthenticated && (
+              <div className="hidden md:block">
+                <NotificationBell
+                  onOpenChange={setBellOpen}
+                  onCountChange={setUnread}
+                />
+              </div>
+            )}
+
             {isAuthenticated ? (
               /* Desktop avatar menu */
               <div ref={userRef} className="relative hidden md:block">
@@ -462,17 +496,13 @@ const Navbar = () => {
                       userOpen ? "ring-primary" : "ring-transparent"
                     }`}
                   >
-                    <span
-                      className={`rounded-full ring-2 ring-offset-2 ring-offset-surface transition-all duration-200 ${userOpen ? "ring-primary" : "ring-transparent"}`}
-                    >
-                      <Avatar user={user} className="h-9 w-9" />
-                      {pendingHosts > 0 && (
-                        <span
-                          className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-surface"
-                          aria-hidden="true"
-                        />
-                      )}
-                    </span>
+                    <Avatar user={user} className="h-9 w-9" />
+                    {pendingHosts > 0 && (
+                      <span
+                        className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-surface"
+                        aria-hidden="true"
+                      />
+                    )}
                   </span>
                   <span className="hidden max-w-[110px] truncate text-sm font-semibold text-text lg:block">
                     {user?.username}
@@ -491,42 +521,46 @@ const Navbar = () => {
                     <motion.div
                       {...dropdownMotion}
                       style={{ transformOrigin: "top right" }}
-                      className="absolute right-0 top-full mt-3 w-72 rounded-2xl border border-border bg-surface p-2 shadow-xl"
+                      className="absolute right-0 top-full mt-3 flex max-h-[calc(100dvh-6rem)] w-72 flex-col overflow-hidden rounded-2xl border border-border bg-surface shadow-xl"
                     >
-                      <div className="flex items-center gap-3 px-3 py-3">
-                        <Avatar user={user} className="h-11 w-11" zoom />
-                        <div className="min-w-0">
-                          <p className="truncate font-display text-base font-medium text-text">
-                            {user?.username}
-                          </p>
-                          <p className="truncate text-xs text-subtext">
-                            {user?.email}
-                          </p>
+                      {/* scrolls when the menu is taller than the screen */}
+                      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+                        <div className="flex items-center gap-3 px-3 py-3">
+                          <Avatar user={user} className="h-11 w-11" zoom />
+                          <div className="min-w-0">
+                            <p className="truncate font-display text-base font-medium text-text">
+                              {user?.username}
+                            </p>
+                            <p className="truncate text-xs text-subtext">
+                              {user?.email}
+                            </p>
+                          </div>
+                        </div>
+
+                        {displayRoles(roles).length > 0 && (
+                          <div className="flex flex-wrap gap-1.5 px-3 pb-3">
+                            {displayRoles(roles).map((r) => (
+                              <span
+                                key={r}
+                                className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-subtext"
+                              >
+                                {roleLabel(r)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        <div className="border-t border-border">
+                          <AccountSections
+                            sections={sections}
+                            onNavigate={closeMenus}
+                            badges={menuBadges}
+                          />
                         </div>
                       </div>
 
-                      {displayRoles(roles).length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 px-3 pb-3">
-                          {displayRoles(roles).map((r) => (
-                            <span
-                              key={r}
-                              className="rounded-full border border-border px-2 py-0.5 text-[11px] font-medium capitalize text-subtext"
-                            >
-                              {roleLabel(r)}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="border-t border-border">
-                        <AccountSections
-                          sections={sections}
-                          onNavigate={closeMenus}
-                          badges={{ "/admin/host-requests": pendingHosts }}
-                        />
-                      </div>
-
-                      <div className="border-t border-border pt-2">
+                      {/* always visible */}
+                      <div className="shrink-0 border-t border-border p-2">
                         <button
                           type="button"
                           onClick={handleLogout}
@@ -558,12 +592,24 @@ const Navbar = () => {
               whileTap={{ scale: 0.9 }}
               aria-expanded={mobileOpen}
               aria-controls="mobile-menu"
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              className={`flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-text transition-colors hover:bg-bg md:hidden ${focusRing}`}
+              aria-label={
+                mobileOpen
+                  ? "Close menu"
+                  : unreadShown > 0
+                    ? `Open menu, ${unreadShown} unread notifications`
+                    : "Open menu"
+              }
+              className={`relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-text transition-colors hover:bg-bg md:hidden ${focusRing}`}
             >
               <IconSwap swapKey={mobileOpen ? "close" : "open"}>
                 {mobileOpen ? <FiX size={22} /> : <FiMenu size={22} />}
               </IconSwap>
+              {menuAlert && !mobileOpen && (
+                <span
+                  className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-surface"
+                  aria-hidden="true"
+                />
+              )}
             </motion.button>
           </div>
         </nav>
@@ -645,6 +691,7 @@ const Navbar = () => {
                   <AccountSections
                     sections={sections}
                     onNavigate={closeMenus}
+                    badges={menuBadges}
                   />
                   {canBecomeHost && (
                     <motion.div
