@@ -86,6 +86,7 @@ public class HostRequestServiceImpl implements HostRequestService {
 	}
 
 	@Override
+	@Transactional
 	public void cancelMyRequeset(UUID userId) {
 		HotelManagerRequest request = requestRepo.findByUserIdAndStatus(userId, RequestStatus.PENDING)
 				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "You have no pending request"));
@@ -105,8 +106,8 @@ public class HostRequestServiceImpl implements HostRequestService {
 		Page<HotelManagerRequest> result = status == null ? requestRepo.findAll(pageable)
 				: requestRepo.findByStatus(status, pageable);
 
-		List<UUID> userId = result.getContent().stream().map(HotelManagerRequest::getUserId).distinct().toList();
-		Map<UUID, User> users = userRepo.findAllById(userId).stream()
+		List<UUID> userIds = result.getContent().stream().map(HotelManagerRequest::getUserId).distinct().toList();
+		Map<UUID, User> users = userRepo.findAllById(userIds).stream()
 				.collect(Collectors.toMap(User::getId, Function.identity()));
 
 		List<AdminHostRequestDto> content = result.getContent().stream()
@@ -122,6 +123,7 @@ public class HostRequestServiceImpl implements HostRequestService {
 	}
 
 	@Override
+	@Transactional
 	public void approve(UUID adminId, UUID requestId) {
 		HotelManagerRequest request = loadReviewable(requestId, adminId);
 

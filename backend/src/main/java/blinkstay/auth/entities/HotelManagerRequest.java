@@ -47,6 +47,7 @@ public class HotelManagerRequest {
 	private UUID userId;
 
 	@Enumerated(EnumType.STRING)
+	@JdbcTypeCode(SqlTypes.VARCHAR)
 	@Column(nullable = false)
 	private RequestStatus status;
 
