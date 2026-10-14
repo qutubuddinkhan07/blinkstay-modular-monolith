@@ -1,4 +1,4 @@
-package blinkstay.auth.dtos;
+package blinkstay.common.dto;
 
 import java.util.List;
 

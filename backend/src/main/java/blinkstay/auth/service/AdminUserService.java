@@ -3,8 +3,8 @@ package blinkstay.auth.service;
 import java.util.UUID;
 
 import blinkstay.auth.dtos.AdminUserDto;
-import blinkstay.auth.dtos.PageResult;
 import blinkstay.auth.enums.UserRole;
+import blinkstay.common.dto.PageResult;
 
 public interface AdminUserService {
 	PageResult<AdminUserDto> searchUsers(String q, Boolean blocked, UserRole role, int page, int size);

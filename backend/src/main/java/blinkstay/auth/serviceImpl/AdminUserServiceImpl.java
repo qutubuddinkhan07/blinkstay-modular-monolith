@@ -16,13 +16,13 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.auth.dtos.AdminUserDto;
-import blinkstay.auth.dtos.PageResult;
 import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.repository.UserSpecifications;
 import blinkstay.auth.service.AdminUserService;
+import blinkstay.common.dto.PageResult;
 import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.events.UserUnblockedEvent;
 import blinkstay.common.exception.UserNotFoundException;

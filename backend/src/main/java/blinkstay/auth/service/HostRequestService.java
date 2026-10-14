@@ -5,8 +5,8 @@ import java.util.UUID;
 import blinkstay.auth.dtos.AdminHostRequestDto;
 import blinkstay.auth.dtos.HostRequestDto;
 import blinkstay.auth.dtos.HostRequestResponseDto;
-import blinkstay.auth.dtos.PageResult;
 import blinkstay.auth.enums.RequestStatus;
+import blinkstay.common.dto.PageResult;
 
 public interface HostRequestService {
 	HostRequestResponseDto apply(UUID userId, HostRequestDto dto);

@@ -17,10 +17,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import blinkstay.auth.dtos.AdminHostRequestDto;
 import blinkstay.auth.dtos.ApiResponse;
-import blinkstay.auth.dtos.PageResult;
 import blinkstay.auth.dtos.RejectRequestDto;
 import blinkstay.auth.enums.RequestStatus;
 import blinkstay.auth.service.HostRequestService;
+import blinkstay.common.dto.PageResult;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

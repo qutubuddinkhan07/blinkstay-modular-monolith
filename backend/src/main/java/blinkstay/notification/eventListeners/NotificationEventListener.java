@@ -17,6 +17,8 @@ import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.events.UserBlockedEvent;
 import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.events.UserUnblockedEvent;
+import blinkstay.notification.enums.NotificationType;
+import blinkstay.notification.service.InAppNotificationService;
 import blinkstay.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,24 +28,29 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class NotificationEventListener {
 	private final UserDirectory userDirectory;
-	private final NotificationService notificationService;
+	private final NotificationService emails;
+	private final InAppNotificationService inApp;
 
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void on(UserDeletedEvent e) {
-		contact(e.userId()).ifPresent(c -> notificationService.sendAccountDeleted(c.username(), c.email()));
+		// email only: a deleted account can never open the app
+		contact(e.userId()).ifPresent(c -> emails.sendAccountDeleted(c.username(), c.email()));
 	}
 
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void on(UserBlockedEvent e) {
-		contact(e.userId()).ifPresent(c -> notificationService.sendAccountBlocked(c.username(), c.email(), e.reason()));
+		save(e.userId(), NotificationType.ACCOUNT_BLOCKED, "Your account was blocked", "Reason: " + e.reason(), null);
+		contact(e.userId()).ifPresent(c -> emails.sendAccountBlocked(c.username(), c.email(), e.reason()));
 	}
 
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void on(UserUnblockedEvent e) {
-		contact(e.userId()).ifPresent(c -> notificationService.sendAccountUnblocked(c.username(), c.email()));
+		save(e.userId(), NotificationType.ACCOUNT_UNBLOCKED, "Your account was unblocked",
+				"You can user Blinkstay again. Listings taken offline by the block were restored", null);
+		contact(e.userId()).ifPresent(c -> emails.sendAccountUnblocked(c.username(), c.email()));
 	}
 
 	@Async
@@ -51,9 +58,13 @@ public class NotificationEventListener {
 	public void on(HotelManagerRequestSubmittedEvent e) {
 		// every active admin, except the applicant if they happen to be an admin
 		for (UserContact admin : userDirectory.findActiveAdmins()) {
-			if (!admin.id().equals(e.userId())) {
-				notificationService.sendHostRequestSubmitted(admin.username(), admin.email(), e.username());
+			if (admin.id().equals(e.userId())) {
+				continue; // an admin applying does not notify themselves
 			}
+
+			save(admin.id(), NotificationType.HOST_REQUEST_SUBMITTED, "New host request",
+					e.username() + " applied to become a host", e.requestId());
+			emails.sendHostRequestSubmitted(admin.username(), admin.email(), e.username());
 		}
 	}
 
@@ -62,9 +73,13 @@ public class NotificationEventListener {
 	public void on(HotelManagerRequestReviewedEvent e) {
 		contact(e.userId()).ifPresent(c -> {
 			if (e.approved()) {
-				notificationService.sendHostRequestApproved(c.username(), c.email());
+				save(e.userId(), NotificationType.HOST_REQUEST_APPROVED, "Host request approved",
+						"You can now create and publish listings.", e.requestId());
+				emails.sendHostRequestApproved(c.username(), c.email());
 			} else {
-				notificationService.sendHostRequestRejected(c.username(), c.email(), e.reason());
+				save(e.userId(), NotificationType.HOST_REQUEST_REJECTED, "Host request not approved",
+						"Reason: " + e.reason(), e.requestId());
+				emails.sendHostRequestRejected(c.username(), c.email(), e.reason());
 			}
 		});
 	}
@@ -72,18 +87,36 @@ public class NotificationEventListener {
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void on(ListingSuspendEvent e) {
-		contact(e.managerId()).ifPresent(
-				c -> notificationService.sendListingSuspended(c.username(), c.email(), e.title(), e.reason()));
+		save(e.managerId(), NotificationType.LISTING_SUSPENDED, "Listing suspended",
+				"\"" + e.title() + "\" was suspended. Reason: " + e.reason(), e.listingId());
+		contact(e.managerId())
+				.ifPresent(c -> emails.sendListingSuspended(c.username(), c.email(), e.title(), e.reason()));
 	}
 
 	@Async
 	@TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
 	public void on(ListingRestoredEvent e) {
-		contact(e.managerId()).ifPresent(
-				c -> notificationService.sendListingRestored(c.username(), c.email(), e.title(), e.restoredStatus()));
+		String where = switch (e.restoredStatus()) {
+		case "PUBLISHED" -> "is live again";
+		case "PAUSED" -> "is paused";
+		default -> "is back in your drafts";
+		};
+
+		save(e.managerId(), NotificationType.LISTING_RESTORED, "Listing restored",
+				"\"" + e.title() + "\" " + where + ".", e.listingId());
+		contact(e.managerId())
+				.ifPresent(c -> emails.sendListingRestored(c.username(), c.email(), e.title(), e.restoredStatus()));
 	}
 
 	private Optional<UserContact> contact(UUID userId) {
 		return userDirectory.findContact(userId);
+	}
+
+	private void save(UUID userId, NotificationType type, String title, String message, UUID referenceId) {
+		try {
+			inApp.create(userId, type, title, message, referenceId);
+		} catch (Exception ex) {
+			log.error("Could not save in-app notification {} for {}: {}", type, userId, ex.getMessage());
+		}
 	}
 }
