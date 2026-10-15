@@ -82,6 +82,10 @@ const NotificationsPage = Loadable(
   lazy(() => import("../features/notifications/pages/NotificationsPage")),
 );
 
+const Home = Loadable(lazy(() => import("../features/home/pages/Home")));
+
+const About = Loadable(lazy(() => import("../features/about/pages/About")));
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -97,7 +101,7 @@ const route = createBrowserRouter([
           //? -----------------------------------------------------------
           {
             index: true,
-            element: <ExplorePage />,
+            element: <Home />,
           },
           {
             path: "/explore",
@@ -109,7 +113,7 @@ const route = createBrowserRouter([
           },
           {
             path: "/about",
-            element: <ComingSoon title="About Blinkstay" />,
+            element: <About />,
           },
 
           //? -----------------------------------------------------------
