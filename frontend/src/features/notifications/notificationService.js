@@ -22,3 +22,12 @@ export const markRead = (id) => axiosInstance.patch(`${BASE}/${id}/read`);
 
 // data: how many were updated
 export const markAllRead = () => axiosInstance.patch(`${BASE}/read-all`);
+
+export const deleteNotification = (id) => axiosInstance.delete(`${BASE}/${id}`);
+
+// deletes every read notification (no parameter)
+export const clearReadNotifications = () => axiosInstance.delete(BASE);
+
+// deletes everything, unread included
+export const clearAllNotifications = () =>
+  axiosInstance.delete(BASE, { params: { scope: "all" } });

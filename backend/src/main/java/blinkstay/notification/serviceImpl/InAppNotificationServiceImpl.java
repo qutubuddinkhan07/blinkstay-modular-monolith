@@ -83,6 +83,20 @@ public class InAppNotificationServiceImpl implements InAppNotificationService {
 		log.info("Notification cleanup removed {} rows older than {} days", removed, RETENTION_DAYS);
 	}
 
+	@Override
+	@Transactional
+	public void delete(UUID userId, UUID notificationId) {
+		if (repo.deleteOwned(notificationId, userId) == 0) {
+			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Notification not found");
+		}
+	}
+
+	@Override
+	@Transactional
+	public int clear(UUID userId, boolean onlyRead) {
+		return onlyRead ? repo.deleteRead(userId) : repo.deleteAllFor(userId);
+	}
+
 	private NotificationDto toDto(Notification n) {
 		return NotificationDto.builder().id(n.getId()).type(n.getType()).title(n.getTitle()).message(n.getMessage())
 				.referenceId(n.getReferenceId()).read(n.getReadAt() != null).readAt(n.getReadAt())

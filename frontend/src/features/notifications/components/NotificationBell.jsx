@@ -7,6 +7,7 @@ import { notify } from "../../../utils/notify";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import {
   NOTIFICATIONS_CHANGED,
+  deleteNotification,
   fetchNotifications,
   fetchUnreadCount,
   markAllRead,
@@ -14,6 +15,7 @@ import {
 } from "../notificationService";
 import { openNotification } from "../notificationMeta";
 import NotificationItem from "./NotificationItem";
+import NotificationMenu from "./NotificationMenu";
 
 const POLL_MS = 60_000;
 const PREVIEW_SIZE = 5;
@@ -36,10 +38,12 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
   const prevCountRef = useRef(null); // null until the first count arrives
+  const openRef = useRef(false);
+  openRef.current = open;
   const refreshRef = useRef(refreshUser);
   refreshRef.current = refreshUser;
 
-  /* ---------- unread count: on mount, every 60s, on tab focus, and when told to ---------- */
+  /* ---------- unread count: on mount, every 60s and on tab focus ---------- */
   const loadCount = useCallback(async () => {
     try {
       const res = await fetchUnreadCount();
@@ -67,16 +71,15 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
     const timer = setInterval(refetchIfVisible, POLL_MS);
     window.addEventListener("focus", refetchIfVisible);
     document.addEventListener("visibilitychange", refetchIfVisible);
-    window.addEventListener(NOTIFICATIONS_CHANGED, loadCount);
 
     return () => {
       clearInterval(timer);
       window.removeEventListener("focus", refetchIfVisible);
       document.removeEventListener("visibilitychange", refetchIfVisible);
-      window.removeEventListener(NOTIFICATIONS_CHANGED, loadCount);
     };
   }, [loadCount]);
 
+  // lets the navbar show the same number elsewhere (the mobile menu)
   useEffect(() => {
     onCountChange?.(count);
   }, [count, onCountChange]);
@@ -95,6 +98,18 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
     }
   }, []);
 
+  // something changed (marked read, deleted, cleared): fix the badge, and refill the list if it's open
+  const handleChanged = useCallback(() => {
+    loadCount();
+    if (openRef.current) loadItems();
+  }, [loadCount, loadItems]);
+
+  useEffect(() => {
+    window.addEventListener(NOTIFICATIONS_CHANGED, handleChanged);
+    return () =>
+      window.removeEventListener(NOTIFICATIONS_CHANGED, handleChanged);
+  }, [handleChanged]);
+
   useEffect(() => {
     onOpenChange?.(open); // lets the navbar keep itself visible while this is open
     if (open) {
@@ -108,6 +123,8 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
     if (!open) return;
 
     const onPointerDown = (e) => {
+      // the "Clear all" confirm dialog renders outside this component; clicks in it aren't "outside"
+      if (e.target.closest?.('[role="dialog"], [role="alertdialog"]')) return;
       if (containerRef.current && !containerRef.current.contains(e.target))
         setOpen(false);
     };
@@ -147,6 +164,32 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
     }
 
     await openNotification(n, { navigate, refreshUser: refreshRef.current });
+  };
+
+  const handleDelete = async (n) => {
+    const snapshot = items;
+
+    // remove it straight away; an unread one also lowers the badge
+    setItems((prev) => prev?.filter((i) => i.id !== n.id) ?? prev);
+    if (!n.read) {
+      const next = Math.max(0, count - 1);
+      prevCountRef.current = next;
+      setCount(next);
+    }
+
+    try {
+      await deleteNotification(n.id);
+    } catch (err) {
+      // 404 means it was already gone (deleted in another tab): nothing to restore
+      if (err.response?.status !== 404) {
+        setItems(snapshot);
+        notify.error(handleApiError(err));
+        loadCount();
+        return;
+      }
+    }
+
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); // re-fetches the count and refills the list
   };
 
   const handleMarkAll = async () => {
@@ -215,14 +258,18 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
               <h2 className="font-display text-base font-semibold text-text">
                 Notifications
               </h2>
-              <button
-                type="button"
-                onClick={handleMarkAll}
-                disabled={count === 0 || markingAll}
-                className={`cursor-pointer rounded-md text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-subtext disabled:no-underline ${focusRing}`}
-              >
-                {markingAll ? "Marking…" : "Mark all as read"}
-              </button>
+
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={handleMarkAll}
+                  disabled={count === 0 || markingAll}
+                  className={`cursor-pointer rounded-md text-xs font-semibold text-primary hover:underline disabled:cursor-not-allowed disabled:text-subtext disabled:no-underline ${focusRing}`}
+                >
+                  {markingAll ? "Marking…" : "Mark all as read"}
+                </button>
+                <NotificationMenu disabled={items?.length === 0} />
+              </div>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
@@ -263,6 +310,7 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
                       key={n.id}
                       notification={n}
                       onSelect={handleSelect}
+                      onDelete={handleDelete}
                       compact
                     />
                   ))}

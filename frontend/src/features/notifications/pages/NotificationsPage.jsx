@@ -8,11 +8,13 @@ import { focusRing } from "../../listings/components/create-listing/formStyles";
 import {
   NOTIFICATIONS_CHANGED,
   fetchNotifications,
+  deleteNotification,
   markAllRead,
   markRead,
 } from "../notificationService";
 import { openNotification } from "../notificationMeta";
 import NotificationItem from "../components/NotificationItem";
+import NotificationMenu from "../components/NotificationMenu";
 
 const PAGE_SIZE = 15;
 
@@ -110,6 +112,31 @@ const NotificationsPage = () => {
     }
   };
 
+  const handleDelete = async (n) => {
+    const snapshot = data;
+
+    // remove it straight away
+    setData((d) => ({
+      ...d,
+      items: d.items.filter((i) => i.id !== n.id),
+      totalElements: d.totalElements != null ? d.totalElements - 1 : null,
+    }));
+
+    try {
+      await deleteNotification(n.id);
+    } catch (err) {
+      // 404 means it was already gone: nothing to restore
+      if (err.response?.status !== 404) {
+        setData(snapshot);
+        notify.error(handleApiError(err));
+        return;
+      }
+    }
+
+    // refreshes the bell badge, and refills this page from the server
+    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+  };
+
   const firstLoad = loading && data.items.length === 0;
 
   return (
@@ -125,14 +152,19 @@ const NotificationsPage = () => {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handleMarkAll}
-            disabled={markingAll}
-            className={`cursor-pointer rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
-          >
-            {markingAll ? "Marking…" : "Mark all as read"}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleMarkAll}
+              disabled={markingAll}
+              className={`cursor-pointer rounded-lg border border-border px-4 py-2 text-sm font-semibold text-text transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
+            >
+              {markingAll ? "Marking…" : "Mark all as read"}
+            </button>
+            <NotificationMenu
+              disabled={!loading && data.items.length === 0 && filter === "all"}
+            />
+          </div>
         </div>
 
         <div
@@ -209,6 +241,7 @@ const NotificationsPage = () => {
                   key={n.id}
                   notification={n}
                   onSelect={handleSelect}
+                  onDelete={handleDelete}
                 />
               ))}
             </ul>

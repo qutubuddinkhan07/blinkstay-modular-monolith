@@ -16,4 +16,8 @@ public interface InAppNotificationService {
 	void markRead(UUID userId, UUID notificationId);
 
 	int markAllRead(UUID userId);
+
+	void delete(UUID userId, UUID notificationId);
+
+	int clear(UUID userId, boolean onlyRead);
 }
