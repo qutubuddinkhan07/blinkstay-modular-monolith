@@ -35,6 +35,7 @@ import {
   fetchPendingHostRequestCount,
 } from "../../features/admin/adminService";
 import NotificationBell from "../../features/notifications/components/NotificationBell";
+import { useFavorites } from "../../context/FavoriteContext";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -57,7 +58,7 @@ const ACCOUNT_SECTIONS = [
       { label: "My profile", to: "/profile", icon: FiUser },
       { label: "Notifications", to: "/notifications", icon: FiBell },
       { label: "My bookings", to: "/bookings", icon: FiCalendar },
-      { label: "Saved hotels", to: "/favorites", icon: FiHeart },
+      { label: "Favorites", to: "/favorites", icon: FiHeart },
     ],
   },
   {
@@ -241,6 +242,7 @@ const Navbar = () => {
   const { pathname } = useLocation();
   const { isDark, toggleTheme } = useTheme();
   const { user, isAuthenticated, logout, isAdmin } = useAuth();
+  const { count: favoriteCount } = useFavorites();
 
   const [scrolled, setScrolled] = useState(
     () => typeof window !== "undefined" && window.scrollY > 16,
@@ -294,6 +296,7 @@ const Navbar = () => {
   const menuBadges = {
     "/admin/host-requests": pendingHosts,
     "/notifications": unreadShown > 9 ? "9+" : unreadShown,
+    "/favorites": favoriteCount,
   };
 
   const sections = ACCOUNT_SECTIONS.map((section) => ({

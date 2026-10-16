@@ -5,15 +5,18 @@ import Loading from "./components/common/Loading";
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import ThemedToaster from "./components/common/ThemedToaster";
+import { FavoritesProvider } from "./context/FavoriteContext";
 
 const App = () => {
   return (
     <ThemeProvider>
       <ThemedToaster />
       <AuthProvider>
-        <Suspense fallback={<Loading />}>
-          <RouterProvider router={route} />
-        </Suspense>
+        <FavoritesProvider>
+          <Suspense fallback={<Loading />}>
+            <RouterProvider router={route} />
+          </Suspense>
+        </FavoritesProvider>
       </AuthProvider>
     </ThemeProvider>
   );

@@ -86,6 +86,10 @@ const Home = Loadable(lazy(() => import("../features/home/pages/Home")));
 
 const About = Loadable(lazy(() => import("../features/about/pages/About")));
 
+const FavoritePage = Loadable(
+  lazy(() => import("../features/favorites/pages/FavoritePage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -132,7 +136,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/favorites",
-                element: <ComingSoon title="Saved hotels" />,
+                element: <FavoritePage />,
               },
               {
                 path: "/become-host",

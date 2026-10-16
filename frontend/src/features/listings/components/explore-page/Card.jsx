@@ -1,6 +1,7 @@
 import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ImageCarousel from "../../../../components/common/ImageCarousel";
+import FavoriteButton from "../../../favorites/components/FavoriteButton";
 
 // Safely turns a string / object / array into readable text
 const toText = (v) => {
@@ -27,6 +28,7 @@ const Card = ({ listing }) => {
     amenities,
     category,
     country,
+    coverImageUrl,
     imageUrls,
     images,
     title,
@@ -80,6 +82,12 @@ const Card = ({ listing }) => {
             {toText(category)}
           </span>
         )}
+
+        <FavoriteButton
+          listingId={id}
+          title={title}
+          className="absolute right-3 top-3 z-20"
+        />
       </div>
 
       {/* Body: fixed height, content is clamped instead of growing */}

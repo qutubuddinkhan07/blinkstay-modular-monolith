@@ -9,6 +9,7 @@ import ListingAdminControls from "../components/listing/ListingAdminControls";
 import BookingCard from "../components/booking/BookingCard";
 import ListingMap from "../components/listing/ListingMap";
 import { focusRing } from "../components/create-listing/formStyles";
+import FavoriteButton from "../../favorites/components/FavoriteButton";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -132,12 +133,25 @@ const Listing = () => {
           className="mb-6"
         />
 
-        {/* Title: location */}
-        <h1 className="mb-6 text-2xl font-semibold sm:text-3xl">
-          {listing.title}
+        {/* Title: location, with the favorite button */}
+        <div className="mb-6 flex items-start justify-between gap-4">
+          <h1 className="text-2xl font-semibold sm:text-3xl">
+            {listing.title}
+            <span className="font-normal text-subtext">
+              : {listing.location}
+            </span>
+          </h1>
 
-          <span className="font-normal text-subtext">: {listing.location}</span>
-        </h1>
+          {/* only published listings can be favorited (the API answers 404 for the others) */}
+          {listing.status === "PUBLISHED" && (
+            <FavoriteButton
+              variant="button"
+              listingId={listing.id}
+              title={listing.title}
+              className="shrink-0"
+            />
+          )}
+        </div>
 
         <ListingGallery images={listing.images} title={listing.title} />
 
