@@ -1,119 +1,54 @@
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { notify } from "../../../utils/notify";
-import { handleApiError } from "../../../api/errors/handleApiError";
 import {
-  fetchMyListings,
-  publishListing,
-  pauseListing,
-  resumeListing,
-  deleteListing,
-} from "../listingService";
-import { toListingRow } from "../listingMappers";
+  useDeleteListingMutation,
+  useGetMyListingsQuery,
+  usePauseListingMutation,
+  usePublishListingMutation,
+  useResumeListingMutation,
+} from "../../../store/api";
 import { focusRing } from "../components/create-listing/formStyles";
 import DeleteListingDialog from "../components/edit-listings/DeleteListingDialog";
 import MyListingCard from "../components/my-listings/MyListingCard";
-import ListingFilters from "../components/my-listings/ListingFilters";
-import { FiX } from "react-icons/fi";
 
-const ACTIONS = {
-  publish: {
-    call: publishListing,
-    next: "PUBLISHED",
-    success: "Listing published successfully!",
-  },
-  pause: {
-    call: pauseListing,
-    next: "PAUSED",
-    success: "Listing paused. Guests can't see it until you resume.",
-  },
-  resume: {
-    call: resumeListing,
-    next: "PUBLISHED",
-    success: "Listing is live again.",
-  },
+const SUCCESS = {
+  publish: "Listing published successfully!",
+  pause: "Listing paused. Guests can't see it until you resume.",
+  resume: "Listing is live again.",
 };
 
 const MyListings = () => {
   const navigate = useNavigate();
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
+
+  // refetchOnMountOrArgChange: a listing created or edited elsewhere shows up straight away,
+  // while the cached list is still shown instantly in the meantime
+  const {
+    data: listings = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetMyListingsQuery(undefined, { refetchOnMountOrArgChange: true });
+
+  const [publish] = usePublishListingMutation();
+  const [pause] = usePauseListingMutation();
+  const [resume] = useResumeListingMutation();
+  const [removeListing, { isLoading: deleting }] = useDeleteListingMutation();
+  const calls = { publish, pause, resume };
+
   const [busy, setBusy] = useState(null); // { id, action } while a status call runs
   const [toDelete, setToDelete] = useState(null); // listing waiting for confirmation
-  const [deleting, setDeleting] = useState(false);
-
-  // Filter States
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
-
-  useEffect(() => {
-    let ignore = false;
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetchMyListings();
-        if (!ignore) setListings((res.data.data ?? []).map(toListingRow));
-      } catch (err) {
-        if (ignore) return;
-        console.error("Failed to load my listings", err);
-        setError(handleApiError(err, "listings"));
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      ignore = true;
-    };
-  }, [reloadKey]);
-
-  // Computed/Filtered listings list
-  const filteredListings = useMemo(() => {
-    return listings.filter((l) => {
-      const matchesSearch =
-        !search ||
-        l.title.toLowerCase().includes(search.toLowerCase()) ||
-        (l.country && l.country.toLowerCase().includes(search.toLowerCase()));
-
-      const matchesStatus = !statusFilter || l.status === statusFilter;
-      const matchesCategory = !categoryFilter || l.category === categoryFilter;
-
-      return matchesSearch && matchesStatus && matchesCategory;
-    });
-  }, [listings, search, statusFilter, categoryFilter]);
 
   const handleAction = async (listing, action) => {
-    const cfg = ACTIONS[action];
     setBusy({ id: listing.id, action });
 
     try {
-      const res = await cfg.call(listing.id);
-      const returned = res.data?.data?.status; // use the server's status if it sends one
-
-      setListings((prev) =>
-        prev.map((l) =>
-          l.id === listing.id
-            ? {
-                ...l,
-                status: returned ?? cfg.next,
-                suspensionReason: null,
-                suspendedAt: null,
-              }
-            : l,
-        ),
-      );
-      notify.success(cfg.success);
+      await calls[action](listing.id).unwrap();
+      notify.success(SUCCESS[action]);
     } catch (err) {
-      console.error(`${action} error:`, err);
-      const status = err.response?.status;
-      const message = handleApiError(err);
+      const status = err?.status;
+      const message = err?.message ?? "Something went wrong.";
 
       if (status === 409 && /room/i.test(message)) {
         // "no rooms": point them to the edit page where rooms are added
@@ -127,7 +62,7 @@ const MyListings = () => {
       } else {
         notify.error(message);
         // 403 usually means it was suspended after this page loaded: refresh the list
-        if (status === 403) setReloadKey((k) => k + 1);
+        if (status === 403) refetch();
       }
     } finally {
       setBusy(null);
@@ -136,26 +71,16 @@ const MyListings = () => {
 
   const handleDelete = async () => {
     try {
-      setDeleting(true);
-      await deleteListing(toDelete.id);
-
-      setListings((prev) => prev.filter((l) => l.id !== toDelete.id));
+      await removeListing(toDelete.id).unwrap();
       notify.success("Listing deleted.");
       setToDelete(null);
     } catch (err) {
-      console.error("Delete error:", err);
-      notify.error(handleApiError(err));
-    } finally {
-      setDeleting(false);
+      notify.error(err?.message ?? "Failed to delete listing.");
     }
   };
 
-  // Add a clear filters helper
-  const handleClearFilters = () => {
-    setSearch("");
-    setStatusFilter("");
-    setCategoryFilter("");
-  };
+  // when a refetch fails but we still have a list, keep showing the list
+  const showError = isError && listings.length === 0;
 
   return (
     <div className="min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300">
@@ -176,43 +101,7 @@ const MyListings = () => {
           </Link>
         </div>
 
-        {/* Search & Filter Component integrated cleanly with responsive spacing */}
-        {!loading && !error && listings.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <ListingFilters
-              search={search}
-              setSearch={setSearch}
-              statusFilter={statusFilter}
-              setStatusFilter={setStatusFilter}
-              categoryFilter={categoryFilter}
-              setCategoryFilter={setCategoryFilter}
-            />
-          </div>
-        )}
-
-        {!loading &&
-          !error &&
-          listings.length > 0 &&
-          filteredListings.length === 0 && (
-            <div className="py-16 text-center">
-              <h3 className="font-display text-lg font-medium text-text">
-                No matching listings found
-              </h3>
-              <p className="mt-1 text-sm text-subtext">
-                Try adjusting your search terms or filter options.
-              </p>
-              <button
-                type="button"
-                onClick={handleClearFilters}
-                className={`mt-4 inline-flex items-center gap-2 cursor-pointer rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
-              >
-                <FiX size={16} />
-                Clear filters
-              </button>
-            </div>
-          )}
-
-        {loading && (
+        {isLoading && (
           <ul className="space-y-4" aria-busy="true">
             {Array.from({ length: 3 }, (_, i) => (
               <li
@@ -223,15 +112,15 @@ const MyListings = () => {
           </ul>
         )}
 
-        {!loading && error && (
+        {!isLoading && showError && (
           <div className="py-16 text-center">
             <h2 className="font-display text-xl font-semibold">
               Couldn't load your listings
             </h2>
-            <p className="mt-2 text-subtext">{error}</p>
+            <p className="mt-2 text-subtext">{error?.message}</p>
             <button
               type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
+              onClick={refetch}
               className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
             >
               Try again
@@ -239,15 +128,15 @@ const MyListings = () => {
           </div>
         )}
 
-        {!loading && !error && listings.length === 0 && (
+        {!isLoading && !showError && listings.length === 0 && (
           <p className="py-16 text-center text-subtext">
             You haven't created any listings yet.
           </p>
         )}
 
-        {!loading && !error && listings.length > 0 && (
+        {!isLoading && !showError && listings.length > 0 && (
           <ul className="space-y-4">
-            {filteredListings.map((l) => (
+            {listings.map((l) => (
               <MyListingCard
                 key={l.id}
                 listing={l}

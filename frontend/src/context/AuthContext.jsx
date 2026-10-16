@@ -10,6 +10,8 @@ import * as authService from "../features/auth/authService";
 import { notify } from "../utils/notify";
 import axiosInstance from "../api/axiosInstance";
 import { setAuthFailureHandler } from "../api/axiosInterceptors";
+import { useDispatch } from "react-redux";
+import { api } from "../store/api";
 
 const AuthContext = createContext(undefined);
 
@@ -21,6 +23,16 @@ export const AuthProvider = ({ children }) => {
 
   // Prevent concurrent duplicate calls to refreshUser
   const isRefreshingRef = useRef(false);
+
+  const dispatch = useDispatch();
+  const wasAuthRef = useRef(false);
+
+  // Whenever a logged-in session ends, drop every cached query
+  useEffect(() => {
+    const isAuth = Boolean(user);
+    if (wasAuthRef.current && !isAuth) dispatch(api.util.resetApiState());
+    wasAuthRef.current = isAuth;
+  }, [user, dispatch]);
 
   const refreshUser = useCallback(async () => {
     if (isRefreshingRef.current) return;
