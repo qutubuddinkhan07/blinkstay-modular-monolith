@@ -48,6 +48,7 @@ import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.listing.mapper.ModelMapper;
+import blinkstay.listing.repository.FavoriteRepository;
 import blinkstay.listing.repository.ListingGeometryRepository;
 import blinkstay.listing.repository.ListingImageRepository;
 import blinkstay.listing.repository.ListingRepository;
@@ -83,6 +84,10 @@ public class ListingServiceImpl implements ListingService {
 	private final RoomService roomService;
 
 	private final ApplicationEventPublisher publisher;
+
+	private final PublishedListingAssembler assembler;
+
+	private final FavoriteRepository favoriteRepo;
 
 	/**
 	 * Helper method to clean up orphan Cloudinary uploads
@@ -436,44 +441,16 @@ public class ListingServiceImpl implements ListingService {
 			}
 		}
 
-		// Build the specification using your new utility class
 		Specification<Listing> spec = ListingSpecifications.publishedSearch(ListingStatus.PUBLISHED, locQuery,
 				nameQuery, categoryEnum);
 
 		Page<Listing> listingPage = listingRepo.findAll(spec, pageable);
 
-		List<Listing> listings = listingPage.getContent();
+		// the assembler returns an empty list for an empty page, so no early return is
+		// needed
+		List<PublishedListingDto> dtoList = assembler.assemble(listingPage.getContent());
 
-		if (listings.isEmpty()) {
-			return PagedResponse.from(new PageImpl<>(List.of(), pageable, listingPage.getTotalElements()));
-		}
-
-		List<UUID> listingIds = listings.stream().map(Listing::getId).toList();
-		List<ListingImage> images = listingImageRepo.findByListingIdInOrderByDisplayOrderAsc(listingIds);
-		List<ListingGeometry> geometries = listingGeometryRepo.findByListingIdIn(listingIds);
-
-		Map<UUID, List<String>> imagesByListing = images.stream().collect(Collectors.groupingBy(
-				ListingImage::getListingId, Collectors.mapping(ListingImage::getImageUrl, Collectors.toList())));
-
-		// merge function: never crash on a duplicate geometry row
-		Map<UUID, ListingGeometry> geometryMap = geometries.stream().collect(Collectors
-				.toMap(ListingGeometry::getListingId, geometry -> geometry, (existing, replacement) -> existing));
-
-		List<PublishedListingDto> dtoList = listings.stream().map(listing -> {
-			ListingGeometry geometry = geometryMap.get(listing.getId());
-
-			return PublishedListingDto.builder().id(listing.getId()).title(listing.getTitle())
-					.location(listing.getLocation()).country(listing.getCountry()).category(listing.getCategory())
-					.amenities(listing.getAmenities())
-					.imageUrls(imagesByListing.getOrDefault(listing.getId(), List.of()))
-					.address(geometry != null ? geometry.getAddress() : null)
-					.latitude(geometry != null ? geometry.getLatitude() : null)
-					.longitude(geometry != null ? geometry.getLongitude() : null).build();
-		}).toList();
-
-		Page<PublishedListingDto> finalPage = new PageImpl<>(dtoList, pageable, listingPage.getTotalElements());
-
-		return PagedResponse.from(finalPage);
+		return PagedResponse.from(new PageImpl<>(dtoList, pageable, listingPage.getTotalElements()));
 	}
 
 	private String validateSortFilter(String sortBy) {
@@ -522,6 +499,7 @@ public class ListingServiceImpl implements ListingService {
 		roomService.deleteRoomsByListingId(listingId);
 		listingImageRepo.deleteAll(images);
 		listingGeometryRepo.findByListingId(listingId).ifPresent(listingGeometryRepo::delete);
+		favoriteRepo.deleteAllForListing(listingId);
 		listingRepo.delete(listing);
 
 		// 5. Delete the Cloudinary files only AFTER the commit succeeds
