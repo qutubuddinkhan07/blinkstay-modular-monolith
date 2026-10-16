@@ -1,10 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useParams } from "react-router-dom";
 import { FiArrowLeft } from "react-icons/fi";
-import { notify } from "../../../utils/notify";
-import { handleApiError } from "../../../api/errors/handleApiError";
-import { fetchListingsByManager } from "../../listings/listingService";
-import { toListingRow } from "../../listings/listingMappers";
+import { useGetListingsByManagerQuery } from "../../../store/api";
 import { focusRing } from "../../listings/components/create-listing/formStyles";
 import MyListingCard from "../../listings/components/my-listings/MyListingCard";
 
@@ -13,45 +9,18 @@ const ManagerListings = () => {
   const { state } = useLocation();
   const owner = state?.username; // sent by the Users table link; absent on a direct visit
 
-  const [listings, setListings] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const reqRef = useRef(0); // only the latest request may update state
+  // Suspend, unsuspend and block/unblock elsewhere refetch this through the "ManagerListings" tag
+  const {
+    data: listings = [],
+    isLoading,
+    isError,
+    error,
+    refetch,
+  } = useGetListingsByManagerQuery(managerId, {
+    refetchOnMountOrArgChange: true,
+  });
 
-  // silent = refetch after a moderation action, without the loading skeleton
-  const load = useCallback(
-    async (silent = false) => {
-      const req = ++reqRef.current;
-
-      if (!silent) {
-        setLoading(true);
-        setError(null);
-      }
-
-      try {
-        const res = await fetchListingsByManager(managerId);
-        if (req === reqRef.current) {
-          setListings((res.data.data ?? []).map(toListingRow));
-        }
-      } catch (err) {
-        if (req !== reqRef.current) return;
-        console.error("Failed to load manager listings", err);
-        if (silent) notify.error(handleApiError(err));
-        else setError(handleApiError(err, "listings"));
-      } finally {
-        if (req === reqRef.current) setLoading(false);
-      }
-    },
-    [managerId],
-  );
-
-  useEffect(() => {
-    load();
-    return () => {
-      reqRef.current++; // ignore any request still in flight
-    };
-  }, [load]);
-
+  const showError = isError && listings.length === 0;
   const suspendedCount = listings.filter(
     (l) => l.status === "SUSPENDED",
   ).length;
@@ -73,15 +42,15 @@ const ManagerListings = () => {
           </h1>
           <p className="mt-2 text-subtext">
             Review this host's properties and suspend or restore them.
-            {!loading &&
-              !error &&
+            {!isLoading &&
+              !showError &&
               ` ${listings.length} total${
                 suspendedCount ? `, ${suspendedCount} suspended` : ""
               }.`}
           </p>
         </div>
 
-        {loading && (
+        {isLoading && (
           <ul className="space-y-4" aria-busy="true">
             {Array.from({ length: 3 }, (_, i) => (
               <li
@@ -92,15 +61,15 @@ const ManagerListings = () => {
           </ul>
         )}
 
-        {!loading && error && (
+        {!isLoading && showError && (
           <div className="py-16 text-center">
             <h2 className="font-display text-xl font-semibold">
               Couldn't load these listings
             </h2>
-            <p className="mt-2 text-subtext">{error}</p>
+            <p className="mt-2 text-subtext">{error?.message}</p>
             <button
               type="button"
-              onClick={() => load()}
+              onClick={refetch}
               className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
             >
               Try again
@@ -108,21 +77,16 @@ const ManagerListings = () => {
           </div>
         )}
 
-        {!loading && !error && listings.length === 0 && (
+        {!isLoading && !showError && listings.length === 0 && (
           <p className="py-16 text-center text-subtext">
             This host hasn't created any listings yet.
           </p>
         )}
 
-        {!loading && !error && listings.length > 0 && (
+        {!isLoading && !showError && listings.length > 0 && (
           <ul className="space-y-4">
             {listings.map((l) => (
-              <MyListingCard
-                key={l.id}
-                listing={l}
-                variant="admin"
-                onChanged={() => load(true)}
-              />
+              <MyListingCard key={l.id} listing={l} variant="admin" />
             ))}
           </ul>
         )}

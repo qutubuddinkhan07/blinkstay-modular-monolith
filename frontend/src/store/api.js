@@ -27,19 +27,27 @@ const clean = (params) =>
 
 const LISTINGS = "/v3/listings";
 
+// everything that can show a listing: refetched whenever one changes
+const listingChangedTags = (id) => [
+  { type: "ListingDetail", id },
+  { type: "MyListing", id },
+  "Listing",
+  "ManagerListings",
+];
+
 export const api = createApi({
   reducerPath: "api",
   baseQuery: axiosBaseQuery(),
   // "Listing": the public lists (Explore). "MyListing": the host's own list.
-  tagTypes: ["Listing", "MyListing"],
+  tagTypes: ["Listing", "MyListing", "ListingDetail", "ManagerListings"],
   endpoints: (builder) => {
     // POST /{id}/publish | pause | resume: the row updates at once, then the list is refetched to confirm
     const statusMutation = (action, nextStatus) =>
       builder.mutation({
         query: (id) => ({ url: `${LISTINGS}/${id}/${action}`, method: "post" }),
         invalidatesTags: (result, error, id) => [
-          { type: "MyListing", id },
-          "Listing",
+          ...listingChangedTags(id),
+          { type: "MyListing", id: "LIST" },
         ],
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           try {
@@ -78,6 +86,43 @@ export const api = createApi({
         keepUnusedDataFor: 30,
       }),
 
+      // One listing. A non-published one only comes back for its owner and admins (404 for others)
+      getListingById: builder.query({
+        query: (id) => ({ url: `${LISTINGS}/${id}` }),
+        transformResponse: (res) => res?.data,
+        providesTags: (result, error, id) => [{ type: "ListingDetail", id }],
+        keepUnusedDataFor: 30,
+      }),
+
+      // GET /manager/{managerId} (ADMIN)
+      getListingsByManager: builder.query({
+        query: (managerId) => ({ url: `${LISTINGS}/manager/${managerId}` }),
+        transformResponse: (res) => (res?.data ?? []).map(toListingRow),
+        providesTags: (result, error, managerId) => [
+          { type: "ManagerListings", id: managerId },
+        ],
+        keepUnusedDataFor: 30,
+      }),
+
+      // POST /api/v3/admin/listings/{id}/suspend  (reason required, max 500)
+      suspendListing: builder.mutation({
+        query: ({ id, reason }) => ({
+          url: `/api/v3/admin/listings/${id}/suspend`,
+          method: "post",
+          data: { reason },
+        }),
+        invalidatesTags: (result, error, { id }) => listingChangedTags(id),
+      }),
+
+      // POST /api/v3/admin/listings/{id}/unsuspend  (409 when the owner is blocked)
+      unsuspendListing: builder.mutation({
+        query: (id) => ({
+          url: `/api/v3/admin/listings/${id}/unsuspend`,
+          method: "post",
+        }),
+        invalidatesTags: (result, error, id) => listingChangedTags(id),
+      }),
+
       publishListing: statusMutation("publish", "PUBLISHED"),
       pauseListing: statusMutation("pause", "PAUSED"),
       resumeListing: statusMutation("resume", "PUBLISHED"),
@@ -106,8 +151,12 @@ export const api = createApi({
 export const {
   useGetListingsQuery,
   useGetMyListingsQuery,
+  useGetListingByIdQuery,
+  useGetListingsByManagerQuery,
   usePublishListingMutation,
   usePauseListingMutation,
   useResumeListingMutation,
   useDeleteListingMutation,
+  useSuspendListingMutation,
+  useUnsuspendListingMutation,
 } = api;
