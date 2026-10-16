@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { selectUnreadCount } from "../../features/notifications/notificationSlice";
 import {
   AnimatePresence,
   MotionConfig,
@@ -251,7 +253,7 @@ const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userOpen, setUserOpen] = useState(false);
   const [bellOpen, setBellOpen] = useState(false);
-  const [unread, setUnread] = useState(0); // reported by the bell (also used by the mobile menu)
+  const unread = useSelector(selectUnreadCount); // the bell keeps this fresh
   const [pendingHosts, setPendingHosts] = useState(0);
 
   const headerRef = useRef(null);
@@ -471,10 +473,7 @@ const Navbar = () => {
                 Hidden with CSS (not unmounted) so the unread count keeps updating. */}
             {isAuthenticated && (
               <div className="hidden md:block">
-                <NotificationBell
-                  onOpenChange={setBellOpen}
-                  onCountChange={setUnread}
-                />
+                <NotificationBell onOpenChange={setBellOpen} />
               </div>
             )}
 

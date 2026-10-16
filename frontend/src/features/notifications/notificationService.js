@@ -2,9 +2,6 @@ import axiosInstance from "../../api/axiosInstance";
 
 const BASE = "/v2/notifications";
 
-// Fired whenever something is marked read, so the bell and the full page stay in step
-export const NOTIFICATIONS_CHANGED = "notifications:changed";
-
 // data: { content, page, size, totalElements, totalPages }, newest first
 export const fetchNotifications = ({
   page = 0,

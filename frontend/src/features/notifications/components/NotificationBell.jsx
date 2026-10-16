@@ -1,65 +1,57 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { AnimatePresence, motion } from "motion/react";
 import { FiBell } from "react-icons/fi";
 import { useAuth } from "../../../context/AuthContext";
 import { notify } from "../../../utils/notify";
-import { handleApiError } from "../../../api/errors/handleApiError";
-import {
-  NOTIFICATIONS_CHANGED,
-  deleteNotification,
-  fetchNotifications,
-  fetchUnreadCount,
-  markAllRead,
-  markRead,
-} from "../notificationService";
 import { openNotification } from "../notificationMeta";
+import {
+  deleteNotification,
+  fetchPreview,
+  fetchUnreadCount,
+  markAllNotificationsRead,
+  markNotificationRead,
+  notificationsReset,
+  selectPreview,
+  selectUnreadCount,
+  selectVersion,
+} from "../notificationSlice";
 import NotificationItem from "./NotificationItem";
 import NotificationMenu from "./NotificationMenu";
 
 const POLL_MS = 60_000;
-const PREVIEW_SIZE = 5;
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
-const NotificationBell = ({ onOpenChange, onCountChange }) => {
+const NotificationBell = ({ onOpenChange }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const dispatch = useDispatch();
   const { refreshUser } = useAuth();
 
-  const [count, setCount] = useState(0);
+  const count = useSelector(selectUnreadCount);
+  const version = useSelector(selectVersion);
+  const { items, status, error } = useSelector(selectPreview);
+
   const [open, setOpen] = useState(false);
-  const [items, setItems] = useState(null); // null until the dropdown first loads
-  const [loadingItems, setLoadingItems] = useState(false);
-  const [error, setError] = useState(null);
   const [markingAll, setMarkingAll] = useState(false);
 
   const containerRef = useRef(null);
   const buttonRef = useRef(null);
-  const prevCountRef = useRef(null); // null until the first count arrives
-  const openRef = useRef(false);
-  openRef.current = open;
   const refreshRef = useRef(refreshUser);
   refreshRef.current = refreshUser;
 
   /* ---------- unread count: on mount, every 60s and on tab focus ---------- */
   const loadCount = useCallback(async () => {
-    try {
-      const res = await fetchUnreadCount();
-      const next = Number(res.data?.data) || 0;
+    const result = await dispatch(fetchUnreadCount());
 
-      // Something new arrived: roles may have changed (e.g. a host request was approved)
-      if (prevCountRef.current !== null && next > prevCountRef.current) {
-        refreshRef.current?.();
-      }
-
-      prevCountRef.current = next;
-      setCount(next);
-    } catch {
-      // the badge is optional, so fail quietly
+    // Something new arrived: roles may have changed (e.g. a host request was approved)
+    if (fetchUnreadCount.fulfilled.match(result) && result.payload.increased) {
+      refreshRef.current?.();
     }
-  }, []);
+  }, [dispatch]);
 
   useEffect(() => {
     loadCount();
@@ -79,44 +71,23 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
     };
   }, [loadCount]);
 
-  // lets the navbar show the same number elsewhere (the mobile menu)
-  useEffect(() => {
-    onCountChange?.(count);
-  }, [count, onCountChange]);
+  // The bell only exists while logged in, so unmounting means logout: empty the store
+  useEffect(
+    () => () => {
+      dispatch(notificationsReset());
+    },
+    [dispatch],
+  );
 
-  /* ---------- the latest few, loaded each time the dropdown opens ---------- */
-  const loadItems = useCallback(async () => {
-    setLoadingItems(true);
-    setError(null);
-    try {
-      const res = await fetchNotifications({ page: 0, size: PREVIEW_SIZE });
-      setItems(res.data.data?.content ?? []);
-    } catch (err) {
-      setError(handleApiError(err));
-    } finally {
-      setLoadingItems(false);
-    }
-  }, []);
-
-  // something changed (marked read, deleted, cleared): fix the badge, and refill the list if it's open
-  const handleChanged = useCallback(() => {
-    loadCount();
-    if (openRef.current) loadItems();
-  }, [loadCount, loadItems]);
-
-  useEffect(() => {
-    window.addEventListener(NOTIFICATIONS_CHANGED, handleChanged);
-    return () =>
-      window.removeEventListener(NOTIFICATIONS_CHANGED, handleChanged);
-  }, [handleChanged]);
-
+  /* ---------- the dropdown loads on open, and again after any change ---------- */
   useEffect(() => {
     onOpenChange?.(open); // lets the navbar keep itself visible while this is open
-    if (open) {
-      loadItems();
-      loadCount();
-    }
-  }, [open, loadItems, loadCount, onOpenChange]);
+    if (open) dispatch(fetchPreview());
+  }, [open, version, dispatch, onOpenChange]);
+
+  useEffect(() => {
+    if (open) loadCount();
+  }, [open, loadCount]);
 
   /* ---------- close on outside click, Escape and route change ---------- */
   useEffect(() => {
@@ -148,60 +119,24 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
   /* ---------- actions ---------- */
   const handleSelect = async (n) => {
     setOpen(false);
-
-    if (!n.read) {
-      const next = Math.max(0, count - 1);
-      prevCountRef.current = next;
-      setCount(next);
-      setItems(
-        (prev) =>
-          prev?.map((i) => (i.id === n.id ? { ...i, read: true } : i)) ?? prev,
-      );
-
-      markRead(n.id)
-        .then(() => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)))
-        .catch(() => loadCount()); // put the real number back if it failed
-    }
-
+    if (!n.read) dispatch(markNotificationRead(n)); // optimistic; rolls itself back on failure
     await openNotification(n, { navigate, refreshUser: refreshRef.current });
   };
 
-  const handleDelete = async (n) => {
-    const snapshot = items;
-
-    // remove it straight away; an unread one also lowers the badge
-    setItems((prev) => prev?.filter((i) => i.id !== n.id) ?? prev);
-    if (!n.read) {
-      const next = Math.max(0, count - 1);
-      prevCountRef.current = next;
-      setCount(next);
-    }
-
-    try {
-      await deleteNotification(n.id);
-    } catch (err) {
-      // 404 means it was already gone (deleted in another tab): nothing to restore
-      if (err.response?.status !== 404) {
-        setItems(snapshot);
-        notify.error(handleApiError(err));
-        loadCount();
-        return;
-      }
-    }
-
-    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); // re-fetches the count and refills the list
+  const handleDelete = (n) => {
+    dispatch(deleteNotification(n))
+      .unwrap()
+      .catch((err) =>
+        notify.error(err?.message || "Couldn't delete the notification."),
+      );
   };
 
   const handleMarkAll = async () => {
     setMarkingAll(true);
     try {
-      await markAllRead();
-      setItems((prev) => prev?.map((i) => ({ ...i, read: true })) ?? prev);
-      prevCountRef.current = 0;
-      setCount(0);
-      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
+      await dispatch(markAllNotificationsRead()).unwrap();
     } catch (err) {
-      notify.error(handleApiError(err));
+      notify.error(err?.message || "Something went wrong.");
     } finally {
       setMarkingAll(false);
     }
@@ -273,7 +208,7 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto">
-              {loadingItems && items === null && (
+              {status === "loading" && items === null && (
                 <ul aria-busy="true" className="divide-y divide-border">
                   {Array.from({ length: 3 }, (_, i) => (
                     <li
@@ -284,12 +219,12 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
                 </ul>
               )}
 
-              {error && (
+              {status === "failed" && (
                 <div className="px-4 py-8 text-center text-sm">
                   <p className="text-subtext">{error}</p>
                   <button
                     type="button"
-                    onClick={loadItems}
+                    onClick={() => dispatch(fetchPreview())}
                     className={`mt-3 cursor-pointer rounded-md font-semibold text-primary hover:underline ${focusRing}`}
                   >
                     Try again
@@ -297,13 +232,13 @@ const NotificationBell = ({ onOpenChange, onCountChange }) => {
                 </div>
               )}
 
-              {!error && items?.length === 0 && (
+              {status !== "failed" && items?.length === 0 && (
                 <p className="px-4 py-10 text-center text-sm text-subtext">
                   You're all caught up.
                 </p>
               )}
 
-              {!error && items?.length > 0 && (
+              {status !== "failed" && items?.length > 0 && (
                 <ul className="divide-y divide-border">
                   {items.map((n) => (
                     <NotificationItem

@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { FiMoreHorizontal } from "react-icons/fi";
+import { useDispatch } from "react-redux";
 import { notify } from "../../../utils/notify";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import ConfirmDialog from "../../../components/common/ConfirmDialogBox";
 import {
-  NOTIFICATIONS_CHANGED,
   clearAllNotifications,
   clearReadNotifications,
 } from "../notificationService";
@@ -16,6 +16,7 @@ const itemCls =
   "block w-full cursor-pointer px-4 py-2.5 text-left text-sm font-medium transition-colors hover:bg-bg focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary disabled:cursor-not-allowed disabled:opacity-50";
 
 const NotificationMenu = ({ disabled = false }) => {
+  const dispatch = useDispatch();
   const [open, setOpen] = useState(false);
   const [confirmAll, setConfirmAll] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,14 +38,13 @@ const NotificationMenu = ({ disabled = false }) => {
     };
   }, [open]);
 
-  const run = async (call, successMessage) => {
+  const run = async (action, successMessage) => {
     setBusy(true);
     try {
-      await call();
+      await dispatch(action).unwrap(); // the slice refreshes the bell and the list by itself
       notify.success(successMessage);
-      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); // bell and list both refresh
     } catch (err) {
-      notify.error(handleApiError(err));
+      notify.error(err?.message || "Something went wrong.");
     } finally {
       setBusy(false);
     }
@@ -52,11 +52,11 @@ const NotificationMenu = ({ disabled = false }) => {
 
   const handleClearRead = async () => {
     setOpen(false);
-    await run(clearReadNotifications, "Read notifications cleared.");
+    await run(clearReadNotifications(), "Read notifications cleared.");
   };
 
   const handleClearAll = async () => {
-    await run(clearAllNotifications, "All notifications cleared.");
+    await run(clearAllNotifications(), "All notifications cleared.");
     setConfirmAll(false);
   };
 

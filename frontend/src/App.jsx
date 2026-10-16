@@ -6,19 +6,23 @@ import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider } from "./context/AuthContext";
 import ThemedToaster from "./components/common/ThemedToaster";
 import { FavoritesProvider } from "./context/FavoriteContext";
+import { Provider } from "react-redux";
+import { store } from "./store/store";
 
 const App = () => {
   return (
-    <ThemeProvider>
-      <ThemedToaster />
-      <AuthProvider>
-        <FavoritesProvider>
-          <Suspense fallback={<Loading />}>
-            <RouterProvider router={route} />
-          </Suspense>
-        </FavoritesProvider>
-      </AuthProvider>
-    </ThemeProvider>
+    <Provider store={store}>
+      <ThemeProvider>
+        <ThemedToaster />
+        <AuthProvider>
+          <FavoritesProvider>
+            <Suspense fallback={<Loading />}>
+              <RouterProvider router={route} />
+            </Suspense>
+          </FavoritesProvider>
+        </AuthProvider>
+      </ThemeProvider>
+    </Provider>
   );
 };
 

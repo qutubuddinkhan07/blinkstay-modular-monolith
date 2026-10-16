@@ -1,22 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useDispatch, useSelector } from "react-redux";
 import { useAuth } from "../../../context/AuthContext";
 import { notify } from "../../../utils/notify";
-import { handleApiError } from "../../../api/errors/handleApiError";
 import Pagination from "../../listings/components/explore-page/pagination/Pagination";
 import { focusRing } from "../../listings/components/create-listing/formStyles";
-import {
-  NOTIFICATIONS_CHANGED,
-  fetchNotifications,
-  deleteNotification,
-  markAllRead,
-  markRead,
-} from "../notificationService";
 import { openNotification } from "../notificationMeta";
+import {
+  deleteNotification,
+  fetchList,
+  markAllNotificationsRead,
+  markNotificationRead,
+  selectList,
+  selectVersion,
+} from "../notificationSlice";
 import NotificationItem from "../components/NotificationItem";
 import NotificationMenu from "../components/NotificationMenu";
-
-const PAGE_SIZE = 15;
 
 const TABS = [
   { value: "all", label: "All" },
@@ -25,119 +24,69 @@ const TABS = [
 
 const NotificationsPage = () => {
   const navigate = useNavigate();
+  const dispatch = useDispatch();
   const { refreshUser } = useAuth();
 
+  const version = useSelector(selectVersion);
+  const { items, status, error, totalPages } = useSelector(selectList);
+
+  // UI-only state stays local
   const [filter, setFilter] = useState("all");
   const [page, setPage] = useState(0);
-  const [data, setData] = useState({
-    items: [],
-    totalPages: 0,
-    totalElements: null,
-  });
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
   const [markingAll, setMarkingAll] = useState(false);
 
+  const versionRef = useRef(version);
+
+  // Load on mount, on page or filter change, and again whenever something changed elsewhere
   useEffect(() => {
-    let ignore = false;
+    const silent = versionRef.current !== version; // a change: refill without the skeleton
+    versionRef.current = version;
+    dispatch(fetchList({ page, filter, silent }));
+  }, [dispatch, page, filter, version]);
 
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const res = await fetchNotifications({
-          page,
-          size: PAGE_SIZE,
-          unreadOnly: filter === "unread",
-        });
-        if (ignore) return;
-
-        const d = res.data.data ?? {};
-        const next = {
-          items: d.content ?? [],
-          totalPages: d.totalPages ?? 0,
-          totalElements: d.totalElements ?? null,
-        };
-
-        // the last page emptied out: step back one page
-        if (next.items.length === 0 && page > 0 && next.totalPages > 0) {
-          setPage(next.totalPages - 1);
-          return;
-        }
-        setData(next);
-      } catch (err) {
-        if (!ignore) setError(handleApiError(err));
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    load();
-    return () => {
-      ignore = true;
-    };
-  }, [filter, page, reloadKey]);
-
-  // the bell marked something read (or the list changed): refresh quietly
   useEffect(() => {
-    const reload = () => setReloadKey((k) => k + 1);
-    window.addEventListener(NOTIFICATIONS_CHANGED, reload);
-    return () => window.removeEventListener(NOTIFICATIONS_CHANGED, reload);
-  }, []);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [page, filter]);
+
+  // the last page emptied out (after a delete or a clear): step back one page
+  useEffect(() => {
+    if (
+      status === "succeeded" &&
+      items.length === 0 &&
+      page > 0 &&
+      totalPages > 0
+    ) {
+      setPage(totalPages - 1);
+    }
+  }, [status, items.length, page, totalPages]);
 
   const handleSelect = async (n) => {
-    if (!n.read) {
-      setData((d) => ({
-        ...d,
-        items: d.items.map((i) => (i.id === n.id ? { ...i, read: true } : i)),
-      }));
-      markRead(n.id)
-        .then(() => window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)))
-        .catch(() => {});
-    }
+    if (!n.read) dispatch(markNotificationRead(n));
     await openNotification(n, { navigate, refreshUser });
+  };
+
+  const handleDelete = (n) => {
+    dispatch(deleteNotification(n))
+      .unwrap()
+      .catch((err) =>
+        notify.error(err?.message || "Couldn't delete the notification."),
+      );
   };
 
   const handleMarkAll = async () => {
     setMarkingAll(true);
     try {
-      await markAllRead();
-      window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED)); // bell and list both refresh
+      await dispatch(markAllNotificationsRead()).unwrap();
     } catch (err) {
-      notify.error(handleApiError(err));
+      notify.error(err?.message || "Something went wrong.");
     } finally {
       setMarkingAll(false);
     }
   };
 
-  const handleDelete = async (n) => {
-    const snapshot = data;
-
-    // remove it straight away
-    setData((d) => ({
-      ...d,
-      items: d.items.filter((i) => i.id !== n.id),
-      totalElements: d.totalElements != null ? d.totalElements - 1 : null,
-    }));
-
-    try {
-      await deleteNotification(n.id);
-    } catch (err) {
-      // 404 means it was already gone: nothing to restore
-      if (err.response?.status !== 404) {
-        setData(snapshot);
-        notify.error(handleApiError(err));
-        return;
-      }
-    }
-
-    // refreshes the bell badge, and refills this page from the server
-    window.dispatchEvent(new Event(NOTIFICATIONS_CHANGED));
-  };
-
-  const firstLoad = loading && data.items.length === 0;
+  const loading = status === "loading";
+  const firstLoad = loading && items.length === 0;
+  const empty = status === "succeeded" && items.length === 0 && page === 0;
 
   return (
     <div className="min-h-[calc(100vh-72px)] bg-bg px-4 py-8 text-text transition-colors duration-300">
@@ -161,9 +110,7 @@ const NotificationsPage = () => {
             >
               {markingAll ? "Marking…" : "Mark all as read"}
             </button>
-            <NotificationMenu
-              disabled={!loading && data.items.length === 0 && filter === "all"}
-            />
+            <NotificationMenu disabled={empty && filter === "all"} />
           </div>
         </div>
 
@@ -206,7 +153,7 @@ const NotificationsPage = () => {
           </ul>
         )}
 
-        {!loading && error && (
+        {status === "failed" && (
           <div className="py-16 text-center">
             <h2 className="font-display text-xl font-semibold">
               Couldn't load notifications
@@ -214,7 +161,7 @@ const NotificationsPage = () => {
             <p className="mt-2 text-subtext">{error}</p>
             <button
               type="button"
-              onClick={() => setReloadKey((k) => k + 1)}
+              onClick={() => dispatch(fetchList({ page, filter }))}
               className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
             >
               Try again
@@ -222,7 +169,7 @@ const NotificationsPage = () => {
           </div>
         )}
 
-        {!loading && !error && data.items.length === 0 && (
+        {empty && (
           <p className="py-16 text-center text-subtext">
             {filter === "unread"
               ? "No unread notifications."
@@ -230,13 +177,13 @@ const NotificationsPage = () => {
           </p>
         )}
 
-        {!error && data.items.length > 0 && (
+        {status !== "failed" && items.length > 0 && (
           <div
             className={loading ? "opacity-60 transition-opacity" : ""}
             aria-busy={loading}
           >
             <ul className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface">
-              {data.items.map((n) => (
+              {items.map((n) => (
                 <NotificationItem
                   key={n.id}
                   notification={n}
@@ -247,7 +194,7 @@ const NotificationsPage = () => {
             </ul>
             <Pagination
               page={page}
-              totalPages={data.totalPages}
+              totalPages={totalPages || 1}
               onChange={setPage}
             />
           </div>
