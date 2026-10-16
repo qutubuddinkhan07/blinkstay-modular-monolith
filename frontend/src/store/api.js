@@ -130,7 +130,10 @@ export const api = createApi({
       // DELETE /{id}
       deleteListing: builder.mutation({
         query: (id) => ({ url: `${LISTINGS}/${id}`, method: "delete" }),
-        invalidatesTags: [{ type: "MyListing", id: "LIST" }, "Listing"],
+        invalidatesTags: (result, error, id) => [
+          ...listingChangedTags(id),
+          { type: "MyListing", id: "LIST" },
+        ],
         async onQueryStarted(id, { dispatch, queryFulfilled }) {
           try {
             await queryFulfilled;
