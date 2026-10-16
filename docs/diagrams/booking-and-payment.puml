@@ -1,0 +1,21 @@
+@startuml
+skinparam shadowing false
+
+[*] --> PENDING_PAYMENT : guest books\n(rooms held for 15 min)
+PENDING_PAYMENT --> CONFIRMED : payment succeeds
+PENDING_PAYMENT --> EXPIRED : hold runs out (timer)
+PENDING_PAYMENT --> CANCELLED : guest abandons
+CONFIRMED --> CANCELLED : guest, host or admin cancels\n(refund by policy)
+CONFIRMED --> COMPLETED : check-out date has passed (timer)
+EXPIRED --> [*]
+CANCELLED --> [*]
+COMPLETED --> [*]
+
+note right of PENDING_PAYMENT
+  Counts against availability
+  only until its hold expires
+end note
+note right of CONFIRMED
+  Counts against availability
+end note
+@enduml

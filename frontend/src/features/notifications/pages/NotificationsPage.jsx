@@ -13,7 +13,7 @@ import {
   markNotificationRead,
   selectList,
   selectVersion,
-} from "../notificationSlice";
+} from "../notificationsSlice";
 import NotificationItem from "../components/NotificationItem";
 import NotificationMenu from "../components/NotificationMenu";
 

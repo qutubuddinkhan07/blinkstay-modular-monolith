@@ -145,7 +145,7 @@ const BookingCard = ({ rooms = [], onReserve }) => {
               total,
             })
           }
-          className="mt-4 w-full rounded-xl bg-primary py-3 font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+          className="mt-4 w-full rounded-xl bg-primary py-3 font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
         >
           {nights ? "Reserve" : "Select dates"}
         </button>
@@ -171,7 +171,7 @@ const BookingCard = ({ rooms = [], onReserve }) => {
 
         {/* Date picker panel */}
         <div
-          className={`absolute right-0 top-[5.5rem] z-30 w-full origin-top-right rounded-2xl border border-border bg-surface p-6 shadow-2xl transition duration-200 lg:w-[44rem] ${
+          className={`absolute right-0 top-[5.5rem] z-30 w-full origin-top-right rounded-2xl border border-border bg-surface p-4 shadow-2xl transition duration-200 sm:p-6 lg:w-[44rem] ${
             open
               ? "scale-100 opacity-100"
               : "pointer-events-none scale-95 opacity-0"
