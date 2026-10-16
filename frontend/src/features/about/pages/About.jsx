@@ -1,4 +1,32 @@
 import { Link } from "react-router-dom"; // use "react-router" if you're on v7 without react-router-dom
+import { FiCpu } from "react-icons/fi";
+import {
+  SiReact,
+  SiRedux,
+  SiTailwindcss,
+  SiSpringboot,
+  SiMysql,
+  SiMapbox,
+  SiCloudinary,
+  SiDocker,
+} from "react-icons/si";
+
+// Add a new item here and it shows up automatically.
+// Caffeine has no brand icon, so it uses a generic one.
+const stack = [
+  // Frontend
+  { name: "React", role: "Frontend UI", icon: SiReact },
+  { name: "Redux Toolkit", role: "State and data fetching", icon: SiRedux },
+  { name: "Tailwind CSS", role: "Styling", icon: SiTailwindcss },
+  // Backend
+  { name: "Spring Boot", role: "Backend API", icon: SiSpringboot },
+  { name: "MySQL", role: "Database", icon: SiMysql },
+  { name: "Caffeine", role: "Caching", icon: FiCpu },
+  // Services and tooling
+  { name: "Mapbox", role: "Maps", icon: SiMapbox },
+  { name: "Cloudinary", role: "Image storage", icon: SiCloudinary },
+  { name: "Docker", role: "Containers", icon: SiDocker },
+];
 
 const ABOUT_IMAGE =
   "https://res.cloudinary.com/dps1vvchb/image/upload/v1791226999/image_1_ttkxki.avif"; // optional: a team / hotel photo. Empty = gradient placeholder.
@@ -13,15 +41,6 @@ const hosts = [
   "Apply to become a host with your business details",
   "Add rooms and publish or pause your listing whenever you want",
   "Get clear status and reasons if a listing is ever suspended",
-];
-
-const stack = [
-  { name: "React", role: "Frontend" },
-  { name: "Spring Boot", role: "Backend API" },
-  { name: "MySQL", role: "Database" },
-  { name: "Mapbox", role: "Maps" },
-  { name: "Cloudinary", role: "Image storage" },
-  { name: "Caffeine", role: "Caching" },
 ];
 
 const primaryBtn =
@@ -145,14 +164,19 @@ export default function About() {
             BlinkStay is a full-stack project, designed so each part can grow on
             its own.
           </p>
-          <dl className="mt-10 grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-6">
-            {stack.map((s) => (
+          <dl className="mt-10 grid grid-cols-2 gap-5 sm:grid-cols-3">
+            {stack.map(({ name, role, icon: Icon }) => (
               <div
-                key={s.name}
-                className="rounded-2xl border border-border bg-surface p-5"
+                key={name}
+                className="flex items-center gap-4 rounded-2xl border border-border bg-surface p-5"
               >
-                <dt className="font-semibold">{s.name}</dt>
-                <dd className="mt-1 text-sm text-subtext">{s.role}</dd>
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-muted text-primary">
+                  <Icon size={22} aria-hidden="true" />
+                </span>
+                <div className="min-w-0">
+                  <dt className="truncate font-semibold">{name}</dt>
+                  <dd className="truncate text-sm text-subtext">{role}</dd>
+                </div>
               </div>
             ))}
           </dl>

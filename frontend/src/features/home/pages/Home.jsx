@@ -1,5 +1,8 @@
+import { useState } from "react";
+import { cld } from "../../../utils/cloudinary"; // adjust the path to where the page lives
 import { Link } from "react-router-dom"; // use "react-router" if you're on v7 without react-router-dom
 import { motion } from "motion/react";
+import { useAuth } from "../../../context/AuthContext";
 
 /* ------------------------------------------------------------------
    Put your images in /src/assets (or use Cloudinary URLs) and set them here.
@@ -16,21 +19,27 @@ const IMAGES = {
   host: "https://res.cloudinary.com/dps1vvchb/image/upload/v1791228398/image_4_dlftst.avif", // host section photo
 };
 
-function Photo({ src, alt, className = "" }) {
-  if (src) {
+function Photo({ src, alt, className = "", eager = false, width }) {
+  const [failed, setFailed] = useState(false);
+
+  if (src && !failed) {
     return (
       <img
-        src={src}
+        src={cld(src, width)}
         alt={alt}
-        loading="lazy"
+        loading={eager ? "eager" : "lazy"}
+        fetchPriority={eager ? "high" : undefined} // React 19; on React 18 use lowercase fetchpriority
+        decoding="async"
+        onError={() => setFailed(true)}
         className={`object-cover ${className}`}
       />
     );
   }
   return (
     <div
-      role="img"
-      aria-label={alt}
+      role={alt ? "img" : undefined}
+      aria-label={alt || undefined}
+      aria-hidden={alt ? undefined : true}
       className={`bg-gradient-to-br from-[#002642] via-[#03314f] to-[#710019] ${className}`}
     />
   );
@@ -96,6 +105,8 @@ const primaryBtn =
   "rounded-full bg-primary px-7 py-3.5 text-base font-semibold text-on-primary transition hover:bg-primary-hover focus:outline-none focus-visible:ring-4 focus-visible:ring-primary/40";
 
 export default function Home() {
+  const { isManager } = useAuth();
+
   return (
     <div className="bg-bg font-body text-text">
       {/* HERO */}
@@ -246,10 +257,10 @@ export default function Home() {
               publish your listing once approved. You can pause it any time.
             </p>
             <Link
-              to="/become-host"
+              to={isManager ? "/my-listings" : "/become-host"}
               className={`${primaryBtn} mt-8 inline-block`}
             >
-              Become a host
+              {isManager ? "Manage your listings" : "Become a host"}
             </Link>
           </div>
           <Photo

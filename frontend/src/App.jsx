@@ -8,6 +8,7 @@ import ThemedToaster from "./components/common/ThemedToaster";
 import { FavoritesProvider } from "./context/FavoriteContext";
 import { Provider } from "react-redux";
 import { store } from "./store/store";
+import { MotionConfig } from "motion/react";
 
 const App = () => {
   return (
@@ -17,7 +18,9 @@ const App = () => {
         <AuthProvider>
           <FavoritesProvider>
             <Suspense fallback={<Loading />}>
-              <RouterProvider router={route} />
+              <MotionConfig reducedMotion="user">
+                <RouterProvider router={route} />
+              </MotionConfig>
             </Suspense>
           </FavoritesProvider>
         </AuthProvider>
