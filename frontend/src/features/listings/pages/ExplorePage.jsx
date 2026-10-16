@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
-import { fetchListings } from "../listingService";
-import { handleApiError } from "../../../api/errors/handleApiError";
+import { FiSearch, FiX } from "react-icons/fi";
+import { useGetListingsQuery } from "../../../store/api";
 import Card from "../components/explore-page/Card";
 import SkeletonCard from "../components/explore-page/SkeletonCard";
 import Pagination from "../components/explore-page/pagination/Pagination";
-import { FiSearch, FiX } from "react-icons/fi";
 import ExploreCategories from "../components/explore-page/ExploreCategories";
 
 const PAGE_SIZE = 12;
@@ -23,18 +22,31 @@ const ExplorePage = () => {
   const category = searchParams.get("category") || "";
 
   const [searchInput, setSearchInput] = useState(location || name);
-  const [data, setData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [reloadKey, setReloadKey] = useState(0);
+
+  // The query re-runs by itself whenever these values change, and results are cached per combination
+  const { data, isLoading, isFetching, isError, error, refetch } =
+    useGetListingsQuery({
+      page,
+      size: PAGE_SIZE,
+      sortBy: "createdAt",
+      direction: "desc",
+      location,
+      name,
+      category,
+    });
 
   // Debounce search input to update URL params
   useEffect(() => {
+    const term = searchInput.trim();
+
+    // Nothing changed (for example on the first render): leave the URL alone.
+    // Without this, opening /explore?page=3 was reset to page 0 after 400ms.
+    if (term === location) return;
+
     const handler = setTimeout(() => {
       const newParams = new URLSearchParams(searchParams);
 
-      if (searchInput && searchInput.trim() !== "") {
-        const term = searchInput.trim();
+      if (term) {
         // Set the term for both location and name
         newParams.set("location", term);
         newParams.set("name", term);
@@ -48,45 +60,13 @@ const ExplorePage = () => {
     }, 400);
 
     return () => clearTimeout(handler);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchInput]);
 
-  // Fetch listings whenever URL params change
+  // Back to the top whenever the results change
   useEffect(() => {
-    let ignore = false;
-
-    const load = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const { data: result } = await fetchListings({
-          page,
-          size: PAGE_SIZE,
-          sortBy: "createdAt",
-          direction: "desc",
-          location: searchParams.get("location") || "",
-          name: searchParams.get("name") || "",
-          category: searchParams.get("category") || "",
-        });
-
-        if (!ignore) setData(result);
-      } catch (err) {
-        if (ignore) return;
-        console.error("Failed to fetch listings", err);
-        setError(handleApiError(err, "listings"));
-        setData(null);
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    };
-
-    load();
     window.scrollTo({ top: 0, behavior: "smooth" });
-
-    return () => {
-      ignore = true;
-    };
-  }, [searchParams, reloadKey]);
+  }, [page, location, name, category]);
 
   // Handlers for updating URL search params
   const handleCategoryChange = (catValue) => {
@@ -114,17 +94,17 @@ const ExplorePage = () => {
   const listings = data?.content ?? [];
   const hasActiveFilters = location || name || category;
 
-  if (error) {
+  if (isError) {
     return (
       <div className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-bg px-4 text-text">
         <div className="max-w-md text-center">
           <h2 className="font-display text-2xl font-semibold">
             Listings are unavailable
           </h2>
-          <p className="mt-2 text-subtext">{error}</p>
+          <p className="mt-2 text-subtext">{error?.message}</p>
           <button
             type="button"
-            onClick={() => setReloadKey((k) => k + 1)}
+            onClick={refetch}
             className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
           >
             Try again
@@ -171,19 +151,21 @@ const ExplorePage = () => {
           )}
         </div>
 
-        {/* Listings Grid */}
+        {/* Listings Grid: skeletons only on the very first load; later the old results stay, dimmed */}
         <div
-          aria-busy={loading}
-          className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          aria-busy={isFetching}
+          className={`grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${
+            isFetching && !isLoading ? "opacity-60 transition-opacity" : ""
+          }`}
         >
-          {loading
+          {isLoading
             ? Array.from({ length: PAGE_SIZE }, (_, i) => (
                 <SkeletonCard key={i} />
               ))
             : listings.map((item) => <Card key={item.id} listing={item} />)}
         </div>
 
-        {!loading && listings.length === 0 && (
+        {!isFetching && listings.length === 0 && (
           <div className="py-16 text-center">
             <h3 className="text-lg font-medium">No listings found</h3>
             <p className="mt-1 text-sm text-subtext">

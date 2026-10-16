@@ -16,7 +16,7 @@ import {
   selectPreview,
   selectUnreadCount,
   selectVersion,
-} from "../notificationSlice";
+} from "../notificationsSlice";
 import NotificationItem from "./NotificationItem";
 import NotificationMenu from "./NotificationMenu";
 

@@ -3,6 +3,7 @@ import axiosInstance from "../../api/axiosInstance";
 
 const LISTING_URL = "/v3/listings";
 
+// REPLACED BY REDUX
 export const fetchListings = ({
   page,
   size,

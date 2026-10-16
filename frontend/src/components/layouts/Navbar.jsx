@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { Link, NavLink, useLocation, useNavigate } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { selectUnreadCount } from "../../features/notifications/notificationSlice";
+import { selectUnreadCount } from "../../features/notifications/notificationsSlice";
 import {
   AnimatePresence,
   MotionConfig,
