@@ -20,15 +20,17 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "favorites", uniqueConstraints = @UniqueConstraint(name = "uk_favorite_user_listing", columnNames = {
 		"user_id",
-		"listing_id" }), indexes = @Index(name = "idx_favorite_user_created", columnList = "userId, creadAt"))
+		"listing_id" }), indexes = @Index(name = "idx_favorite_user_created", columnList = "userId,createdAt"))
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@ToString
 @Builder
 public class Favorite {
 	@Id
