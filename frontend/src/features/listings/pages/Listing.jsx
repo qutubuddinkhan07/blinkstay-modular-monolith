@@ -1,15 +1,14 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useEffect } from "react";
 import { Link, useParams } from "react-router-dom";
 import Loading from "../../../components/common/Loading";
 import StatusBanner from "../../../components/common/StatusBanner";
-import { fetchListingById } from "../listingService";
-import { handleApiError } from "../../../api/errors/handleApiError";
+import { useGetListingByIdQuery } from "../../../store/api";
 import ListingGallery from "../components/listing/ListingGallery";
 import ListingAdminControls from "../components/listing/ListingAdminControls";
 import BookingCard from "../components/booking/BookingCard";
 import ListingMap from "../components/listing/ListingMap";
-import { focusRing } from "../components/create-listing/formStyles";
 import FavoriteButton from "../../favorites/components/FavoriteButton";
+import { focusRing } from "../components/create-listing/formStyles";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -21,60 +20,27 @@ const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font
 
 const Listing = () => {
   const { id } = useParams();
-  const [listing, setListing] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [notFound, setNotFound] = useState(false);
-  const reqRef = useRef(0); // only the latest request may update state
 
-  // silent = refetch without the full-page loader (used after admin actions)
-  const load = useCallback(
-    async (silent = false) => {
-      const req = ++reqRef.current;
-
-      if (!silent) {
-        setLoading(true);
-        setError(null);
-        setNotFound(false);
-      }
-
-      try {
-        const res = await fetchListingById(id);
-
-        // API shape: { success, message, data: {...} }
-        if (req === reqRef.current) {
-          setListing(res.data.data);
-          setError(null);
-          setNotFound(false);
-        }
-      } catch (err) {
-        if (req !== reqRef.current) return;
-        console.error("error fetching listing", err);
-        setListing(null);
-        setNotFound(err.response?.status === 404);
-        setError(handleApiError(err, "listing"));
-      } finally {
-        if (req === reqRef.current) setLoading(false);
-      }
-    },
-    [id],
-  );
+  // After a suspend, a pause or an edit anywhere, the tags refetch this by themselves
+  const {
+    currentData: listing,
+    isLoading,
+    isFetching,
+    isError,
+    error,
+    refetch,
+  } = useGetListingByIdQuery(id, { refetchOnMountOrArgChange: true });
 
   useEffect(() => {
-    load();
     window.scrollTo({ top: 0 });
+  }, [id]);
 
-    return () => {
-      reqRef.current++; // ignore any request still in flight
-    };
-  }, [load]);
-
-  if (loading) {
+  if (isLoading || (isFetching && !listing)) {
     return <Loading />;
   }
 
   // 404: missing, or not published and you're not the owner or an admin
-  if (notFound) {
+  if (isError && error?.status === 404) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-text">
         <div className="max-w-md">
@@ -92,7 +58,7 @@ const Listing = () => {
     );
   }
 
-  if (error || !listing) {
+  if (isError && !listing) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-text">
         <div className="max-w-md">
@@ -100,11 +66,11 @@ const Listing = () => {
             Couldn't load this listing
           </h2>
           <p className="mt-2 text-subtext">
-            {error || "Something went wrong."}
+            {error?.message || "Something went wrong."}
           </p>
           <button
             type="button"
-            onClick={() => load()}
+            onClick={refetch}
             className={`mt-5 cursor-pointer ${primaryLink}`}
           >
             Try again
@@ -113,6 +79,11 @@ const Listing = () => {
       </div>
     );
   }
+
+  if (!listing) return null;
+
+  // ↓ the main `return ( ... )` stays exactly as you have it, with one change:
+  //   <ListingAdminControls listing={listing} className="mb-6" />   (no onChanged)
 
   return (
     <div className="min-h-screen bg-bg text-text">
