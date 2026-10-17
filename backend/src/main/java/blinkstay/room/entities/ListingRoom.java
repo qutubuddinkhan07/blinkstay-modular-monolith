@@ -57,4 +57,8 @@ public class ListingRoom {
 
 	@Column(nullable = false)
 	private Integer availableRooms;
+
+	@Builder.Default
+	@Column(name = "max_guests", nullable = false, columnDefinition = "INT DEFAULT 2")
+	private Integer maxGuests = 2;
 }

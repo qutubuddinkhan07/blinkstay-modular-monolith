@@ -13,14 +13,15 @@ import blinkstay.room.entities.ListingRoom;
 public class ModelMapper {
 	public ListingRoom addRoomToListingRoom(UUID listingId, AddRoomDto dto) {
 		return ListingRoom.builder().listingId(listingId).roomType(dto.getRoomType()).price(dto.getPrice())
-				.totalRooms(dto.getTotalRooms()).availableRooms(dto.getAvailableRooms()).build();
+				.totalRooms(dto.getTotalRooms()).availableRooms(dto.getTotalRooms())
+				.maxGuests(dto.getMaxGuests() == null ? 2 : dto.getMaxGuests()).build();
 	}
 
 	public List<RoomResponseDto> listingRoomToRoomResponseDto(List<ListingRoom> rooms) {
 		return rooms.stream()
 				.map(room -> RoomResponseDto.builder().roomId(room.getId()).listingId(room.getListingId())
 						.roomType(room.getRoomType()).price(room.getPrice()).totalRooms(room.getTotalRooms())
-						.availableRooms(room.getAvailableRooms()).build())
+						.availableRooms(room.getAvailableRooms()).maxGuests(room.getMaxGuests()).build())
 				.toList();
 	}
 }

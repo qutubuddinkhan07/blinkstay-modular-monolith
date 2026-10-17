@@ -29,4 +29,6 @@ public class RoomResponseDto {
 	private Integer totalRooms;
 
 	private Integer availableRooms;
+
+	private Integer maxGuests;
 }

@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import blinkstay.common.booking.BookingGuard;
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.RoomResponseDto;
 import blinkstay.room.dto.RoomSummaryDto;
@@ -31,6 +32,8 @@ public class RoomServiceImpl implements RoomService {
 
 	@Qualifier("roomModelMapper")
 	private final ModelMapper modelMapper;
+
+	private final BookingGuard bookingGuard;
 
 	@Override
 	@CacheEvict(value = "listingById", key = "#listingId")
@@ -77,10 +80,25 @@ public class RoomServiceImpl implements RoomService {
 			throw new RuntimeException("Listing Id not same as rooms listing id");
 		}
 
-		listingRoom.setAvailableRooms(addRoomDto.getAvailableRooms());
+		int peak = bookingGuard.peakRoomsBooked(roomId);
+		if (addRoomDto.getTotalRooms() < peak) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"Upcoming bookings need at least " + peak + " rooms of this type");
+		}
+
+		if (addRoomDto.getRoomType() != listingRoom.getRoomType() && bookingGuard.roomHasActiveBookings(roomId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"The room type cannot change while it has upcoming bookings");
+		}
+
+		listingRoom.setAvailableRooms(addRoomDto.getTotalRooms());
 		listingRoom.setPrice(addRoomDto.getPrice());
 		listingRoom.setRoomType(addRoomDto.getRoomType());
 		listingRoom.setTotalRooms(addRoomDto.getTotalRooms());
+
+		if (addRoomDto.getMaxGuests() != null) {
+			listingRoom.setMaxGuests(addRoomDto.getMaxGuests());
+		}
 
 		roomRepo.save(listingRoom);
 
@@ -101,6 +119,10 @@ public class RoomServiceImpl implements RoomService {
 
 		if (!room.getListingId().equals(listingId)) {
 			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room does not belong to this listing.");
+		}
+
+		if (bookingGuard.roomHasActiveBookings(roomId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT, "This room has upcoming bookings cannot be deleted");
 		}
 
 		roomRepo.delete(room);
@@ -133,6 +155,14 @@ public class RoomServiceImpl implements RoomService {
 		}
 
 		roomRepo.saveAll(entities);
+	}
+
+	@Override
+	@Transactional(Transactional.TxType.MANDATORY)
+	public RoomResponseDto lockRoom(UUID roomId) {
+		ListingRoom room = roomRepo.findByIdForUpdate(roomId)
+				.orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
+		return modelMapper.listingRoomToRoomResponseDto(List.of(room)).get(0);
 	}
 
 }

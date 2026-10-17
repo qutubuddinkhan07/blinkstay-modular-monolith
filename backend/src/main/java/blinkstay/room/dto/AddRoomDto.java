@@ -3,6 +3,7 @@ package blinkstay.room.dto;
 import java.math.BigDecimal;
 
 import blinkstay.room.enums.RoomCategory;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
@@ -27,7 +28,7 @@ public class AddRoomDto {
 	@Min(value = 1, message = "Total rooms must be at least 1")
 	private Integer totalRooms;
 
-	@NotNull(message = "Available rooms count is required")
-	@Min(value = 0, message = "Available rooms cannot be negative")
-	private Integer availableRooms;
+	@Min(value = 1, message = "At least 1 guest")
+	@Max(value = 20, message = "At most 20 guests")
+	private Integer maxGuests;
 }

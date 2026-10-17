@@ -78,5 +78,40 @@
     "name": "auth.cloudinary-cleanup.folder",
     "type": "java.lang.String",
     "description": "A description for 'auth.cloudinary-cleanup.folder'"
+  },
+  {
+    "name": "app.booking.hold-minutes",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.hold-minutes'"
+  },
+  {
+    "name": "app.booking.max-nights",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.max-nights'"
+  },
+  {
+    "name": "app.booking.max-advance-days",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.max-advance-days'"
+  },
+  {
+    "name": "app.booking.free-cancellation-hours",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.free-cancellation-hours'"
+  },
+  {
+    "name": "app.booking.currency",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.currency'"
+  },
+  {
+    "name": "app.booking.zone",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.zone'"
+  },
+  {
+    "name": "app.booking.max-pending-per-guest",
+    "type": "java.lang.String",
+    "description": "A description for 'app.booking.max-pending-per-guest'"
   }
 ]}

@@ -30,6 +30,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import blinkstay.common.booking.BookingGuard;
 import blinkstay.common.events.ListingRestoredEvent;
 import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.exception.ManagerNotOwnerException;
@@ -38,6 +39,7 @@ import blinkstay.listing.dto.AddListingDto;
 import blinkstay.listing.dto.GeocodingResult;
 import blinkstay.listing.dto.ImageDto;
 import blinkstay.listing.dto.ImageUploadResult;
+import blinkstay.listing.dto.ListingBookingInfo;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.dto.PagedResponse;
 import blinkstay.listing.dto.PublishedListingDto;
@@ -66,6 +68,7 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 @Slf4j
 public class ListingServiceImpl implements ListingService {
+
 	@Qualifier("lisitingImageUploadService")
 	private final ImageUploadService imageUploadService;
 
@@ -88,6 +91,8 @@ public class ListingServiceImpl implements ListingService {
 	private final PublishedListingAssembler assembler;
 
 	private final FavoriteRepository favoriteRepo;
+
+	private final BookingGuard bookingGuard;
 
 	/**
 	 * Helper method to clean up orphan Cloudinary uploads
@@ -483,10 +488,10 @@ public class ListingServiceImpl implements ListingService {
 		}
 
 		// 2. When reservations exist, block deleting a listing that has active ones:
-		// if (reservationService.hasActiveReservations(listingId)) {
-		// throw new ResponseStatusException(HttpStatus.CONFLICT,
-		// "This listing has active reservations");
-		// }
+		if (bookingGuard.listingHasActiveBookings(listingId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"This lisitng has upcoming bookings and cannot be deleted");
+		}
 
 		// 3. Remember the Cloudinary ids before the rows disappear
 		List<ListingImage> images = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId);
@@ -666,5 +671,16 @@ public class ListingServiceImpl implements ListingService {
 		if (listing.getStatus() != ListingStatus.PUBLISHED && !isOwner && !isAdmin) {
 			throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Listing not found");
 		}
+	}
+
+	@Override
+	@Transactional(readOnly = true)
+	public ListingBookingInfo getBookingInfo(UUID listingId) {
+		Listing l = helperGetListingById(listingId);
+		String cover = listingImageRepo.findByListingIdOrderByDisplayOrderAsc(listingId).stream().findFirst()
+				.map(ListingImage::getImageUrl).orElse(null);
+
+		return new ListingBookingInfo(l.getId(), l.getManagerId(), l.getTitle(), l.getLocation(), cover,
+				l.getStatus() == ListingStatus.PUBLISHED);
 	}
 }

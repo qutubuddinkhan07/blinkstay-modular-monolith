@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import blinkstay.listing.dto.AddListingDto;
 import blinkstay.listing.dto.ImageDto;
+import blinkstay.listing.dto.ListingBookingInfo;
 import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.dto.PagedResponse;
 import blinkstay.listing.dto.PublishedListingDto;
@@ -48,4 +49,6 @@ public interface ListingService {
 	String unsuspendListing(UUID listingId);
 
 	void checkListingVisible(UUID listingId, UUID viewerId, boolean isAdmin);
+
+	ListingBookingInfo getBookingInfo(UUID listingId);
 }

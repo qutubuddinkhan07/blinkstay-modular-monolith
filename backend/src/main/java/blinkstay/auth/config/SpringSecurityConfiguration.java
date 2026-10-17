@@ -34,9 +34,11 @@ public class SpringSecurityConfiguration {
 
 		http
 				// CSRF PROTECTION
-				.csrf(csrf -> csrf.ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/auth/logout",
-						"/api/v1/auth/csrf", "/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
-						"/api/v2/user/register-init", "/api/v2/user/verify-otp").spa())
+				.csrf(csrf -> csrf
+						.ignoringRequestMatchers("/api/v1/auth/login", "/api/v1/auth/logout", "/api/v1/auth/csrf",
+								"/api/v1/auth/forgot-password", "/api/v1/auth/reset-password",
+								"/api/v2/user/register-init", "/api/v2/user/verify-otp", "/api/v5/payments/webhook/**")
+						.spa())
 
 				// CORS
 				.cors(cors -> cors.configurationSource(corsConfigurationSource()))
@@ -70,7 +72,12 @@ public class SpringSecurityConfiguration {
 						// User APIs
 						.requestMatchers("/api/v2/user/**").hasAnyAuthority("USER", "HOTEL_MANAGER", "ADMIN")
 
-						.requestMatchers("/api/v2/admin/**", "/api/v3/admin/**").hasAuthority("ADMIN")
+						.requestMatchers("/api/v2/admin/**", "/api/v3/admin/**", "/api/v5/admin/**")
+						.hasAuthority("ADMIN")
+
+						.requestMatchers(HttpMethod.GET, "/api/v5/availability/**").permitAll()
+						.requestMatchers(HttpMethod.POST, "/api/v5/payments/webhook/**").permitAll()
+						.requestMatchers("/api/v5/host/**").hasAuthority("HOTEL_MANAGER")
 
 						// Everything else requires authentication
 						.anyRequest().authenticated())

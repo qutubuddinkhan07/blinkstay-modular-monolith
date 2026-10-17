@@ -158,6 +158,6 @@ public class JWTFilter extends OncePerRequestFilter {
 		return "OPTIONS".equalsIgnoreCase(request.getMethod()) // CORS preflight
 				|| path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
 				|| path.startsWith("/api/v1/auth/forgot-password") || path.startsWith("/api/v1/auth/reset-password")
-				|| path.startsWith("/api/v2/user/verify-otp");
+				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v5/payments/webhook");
 	}
 }

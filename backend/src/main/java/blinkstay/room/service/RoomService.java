@@ -26,4 +26,5 @@ public interface RoomService {
 
 	void createSeedRooms(UUID listingId, List<SeedRoom> rooms, BigDecimal basePrice);
 
+	RoomResponseDto lockRoom(UUID roomId);
 }

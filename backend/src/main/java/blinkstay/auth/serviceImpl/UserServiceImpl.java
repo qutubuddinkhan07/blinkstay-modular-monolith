@@ -38,6 +38,7 @@ import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
+import blinkstay.common.booking.BookingGuard;
 import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
@@ -72,6 +73,8 @@ public class UserServiceImpl implements UserService {
 	private static final int OTP_VALID_MINUTES = 6;
 	private static final int OTP_RESEND_SECONDS = 60;
 	private static final int OTP_MAX_ATTEMPTS = 5;
+
+	private final BookingGuard bookingGuard;
 
 	@Override
 	public User helperGetUserId(UUID userId) {
@@ -113,6 +116,16 @@ public class UserServiceImpl implements UserService {
 		if (user.getRoles().contains(UserRole.ADMIN) && Boolean.TRUE.equals(user.getIsActive())
 				&& userRepository.countActiveByRole(UserRole.ADMIN) <= 1) {
 			throw new ResponseStatusException(HttpStatus.CONFLICT, "The last active admin cannot be deleted");
+		}
+
+		if (bookingGuard.guestHashActiveBookings(userId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"The account has upcoming bookings. Cancel them first.");
+		}
+
+		if (bookingGuard.hostHasActiveBookings(userId)) {
+			throw new ResponseStatusException(HttpStatus.CONFLICT,
+					"The account has upcoming guest bookings on its listings. Resolve them first.");
 		}
 
 		user.setIsActive(false);
