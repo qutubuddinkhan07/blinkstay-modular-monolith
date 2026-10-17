@@ -15,13 +15,15 @@ const money = new Intl.NumberFormat("en-IN", {
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 const dangerBtn = `cursor-pointer rounded-lg border border-danger/50 bg-surface px-3 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
-const primaryBtn = `cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60 ${focusRing}`;
+const primaryBtn = `cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-wait disabled:opacity-60 ${focusRing}`;
+
+const MAX_GUESTS_LIMIT = 20; // same limit as the backend (@Max(20))
 
 const emptyRoom = {
   roomType: "",
   price: "",
   totalRooms: "",
-  availableRooms: "",
+  maxGuests: "2", // same default as the backend
 };
 
 /* ------------------------------------------------------------------ */
@@ -60,8 +62,8 @@ const RoomForm = ({
     e.preventDefault();
 
     const price = Number(values.price);
-    const totalRooms = parseInt(values.totalRooms, 10);
-    const availableRooms = parseInt(values.availableRooms, 10);
+    const totalRooms = Number(values.totalRooms);
+    const maxGuests = Number(values.maxGuests);
 
     if (!values.roomType) return setError("Choose a room type.");
     if (takenTypes.includes(values.roomType))
@@ -70,21 +72,18 @@ const RoomForm = ({
       );
     if (!(price > 0)) return setError("Enter a price greater than 0.");
     if (!Number.isInteger(totalRooms) || totalRooms < 1)
-      return setError("Total rooms must be at least 1.");
+      return setError("Total rooms must be a whole number, at least 1.");
     if (
-      !Number.isInteger(availableRooms) ||
-      availableRooms < 0 ||
-      availableRooms > totalRooms
+      !Number.isInteger(maxGuests) ||
+      maxGuests < 1 ||
+      maxGuests > MAX_GUESTS_LIMIT
     )
-      return setError("Available rooms must be between 0 and the total.");
+      return setError(
+        `Max guests per room must be a whole number from 1 to ${MAX_GUESTS_LIMIT}.`,
+      );
 
     setError("");
-    await onSubmit({
-      roomType: values.roomType,
-      price,
-      totalRooms,
-      availableRooms,
-    });
+    await onSubmit({ roomType: values.roomType, price, totalRooms, maxGuests });
   };
 
   return (
@@ -93,8 +92,9 @@ const RoomForm = ({
       noValidate
       className="rounded-xl border border-border bg-bg p-4"
     >
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div>
+      {/* phones: one per row. From sm up: two per row */}
+      <div className="grid gap-4 sm:grid-cols-6">
+        <div className="sm:col-span-3">
           <label htmlFor={`${id}-type`} className={labelClass}>
             Room type
           </label>
@@ -116,9 +116,9 @@ const RoomForm = ({
           </select>
         </div>
 
-        <div>
+        <div className="sm:col-span-3">
           <label htmlFor={`${id}-price`} className={labelClass}>
-            Price ({CURRENCY})
+            Price per night ({CURRENCY})
           </label>
           <input
             id={`${id}-price`}
@@ -134,9 +134,9 @@ const RoomForm = ({
           />
         </div>
 
-        <div>
+        <div className="sm:col-span-3">
           <label htmlFor={`${id}-total`} className={labelClass}>
-            Total rooms
+            Total rooms of this type
           </label>
           <input
             id={`${id}-total`}
@@ -152,20 +152,21 @@ const RoomForm = ({
           />
         </div>
 
-        <div>
-          <label htmlFor={`${id}-available`} className={labelClass}>
-            Available rooms
+        <div className="sm:col-span-3">
+          <label htmlFor={`${id}-guests`} className={labelClass}>
+            Max guests per room
           </label>
           <input
-            id={`${id}-available`}
-            name="availableRooms"
+            id={`${id}-guests`}
+            name="maxGuests"
             type="number"
             inputMode="numeric"
-            min="0"
+            min="1"
+            max={MAX_GUESTS_LIMIT}
             step="1"
-            value={values.availableRooms}
+            value={values.maxGuests}
             onChange={handleChange}
-            placeholder="10"
+            placeholder="2"
             className={inputClass}
           />
         </div>
@@ -265,7 +266,8 @@ const RoomsManager = ({
 
       <p className="mb-5 text-sm text-subtext">
         Rooms save on their own, separately from the listing details above. Each
-        room type can be added once.
+        room type can be added once. A room with upcoming bookings can't be
+        deleted, and its total can't go below the rooms already booked.
         {allTypesUsed && " Every room type has been added."}
       </p>
 
@@ -299,7 +301,7 @@ const RoomsManager = ({
                     roomType: room.roomType,
                     price: String(room.price),
                     totalRooms: String(room.totalRooms),
-                    availableRooms: String(room.availableRooms),
+                    maxGuests: String(room.maxGuests ?? 2),
                   }}
                   takenTypes={rooms
                     .filter((r) => r.id !== room.id)
@@ -316,8 +318,11 @@ const RoomsManager = ({
                       {roomTypeLabel(room.roomType)}
                     </p>
                     <p className="mt-0.5 text-sm text-subtext">
-                      {money.format(room.price)} · {room.availableRooms} of{" "}
-                      {room.totalRooms} available
+                      {money.format(room.price)} per night · {room.totalRooms}{" "}
+                      {room.totalRooms === 1 ? "room" : "rooms"}
+                      {room.maxGuests
+                        ? ` · Up to ${room.maxGuests} ${room.maxGuests === 1 ? "guest" : "guests"} per room`
+                        : ""}
                     </p>
                   </div>
 

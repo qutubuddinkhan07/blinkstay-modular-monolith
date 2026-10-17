@@ -1,4 +1,4 @@
-// Mapped to ListingDetailsResponseDto / ImageDto from the backend.
+// Mapped to ListingDetailsResponseDto / ImageDto / RoomResponseDto from the backend.
 
 const PUBLISHED = "PUBLISHED"; // value of your ListingStatus enum for a live listing
 
@@ -26,13 +26,15 @@ export const normalizeImage = (img) => ({
   displayOrder: img.displayOrder ?? 0,
 });
 
-// RoomResponseDto {roomId, listingId, roomType, price, totalRooms, availableRooms }
+// RoomResponseDto { roomId, listingId, roomType, price, totalRooms, maxGuests }
+// availableRooms is deliberately not mapped any more. With bookings, how many rooms
+// are free depends on the dates, so it comes from GET /api/v5/availability/{listingId}.
 export const normalizeRoom = (r) => ({
   id: r.roomId,
   roomType: r.roomType ?? "",
   price: Number(r.price ?? 0), // BigDecimal arrives as JSON number
-  totalRooms: r.totalRooms ?? 0,
-  availableRooms: r.availableRooms ?? 0,
+  totalRooms: r.totalRooms ?? 0, // rooms of this type, not guests
+  maxGuests: r.maxGuests ?? 2, // guests PER ROOM, same default as the backend
 });
 
 const byDisplayOrder = (a, b) => a.displayOrder - b.displayOrder;
@@ -50,9 +52,17 @@ export const normalizeListing = (l) => ({
   rooms: (l.rooms ?? []).map(normalizeRoom),
   coordinates: getCoordinates(l.geometry),
   address: l.geometry?.address ?? "",
+
   status: l.status,
   statusLabel: labelOf(l.status),
   isPublished: l.status === PUBLISHED,
+  suspensionReason: l.suspensionReason ?? null,
+  suspensionSource: l.suspensionSource ?? null,
+  suspendedAt: l.suspendedAt ?? null,
+
+  // RoomSummaryDto.totalRooms counts room TYPES (one row per type), so it is named for that.
+  // The detail endpoint sends the full rooms list instead of a summary, so fall back to its length.
+  roomTypeCount: l.roomSummary?.totalRooms ?? (l.rooms ?? []).length,
 });
 
 // Only the fields sent on PUT /{listingId} (AddListingDto)
@@ -65,10 +75,5 @@ export const toFormData = (l) => ({
   category: l.category,
 });
 
-// normalizeListing may not carry the status fields, so add them from the raw response
-export const toListingRow = (raw) => ({
-  ...normalizeListing(raw),
-  status: raw.status,
-  suspensionReason: raw.suspensionReason ?? null,
-  suspensionSource: raw.suspensionSource ?? null,
-});
+// Kept so existing imports still work: normalizeListing now carries every status field.
+export const toListingRow = normalizeListing;
