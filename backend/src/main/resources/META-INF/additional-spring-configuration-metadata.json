@@ -113,5 +113,15 @@
     "name": "app.booking.max-pending-per-guest",
     "type": "java.lang.String",
     "description": "A description for 'app.booking.max-pending-per-guest'"
+  },
+  {
+    "name": "blinkstay.seed.reverse-geocode",
+    "type": "java.lang.String",
+    "description": "A description for 'blinkstay.seed.reverse-geocode'"
+  },
+  {
+    "name": "blinkstay.seed.reverse-geocode-delay-ms",
+    "type": "java.lang.String",
+    "description": "A description for 'blinkstay.seed.reverse-geocode-delay-ms'"
   }
 ]}

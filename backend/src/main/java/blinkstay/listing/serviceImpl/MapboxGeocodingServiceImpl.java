@@ -1,21 +1,26 @@
 package blinkstay.listing.serviceImpl;
 
 import java.math.BigDecimal;
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import blinkstay.listing.dto.GeocodingResult;
 import blinkstay.listing.dto.MapboxFeature;
 import blinkstay.listing.dto.MapboxResponse;
+import blinkstay.listing.dto.MapboxReverseResponse;
 import blinkstay.listing.service.MapboxGeocodingService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MapboxGeocodingServiceImpl implements MapboxGeocodingService {
 	private final WebClient webClient;
 
@@ -78,6 +83,45 @@ public class MapboxGeocodingServiceImpl implements MapboxGeocodingService {
 		}
 
 		throw new IllegalArgumentException("Invalid or unsupported country name: " + countryName);
+	}
+
+	@Override
+	public String reverseGeocode(BigDecimal latitude, BigDecimal longitude) {
+		if (latitude == null || longitude == null) {
+			return null;
+		}
+		try {
+			MapboxReverseResponse response = webClient.get()
+					.uri(uriBuilder -> uriBuilder.scheme("https").host("api.mapbox.com")
+							.path("/search/geocode/v6/reverse").queryParam("longitude", longitude.toPlainString())
+							.queryParam("latitude", latitude.toPlainString()).queryParam("limit", 1)
+							.queryParam("language", "en").queryParam("access_token", accessToken).build())
+					.retrieve().bodyToMono(MapboxReverseResponse.class).block(Duration.ofSeconds(10));
+
+			if (response == null || response.getFeatures() == null || response.getFeatures().isEmpty()) {
+				return null;
+			}
+			MapboxReverseResponse.Properties p = response.getFeatures().get(0).getProperties();
+			if (p == null) {
+				return null;
+			}
+
+			if (StringUtils.hasText(p.getFullAddress())) {
+				return p.getFullAddress();
+			}
+			if (StringUtils.hasText(p.getName()) && StringUtils.hasText(p.getPlaceFormatted())) {
+				return p.getName() + ", " + p.getPlaceFormatted();
+			}
+			if (StringUtils.hasText(p.getPlaceFormatted())) {
+				return p.getPlaceFormatted();
+			}
+			return StringUtils.hasText(p.getName()) ? p.getName() : null;
+		} catch (Exception e) {
+			// log only the exception type: error messages include the request URL, and the
+			// URL holds your access token
+			log.warn("Reverse geocoding failed for {}, {}: {}", latitude, longitude, e.getClass().getSimpleName());
+			return null;
+		}
 	}
 
 }

@@ -9,201 +9,180 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 
-import blinkstay.listing.constants.ImagePublicIds;
-import blinkstay.listing.entities.Listing;
-import blinkstay.listing.entities.ListingGeometry;
-import blinkstay.listing.entities.ListingImage;
-import blinkstay.listing.enums.ListingStatus;
-import blinkstay.listing.repository.ListingGeometryRepository;
-import blinkstay.listing.repository.ListingImageRepository;
-import blinkstay.listing.repository.ListingRepository;
+import blinkstay.listing.service.ListingImportService;
+import blinkstay.listing.service.MapboxGeocodingService;
+import blinkstay.listing.serviceImpl.ListingImportCommand;
+import blinkstay.room.dto.NewRoom;
+import blinkstay.room.enums.RoomCategory;
 import blinkstay.room.service.RoomService;
 import blinkstay.seed.dto.SeedGeometry;
 import blinkstay.seed.dto.SeedImage;
 import blinkstay.seed.dto.SeedListing;
 import blinkstay.seed.dto.SeedRoom;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.ObjectMapper;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class SeedDataService {
 
 	@Value("${blinkstay.seed.enabled:false}")
 	private boolean seedEnabled;
 
+	@Value("${blinkstay.seed.reverse-geocode:false}")
+	private boolean reverseGeocode;
+
+	@Value("${blinkstay.seed.reverse-geocode-delay-ms:120}")
+	private long reverseGeocodeDelayMs;
+
 	private final ObjectMapper objectMapper;
-
-	private final ListingRepository listingRepository;
-
-	private final ListingImageRepository listingImageRepository;
-
-	private final ListingGeometryRepository listingGeometryRepository;
-
+	private final ListingImportService listingImportService;
+	private final MapboxGeocodingService geocodingService;
 	private final HotelManagerProvider hotelManagerProvider;
-
 	private final SeedRandomizer seedRandomizer;
-
 	private final SeedRoomGenerator seedRoomGenerator;
-
 	private final RoomService roomService;
+	private final TransactionTemplate tx;
 
-	@Transactional
+	private record Prepared(SeedListing seed, UUID managerId, String address, List<NewRoom> rooms) {
+	}
+
+	// Deliberately NOT @Transactional: phase 1 calls the network, so no database
+	// transaction may be open yet.
 	public void seed() {
 		if (!seedEnabled) {
 			return;
 		}
-
-		// Don't seed if data already exists
-		if (listingRepository.count() > 0) {
-
-			System.out.println("BlinkStay seed skipped: listings already exist.");
-
+		if (listingImportService.hasListings()) {
+			log.info("BlinkStay seed skipped: listings already exist.");
 			return;
 		}
 
-		System.out.println("BlinkStay seed started...");
+		List<UUID> managerIds = hotelManagerProvider.getHotelManagerIds();
+		if (managerIds.isEmpty()) {
+			throw new IllegalStateException("Cannot seed listings because no HOTEL_MANAGER users were found.");
+		}
 
 		List<SeedListing> seedListings = loadListings();
+		log.info("BlinkStay seed started: {} listings, reverse geocoding {}", seedListings.size(),
+				reverseGeocode ? "on" : "off");
 
-		List<UUID> managerIds = hotelManagerProvider.getHotelManagerIds();
-
-		if (managerIds.isEmpty()) {
-
-			throw new IllegalStateException("Cannot seed listings because no HOTEL_MANAGER " + "users were found.");
-		}
-
+		// Phase 1: everything that needs the network, no transaction open
+		List<Prepared> prepared = new ArrayList<>(seedListings.size());
+		int resolved = 0;
 		for (SeedListing seed : seedListings) {
-
-			createListing(seed, managerIds);
+			String address = null;
+			if (reverseGeocode) {
+				address = lookupAddress(seed.getGeometry());
+				if (address != null) {
+					resolved++;
+				}
+				pause();
+			}
+			if (address == null) {
+				address = fallbackAddress(seed);
+			}
+			prepared.add(
+					new Prepared(seed, seedRandomizer.randomManager(managerIds), cut(address, 255), toNewRooms(seed)));
+		}
+		if (reverseGeocode) {
+			log.info("Reverse geocoding resolved {} of {} addresses; the rest use the listing's location text",
+					resolved, seedListings.size());
 		}
 
-		System.out.println("BlinkStay seed completed. " + seedListings.size() + " listings inserted.");
+		// Phase 2: one transaction, all or nothing
+		tx.executeWithoutResult(status -> prepared.forEach(this::insert));
+		log.info("BlinkStay seed completed. {} listings inserted.", prepared.size());
+	}
+
+	private void insert(Prepared p) {
+		SeedListing seed = p.seed();
+
+		BigDecimal longitude = null;
+		BigDecimal latitude = null;
+		SeedGeometry g = seed.getGeometry();
+		if (g != null && g.getCoordinates() != null && g.getCoordinates().length >= 2) {
+			longitude = g.getCoordinates()[0];
+			latitude = g.getCoordinates()[1];
+		}
+
+		List<String> imageUrls = seed.getImage() == null ? List.of()
+				: seed.getImage().stream().map(SeedImage::getUrl).toList();
+
+		UUID listingId = listingImportService
+				.importListing(new ListingImportCommand(p.managerId(), seed.getTitle(), seed.getDescription(),
+						seed.getLocation(), seed.getCountry(), SeedEnumMapper.toCategory(seed.getCategory()),
+						seed.getAmenities(), imageUrls, latitude, longitude, p.address()));
+
+		roomService.createRooms(listingId, p.rooms());
+	}
+
+	private List<NewRoom> toNewRooms(SeedListing seed) {
+		List<SeedRoom> rooms = seed.getRooms();
+		if (rooms == null || rooms.isEmpty()) {
+			rooms = seedRoomGenerator.generateRooms(seed.getPrice());
+		}
+		return rooms.stream().map(r -> {
+			BigDecimal adjustment = r.getPriceAdjustment() == null ? BigDecimal.ZERO : r.getPriceAdjustment();
+			RoomCategory type = SeedRoomMapper.toRoomCategory(r.getType());
+			return new NewRoom(type, seed.getPrice().add(adjustment), r.getTotalRooms(), maxGuestsFor(type));
+		}).toList();
+	}
+
+	// guests PER ROOM, so seeded stays behave like real ones in the availability
+	// check
+	private static int maxGuestsFor(RoomCategory type) {
+		return switch (type) {
+		case SINGLE -> 1;
+		case DOUBLE, TWIN, STUDIO -> 2;
+		case DELUXE -> 3;
+		case SUITE -> 4;
+		case FAMILY -> 5;
+		};
+	}
+
+	private String lookupAddress(SeedGeometry g) {
+		if (g == null || g.getCoordinates() == null || g.getCoordinates().length < 2) {
+			return null;
+		}
+		return geocodingService.reverseGeocode(g.getCoordinates()[1], g.getCoordinates()[0]); // [lon, lat]
+	}
+
+	private String fallbackAddress(SeedListing seed) {
+		if (StringUtils.hasText(seed.getLocation())) {
+			return seed.getLocation().trim();
+		}
+		if (StringUtils.hasText(seed.getCountry())) {
+			return seed.getCountry().trim();
+		}
+		return "Address not available";
+	}
+
+	private static String cut(String s, int max) {
+		return s.length() <= max ? s : s.substring(0, max);
+	}
+
+	private void pause() {
+		try {
+			Thread.sleep(reverseGeocodeDelayMs);
+		} catch (InterruptedException e) {
+			Thread.currentThread().interrupt();
+		}
 	}
 
 	private List<SeedListing> loadListings() {
-
 		try {
-
 			ClassPathResource resource = new ClassPathResource("seed/BlinkStay.listings.json");
-
 			return objectMapper.readValue(resource.getInputStream(), new TypeReference<List<SeedListing>>() {
 			});
-
 		} catch (IOException e) {
-
 			throw new IllegalStateException("Failed to read BlinkStay.listings.json", e);
 		}
-	}
-
-	// create each listing
-	private void createListing(SeedListing seed, List<UUID> managerIds) {
-
-		UUID managerId = seedRandomizer.randomManager(managerIds);
-
-		Listing listing = Listing.builder()
-
-				.title(seed.getTitle())
-
-				.description(seed.getDescription())
-
-				.location(seed.getLocation())
-
-				.country(seed.getCountry())
-
-				.amenities(seed.getAmenities())
-
-				.category(SeedEnumMapper.toCategory(seed.getCategory()))
-
-				.status(ListingStatus.PUBLISHED)
-
-				.managerId(managerId)
-
-				.build();
-
-		listing = listingRepository.save(listing);
-
-		saveImages(listing.getId(), seed.getImage());
-
-		saveGeometry(listing.getId(), seed.getGeometry());
-
-		createRooms(listing.getId(), seed);
-	}
-
-	private void saveImages(UUID listingId, List<SeedImage> images) {
-
-		if (images == null || images.isEmpty()) {
-			return;
-		}
-
-		List<ListingImage> entities = new ArrayList<>();
-
-		for (int i = 0; i < images.size(); i++) {
-
-			SeedImage image = images.get(i);
-
-			String publicId = ImagePublicIds.SEED_PREFIX + listingId + "_" + (i + 1);
-
-			ListingImage entity = ListingImage.builder()
-
-					.listingId(listingId)
-
-					.imageUrl(image.getUrl())
-
-					.publicId(publicId)
-
-					.displayOrder(i)
-
-					.build();
-
-			entities.add(entity);
-		}
-
-		listingImageRepository.saveAll(entities);
-	}
-
-	private void saveGeometry(UUID listingId, SeedGeometry geometry) {
-
-		if (geometry == null || geometry.getCoordinates() == null || geometry.getCoordinates().length < 2) {
-
-			return;
-		}
-
-		BigDecimal longitude = geometry.getCoordinates()[0];
-
-		BigDecimal latitude = geometry.getCoordinates()[1];
-
-		ListingGeometry entity = ListingGeometry.builder()
-
-				.listingId(listingId)
-
-				.address(
-						// You can improve this later
-						// with Mapbox reverse geocoding
-						"Seed location")
-
-				.latitude(latitude)
-
-				.longitude(longitude)
-
-				.build();
-
-		listingGeometryRepository.save(entity);
-	}
-
-	// create rooms
-	private void createRooms(UUID listingId, SeedListing seed) {
-
-		List<SeedRoom> rooms = seed.getRooms();
-
-		if (rooms == null || rooms.isEmpty()) {
-
-			rooms = seedRoomGenerator.generateRooms(seed.getPrice());
-		}
-
-		roomService.createSeedRooms(listingId, rooms, seed.getPrice());
 	}
 }
