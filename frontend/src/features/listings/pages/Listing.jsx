@@ -98,11 +98,7 @@ const Listing = () => {
         />
 
         {/* Admins only; renders nothing for everyone else */}
-        <ListingAdminControls
-          listing={listing}
-          onChanged={() => load(true)}
-          className="mb-6"
-        />
+        <ListingAdminControls listing={listing} className="mb-6" />
 
         {/* Title: location, with the favorite button */}
         <div className="mb-6 flex items-start justify-between gap-4">

@@ -314,7 +314,7 @@ const Signup = () => {
               <button
                 type="button"
                 onClick={() => setIsOtpModalOpen(true)}
-                className="flex-1 py-2 rounded-full text-xs font-semibold bg-primary text-white hover:bg-primary-hover transition-colors cursor-pointer"
+                className="flex-1 py-2 rounded-full text-xs font-semibold bg-primary text-on-primary hover:bg-primary-hover transition-colors cursor-pointer"
               >
                 Enter OTP Code
               </button>
@@ -353,7 +353,7 @@ const Signup = () => {
               </div>
               {!otpSession && (
                 <label className="absolute bottom-0 right-0 rounded-full p-1.5 cursor-pointer transition-colors duration-200 bg-primary">
-                  <FiCamera className="w-4 h-4 text-white" />
+                  <FiCamera className="w-4 h-4 text-on-primary" />
                   <input
                     type="file"
                     accept="image/*"
@@ -479,7 +479,7 @@ const Signup = () => {
           <button
             type="submit"
             disabled={isSubmitting || Boolean(otpSession) || cooldown.active}
-            className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 !bg-primary hover:!bg-primary-hover text-white cursor-pointer"
+            className="w-full py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed mt-2 !bg-primary hover:!bg-primary-hover text-on-primary cursor-pointer"
           >
             {isSubmitting
               ? "Sending OTP…"

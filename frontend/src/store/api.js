@@ -107,7 +107,7 @@ export const api = createApi({
       // POST /api/v3/admin/listings/{id}/suspend  (reason required, max 500)
       suspendListing: builder.mutation({
         query: ({ id, reason }) => ({
-          url: `/api/v3/admin/listings/${id}/suspend`,
+          url: `/v3/admin/listings/${id}/suspend`,
           method: "post",
           data: { reason },
         }),
@@ -117,7 +117,7 @@ export const api = createApi({
       // POST /api/v3/admin/listings/{id}/unsuspend  (409 when the owner is blocked)
       unsuspendListing: builder.mutation({
         query: (id) => ({
-          url: `/api/v3/admin/listings/${id}/unsuspend`,
+          url: `/v3/admin/listings/${id}/unsuspend`,
           method: "post",
         }),
         invalidatesTags: (result, error, id) => listingChangedTags(id),
