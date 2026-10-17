@@ -9,6 +9,7 @@ import BookingCard from "../components/booking/BookingCard";
 import ListingMap from "../components/listing/ListingMap";
 import FavoriteButton from "../../favorites/components/FavoriteButton";
 import { focusRing } from "../components/create-listing/formStyles";
+import { useAuth } from "../../../context/AuthContext";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -19,6 +20,8 @@ const prettyAmenity = (a) => {
 const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`;
 
 const Listing = () => {
+  const { user } = useAuth();
+
   const { id } = useParams();
 
   // After a suspend, a pause or an edit anywhere, the tags refetch this by themselves
@@ -97,9 +100,6 @@ const Listing = () => {
           className="mb-4"
         />
 
-        {/* Admins only; renders nothing for everyone else */}
-        <ListingAdminControls listing={listing} className="mb-6" />
-
         {/* Title: location, with the favorite button */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <h1 className="text-2xl font-semibold sm:text-3xl">
@@ -146,11 +146,20 @@ const Listing = () => {
             </section>
           </div>
 
-          {/* Right: floating booking card */}
-          <BookingCard
-            rooms={listing.rooms}
-            onReserve={(booking) => console.log("Reserve", booking)}
-          />
+          {/* Right: booking. Only a live listing takes bookings. */}
+          {listing.status === "PUBLISHED" ? (
+            <BookingCard
+              listingId={listing.id}
+              rooms={listing.rooms}
+              // needs ownerId in the listing response (backend to-do)
+              isOwner={Boolean(user?.id && listing.ownerId === user.id)}
+              onUnavailable={refetch}
+            />
+          ) : (
+            <aside className="rounded-2xl border border-border bg-surface p-6 text-sm text-subtext lg:self-start">
+              Bookings open once this listing is live.
+            </aside>
+          )}
         </div>
 
         <section className="mt-12 border-t border-border pt-8">

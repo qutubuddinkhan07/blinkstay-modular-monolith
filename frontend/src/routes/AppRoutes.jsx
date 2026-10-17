@@ -90,6 +90,14 @@ const FavoritePage = Loadable(
   lazy(() => import("../features/favorites/pages/FavoritePage")),
 );
 
+const MyBookings = Loadable(
+  lazy(() => import("../features/bookings/pages/MyBookings")),
+);
+
+const BookingPage = Loadable(
+  lazy(() => import("../features/bookings/pages/BookingPage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -131,10 +139,6 @@ const route = createBrowserRouter([
                 element: <ProfilePage />,
               },
               {
-                path: "/bookings",
-                element: <ComingSoon title="My Bookings" />,
-              },
-              {
                 path: "/favorites",
                 element: <FavoritePage />,
               },
@@ -145,6 +149,14 @@ const route = createBrowserRouter([
               {
                 path: "/notifications",
                 element: <NotificationsPage />,
+              },
+              {
+                path: "/bookings",
+                element: <MyBookings />,
+              },
+              {
+                path: "/bookings/:id",
+                element: <BookingPage />,
               },
             ],
           },

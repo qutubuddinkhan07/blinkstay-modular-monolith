@@ -7,9 +7,11 @@ export const STATUS = {
   SUSPENDED: { label: "Suspended", dot: "bg-danger" },
 };
 
-const StatusBadge = ({ status }) => {
-  const s = STATUS[status] ?? { label: status ?? "Unknown", dot: "bg-subtext" };
-
+const StatusBadge = ({ status, statuses = STATUS }) => {
+  const s = statuses[status] ?? {
+    label: status ?? "Unknown",
+    dot: "bg-subtext",
+  };
   return (
     <span className="inline-flex items-center gap-1.5 rounded-full border border-border px-2.5 py-0.5 text-xs font-semibold text-text">
       <span className={`h-2 w-2 rounded-full ${s.dot}`} aria-hidden="true" />

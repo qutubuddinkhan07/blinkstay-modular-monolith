@@ -38,6 +38,7 @@ import {
 } from "../../features/admin/adminService";
 import NotificationBell from "../../features/notifications/components/NotificationBell";
 import { useFavorites } from "../../context/FavoriteContext";
+import { getMyBookings } from "../../features/bookings/bookingService";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -255,6 +256,8 @@ const Navbar = () => {
   const [bellOpen, setBellOpen] = useState(false);
   const unread = useSelector(selectUnreadCount); // the bell keeps this fresh
   const [pendingHosts, setPendingHosts] = useState(0);
+  const [pendingPayments, setPendingPayments] = useState(0);
+  const [paymentsTick, setPaymentsTick] = useState(0); // bumps when a hold runs out
 
   const headerRef = useRef(null);
   const userRef = useRef(null);
@@ -290,16 +293,70 @@ const Navbar = () => {
     };
   }, [isAdmin, pathname]);
 
+  // Bookings still waiting for payment (max 2, the server's limit)
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPendingPayments(0);
+      return;
+    }
+
+    let ignore = false;
+    let timer;
+
+    getMyBookings({ status: "PENDING_PAYMENT", size: 10 })
+      .then((data) => {
+        if (ignore) return;
+        // payable=false means the hold already ended, so it doesn't count
+        const live = (data?.content ?? []).filter((b) => b.payable);
+        setPendingPayments(live.length);
+
+        // re-check just after the earliest hold ends, so the badge clears by itself
+        const nextEnd = Math.min(
+          ...live.map((b) => new Date(b.holdExpiresAt).getTime()),
+        );
+        if (Number.isFinite(nextEnd)) {
+          timer = setTimeout(
+            () => setPaymentsTick((t) => t + 1),
+            Math.max(0, nextEnd - Date.now()) + 1000,
+          );
+        }
+      })
+      .catch(() => {
+        // the badge is optional, so fail quietly
+      });
+
+    return () => {
+      ignore = true;
+      clearTimeout(timer);
+    };
+  }, [isAuthenticated, pathname, paymentsTick]);
+
   const canBecomeHost =
     !roles.includes("HOTEL_MANAGER") && !roles.includes("ADMIN");
 
   const unreadShown = isAuthenticated ? unread : 0;
-  const menuAlert = unreadShown > 0 || pendingHosts > 0; // dot on the closed hamburger
+  const menuAlert = unreadShown > 0 || pendingHosts > 0 || pendingPayments > 0; // dot on the closed hamburger
   const menuBadges = {
     "/admin/host-requests": pendingHosts,
     "/notifications": unreadShown > 9 ? "9+" : unreadShown,
     "/favorites": favoriteCount,
+    "/bookings": pendingPayments,
   };
+
+  // Screen-reader text for the dot on the avatar / hamburger
+  const paymentsText =
+    pendingPayments > 0
+      ? `${pendingPayments} booking${pendingPayments > 1 ? "s" : ""} awaiting payment`
+      : "";
+  const hostsText =
+    pendingHosts > 0 ? `${pendingHosts} pending host requests` : "";
+  const unreadText =
+    unreadShown > 0 ? `${unreadShown} unread notifications` : "";
+
+  const avatarAlerts = [paymentsText, hostsText].filter(Boolean).join(", ");
+  const menuAlerts = [unreadText, paymentsText, hostsText]
+    .filter(Boolean)
+    .join(", ");
 
   const sections = ACCOUNT_SECTIONS.map((section) => ({
     ...section,
@@ -487,8 +544,8 @@ const Navbar = () => {
                   aria-expanded={userOpen}
                   aria-haspopup="true"
                   aria-label={
-                    pendingHosts > 0
-                      ? `Open account menu, ${pendingHosts} pending host requests`
+                    avatarAlerts
+                      ? `Open account menu, ${avatarAlerts}`
                       : "Open account menu"
                   }
                   className={`flex cursor-pointer items-center gap-2 rounded-full p-1 pr-2 transition-colors hover:bg-bg ${focusRing}`}
@@ -499,7 +556,7 @@ const Navbar = () => {
                     }`}
                   >
                     <Avatar user={user} className="h-9 w-9" />
-                    {pendingHosts > 0 && (
+                    {(pendingHosts > 0 || pendingPayments > 0) && (
                       <span
                         className="absolute -right-0.5 -top-0.5 h-2.5 w-2.5 rounded-full bg-danger ring-2 ring-surface"
                         aria-hidden="true"
@@ -581,7 +638,7 @@ const Navbar = () => {
                 to="/login"
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.95 }}
-                className={`rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors duration-300 hover:bg-primary-hover ${focusRing}`}
+                className={`rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-colors duration-300 hover:bg-primary-hover ${focusRing}`}
               >
                 Login
               </MotionLink>
@@ -597,8 +654,8 @@ const Navbar = () => {
               aria-label={
                 mobileOpen
                   ? "Close menu"
-                  : unreadShown > 0
-                    ? `Open menu, ${unreadShown} unread notifications`
+                  : menuAlerts
+                    ? `Open menu, ${menuAlerts}`
                     : "Open menu"
               }
               className={`relative flex h-10 w-10 cursor-pointer items-center justify-center rounded-full text-text transition-colors hover:bg-bg md:hidden ${focusRing}`}

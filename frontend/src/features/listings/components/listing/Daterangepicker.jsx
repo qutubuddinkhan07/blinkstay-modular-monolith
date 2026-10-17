@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { FiChevronLeft, FiChevronRight } from "react-icons/fi";
+import { addDays } from "../../../../utils/format";
 
 const WEEKDAYS = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"];
 
@@ -19,7 +20,16 @@ const longDate = (d) =>
     year: "numeric",
   });
 
-const Month = ({ month, checkIn, checkOut, hover, today, onPick, onHover }) => {
+const Month = ({
+  month,
+  checkIn,
+  checkOut,
+  hover,
+  today,
+  lastDay,
+  onPick,
+  onHover,
+}) => {
   const y = month.getFullYear();
   const m = month.getMonth();
   const offset = new Date(y, m, 1).getDay();
@@ -32,7 +42,8 @@ const Month = ({ month, checkIn, checkOut, hover, today, onPick, onHover }) => {
 
   // While choosing check-out, preview the range up to the hovered day
   const rangeEnd =
-    checkOut || (checkIn && hover && hover > checkIn ? hover : null);
+    checkOut ||
+    (checkIn && hover && hover > checkIn && hover <= lastDay ? hover : null);
 
   return (
     <div className="w-full">
@@ -52,7 +63,7 @@ const Month = ({ month, checkIn, checkOut, hover, today, onPick, onHover }) => {
         {cells.map((date, i) => {
           if (!date) return <div key={`blank-${i}`} />;
 
-          const disabled = date < today;
+          const disabled = date < today || date > lastDay;
           const isStart = sameDay(date, checkIn);
           const isEnd = sameDay(date, rangeEnd);
           const selected = isStart || isEnd;
@@ -101,7 +112,14 @@ const Month = ({ month, checkIn, checkOut, hover, today, onPick, onHover }) => {
 
 const navBtn = `absolute top-[-4px] z-10 flex h-8 w-8 cursor-pointer items-center justify-center rounded-full text-text transition-colors hover:bg-bg disabled:cursor-not-allowed disabled:opacity-30 ${focusRing}`;
 
-const DateRangePicker = ({ checkIn, checkOut, onChange, onClose }) => {
+const DateRangePicker = ({
+  checkIn,
+  checkOut,
+  onChange,
+  onClose,
+  maxDate, // last allowed check-in day
+  maxNights = 30,
+}) => {
   const today = startOfDay(new Date());
   const [view, setView] = useState(
     new Date(
@@ -112,18 +130,25 @@ const DateRangePicker = ({ checkIn, checkOut, onChange, onClose }) => {
   );
   const [hover, setHover] = useState(null);
 
+  // Picking check-out: at most maxNights after check-in. Picking check-in: up to maxDate.
+  const choosingCheckOut = Boolean(checkIn && !checkOut);
+  const lastDay = choosingCheckOut
+    ? addDays(checkIn, maxNights)
+    : (maxDate ?? addDays(today, 3650));
+
   const pick = (date) => {
-    // Start a new range
     if (!checkIn || checkOut || date <= checkIn) {
       onChange({ checkIn: date, checkOut: null });
       return;
     }
-    // Complete the range
     onChange({ checkIn, checkOut: date });
     onClose?.();
   };
 
   const canGoBack = view > new Date(today.getFullYear(), today.getMonth(), 1);
+  const canGoForward =
+    addMonths(view, 1) <=
+    new Date(lastDay.getFullYear(), lastDay.getMonth(), 1);
 
   return (
     <div onMouseLeave={() => setHover(null)} className="text-text">
@@ -140,6 +165,7 @@ const DateRangePicker = ({ checkIn, checkOut, onChange, onClose }) => {
         <button
           type="button"
           onClick={() => setView(addMonths(view, 1))}
+          disabled={!canGoForward}
           aria-label="Next month"
           className={`${navBtn} right-0`}
         >
@@ -150,14 +176,14 @@ const DateRangePicker = ({ checkIn, checkOut, onChange, onClose }) => {
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
           <Month
             month={view}
-            {...{ checkIn, checkOut, hover, today }}
+            {...{ checkIn, checkOut, hover, today, lastDay }}
             onPick={pick}
             onHover={setHover}
           />
           <div className="hidden sm:block">
             <Month
               month={addMonths(view, 1)}
-              {...{ checkIn, checkOut, hover, today }}
+              {...{ checkIn, checkOut, hover, today, lastDay }}
               onPick={pick}
               onHover={setHover}
             />
@@ -165,21 +191,28 @@ const DateRangePicker = ({ checkIn, checkOut, onChange, onClose }) => {
         </div>
       </div>
 
-      <div className="mt-4 flex items-center justify-end gap-4 text-sm">
-        <button
-          type="button"
-          onClick={() => onChange({ checkIn: null, checkOut: null })}
-          className={`cursor-pointer rounded-md font-medium text-text underline underline-offset-2 hover:text-primary ${focusRing}`}
-        >
-          Clear dates
-        </button>
-        <button
-          type="button"
-          onClick={onClose}
-          className={`cursor-pointer rounded-lg bg-primary px-4 py-2 font-medium text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`}
-        >
-          Close
-        </button>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-4 text-sm">
+        <p className="text-xs text-subtext" aria-live="polite">
+          {choosingCheckOut
+            ? `Now pick check-out (up to ${maxNights} nights)`
+            : "Pick your check-in date"}
+        </p>
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => onChange({ checkIn: null, checkOut: null })}
+            className={`cursor-pointer rounded-md font-medium text-text underline underline-offset-2 hover:text-primary ${focusRing}`}
+          >
+            Clear dates
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className={`cursor-pointer rounded-lg bg-primary px-4 py-2 font-medium text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`}
+          >
+            Close
+          </button>
+        </div>
       </div>
     </div>
   );

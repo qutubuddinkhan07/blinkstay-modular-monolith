@@ -22,6 +22,12 @@ export const useCooldown = () => {
     setUntil(t + seconds * 1000);
   }, []);
 
+  // Count down to a fixed moment (ms timestamp), e.g. a payment hold ending
+  const startUntil = useCallback((timestamp) => {
+    setNow(Date.now());
+    setUntil(timestamp);
+  }, []);
+
   const secondsLeft = Math.max(0, Math.ceil((until - now) / 1000));
-  return { secondsLeft, active: secondsLeft > 0, start };
+  return { secondsLeft, active: secondsLeft > 0, start, startUntil };
 };

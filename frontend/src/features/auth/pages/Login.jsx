@@ -51,7 +51,11 @@ const Login = () => {
     }
   };
 
-  const from = location.state?.from?.pathname || "/explore";
+  // Keep the query string too (e.g. the dates picked on a listing)
+  const fromLoc = location.state?.from;
+  const from = fromLoc
+    ? `${fromLoc.pathname}${fromLoc.search ?? ""}`
+    : "/explore";
   const handleSubmit = async (e) => {
     e.preventDefault();
     setBlockedMessage(null); // clear the notice on every new attempt
