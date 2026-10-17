@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @Builder
 public class TempUserRegistrationData {
+	@Builder.Default
 	private final AtomicInteger attempts = new AtomicInteger();
 
 	private String otp;

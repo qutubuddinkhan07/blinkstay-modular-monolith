@@ -54,6 +54,7 @@ public class ListingCloudinaryCleanupRunner implements CommandLineRunner {
 		}
 	}
 
+	@SuppressWarnings("unchecked")
 	private int deleteAllInFolder(String folder) throws Exception {
 		String prefix = folder.endsWith("/") ? folder : folder + "/";
 		int deleted = 0;

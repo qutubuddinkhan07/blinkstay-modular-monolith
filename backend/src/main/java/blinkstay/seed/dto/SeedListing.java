@@ -24,8 +24,6 @@ public class SeedListing {
 
 	private List<String> amenities;
 
-	private SeedOwner owner;
-
 	private String status;
 
 	private List<SeedRoom> rooms;
