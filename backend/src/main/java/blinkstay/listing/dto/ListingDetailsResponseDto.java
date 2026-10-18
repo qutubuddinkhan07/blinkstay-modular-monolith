@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import blinkstay.common.directory.HostSummary;
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
@@ -44,6 +45,8 @@ public class ListingDetailsResponseDto {
 	private List<RoomResponseDto> rooms;
 
 	private RoomSummaryDto roomSummary;
+
+	private HostSummary host;
 
 	private LocalDateTime createdAt;
 

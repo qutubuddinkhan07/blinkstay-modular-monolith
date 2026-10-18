@@ -39,6 +39,7 @@ import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
 import blinkstay.common.booking.BookingGuard;
+import blinkstay.common.events.HostDetailsChangedEvent;
 import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
@@ -287,6 +288,8 @@ public class UserServiceImpl implements UserService {
 
 		user = userRepository.save(user);
 
+		notifyUserDetailsChanged(user);
+
 		if (oldPublicId != null && !oldPublicId.isBlank()) {
 			try {
 				imageUploadService.deleteImage(oldPublicId);
@@ -323,7 +326,11 @@ public class UserServiceImpl implements UserService {
 
 		user.setProfileImgUrl(null);
 		user.setImagePublicId(null);
-		return modelMapper.userToUserResponseDto(userRepository.save(user));
+
+		User saved = userRepository.save(user);
+		notifyUserDetailsChanged(saved);
+
+		return modelMapper.userToUserResponseDto(saved);
 	}
 
 	// BULK DELETE - delete multiple user images
@@ -371,7 +378,10 @@ public class UserServiceImpl implements UserService {
 			user.setBio(dto.getBio().isBlank() ? null : dto.getBio().trim());
 		}
 
-		return modelMapper.userToUserResponseDto(userRepository.save(user));
+		User saved = userRepository.save(user);
+		notifyUserDetailsChanged(saved);
+
+		return modelMapper.userToUserResponseDto(user);
 	}
 
 	@Override
@@ -390,6 +400,14 @@ public class UserServiceImpl implements UserService {
 
 		notificationService.sendPasswordChanged(user.getUsername(), user.getEmail(),
 				"Your Blinkstay password was changed");
+	}
+
+	private void notifyUserDetailsChanged(User user) {
+		// only hosts appear on listings, so a normal user editing their profile clears
+		// nothing
+		if (user.getRoles().contains(UserRole.HOTEL_MANAGER)) {
+			publisher.publishEvent(new HostDetailsChangedEvent(user.getId()));
+		}
 	}
 
 }

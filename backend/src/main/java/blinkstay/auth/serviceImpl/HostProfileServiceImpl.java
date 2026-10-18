@@ -2,6 +2,7 @@ package blinkstay.auth.serviceImpl;
 
 import java.util.UUID;
 
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -11,6 +12,7 @@ import blinkstay.auth.entities.HotelManagerProfile;
 import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.HotelManagerProfileRepository;
 import blinkstay.auth.service.HostProfileService;
+import blinkstay.common.events.HostDetailsChangedEvent;
 import lombok.RequiredArgsConstructor;
 
 @Service
@@ -18,6 +20,7 @@ import lombok.RequiredArgsConstructor;
 public class HostProfileServiceImpl implements HostProfileService {
 	private final HotelManagerProfileRepository profileRepo;
 	private final ModelMapper modelMapper;
+	private final ApplicationEventPublisher publisher;
 
 	@Override
 	@Transactional(readOnly = true)
@@ -48,7 +51,10 @@ public class HostProfileServiceImpl implements HostProfileService {
 			profile.setWebsite(dto.getWebsite());
 		}
 
-		return modelMapper.hostProfileToDto(profileRepo.save(profile));
+		HotelManagerProfile saved = profileRepo.save(profile);
+		publisher.publishEvent(new HostDetailsChangedEvent(userId));
+
+		return modelMapper.hostProfileToDto(saved);
 	}
 
 }

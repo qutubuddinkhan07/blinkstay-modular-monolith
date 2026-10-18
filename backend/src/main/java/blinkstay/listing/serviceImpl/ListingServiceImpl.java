@@ -31,6 +31,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import blinkstay.common.booking.BookingGuard;
+import blinkstay.common.directory.HostDirectory;
 import blinkstay.common.events.ListingRestoredEvent;
 import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.exception.ManagerNotOwnerException;
@@ -93,6 +94,8 @@ public class ListingServiceImpl implements ListingService {
 	private final FavoriteRepository favoriteRepo;
 
 	private final BookingGuard bookingGuard;
+
+	private final HostDirectory hostDirectory;
 
 	/**
 	 * Helper method to clean up orphan Cloudinary uploads
@@ -234,7 +237,7 @@ public class ListingServiceImpl implements ListingService {
 		ListingDetailsResponseDto response = modelMapper.listingDetailsMapper(listing, geometry, images);
 
 		response.setRooms(rooms);
-
+		response.setHost(hostDirectory.findHost(listing.getManagerId()).orElse(null));
 		return response;
 	}
 
