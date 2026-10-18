@@ -1,29 +1,29 @@
 package blinkstay.room.service;
 
-import java.util.List;
-import java.util.UUID;
-
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.NewRoom;
 import blinkstay.room.dto.RoomResponseDto;
 import blinkstay.room.dto.RoomSummaryDto;
 
+import java.util.List;
+import java.util.UUID;
+
 public interface RoomService {
-	String createRoom(UUID listingId, AddRoomDto addRoomDto);
+    String createRoom(UUID listingId, AddRoomDto addRoomDto);
 
-	void createRooms(UUID listingId, List<NewRoom> rooms);
+    void createRooms(UUID listingId, List<NewRoom> rooms);
 
-	RoomSummaryDto getRoomSummary(UUID listingId);
+    RoomSummaryDto getRoomSummary(UUID listingId);
 
-	boolean checkDoesListingHaveRooms(UUID listingId);
+    boolean checkDoesListingHaveRooms(UUID listingId);
 
-	String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto);
+    String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto);
 
-	List<RoomResponseDto> getRoomsByListingId(UUID listingId);
+    List<RoomResponseDto> getRoomsByListingId(UUID listingId);
 
-	String deleteRoom(UUID listingId, UUID roomId);
+    String deleteRoom(UUID listingId, UUID roomId);
 
-	void deleteRoomsByListingId(UUID listingId);
+    void deleteRoomsByListingId(UUID listingId);
 
-	RoomResponseDto lockRoom(UUID roomId);
+    RoomResponseDto lockRoom(UUID roomId);
 }

@@ -3,15 +3,18 @@ package blinkstay.booking.repository;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import blinkstay.booking.entities.Booking;
+import jakarta.persistence.LockModeType;
 
 public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpecificationExecutor<Booking> {
 
@@ -58,4 +61,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 			+ "b.version = b.version + 1, b.updatedAt = :now "
 			+ "where b.status = blinkstay.booking.enums.BookingStatus.PENDING_PAYMENT and b.holdExpiresAt < :now")
 	int expireHolds(@Param("now") Instant now);
+
+	@Lock(LockModeType.PESSIMISTIC_WRITE)
+	@Query("select b from Booking b where b.id = :id")
+	Optional<Booking> findByIdForUpdate(@Param("id") UUID id);
 }

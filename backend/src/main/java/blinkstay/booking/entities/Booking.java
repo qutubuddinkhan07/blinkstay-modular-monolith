@@ -106,6 +106,8 @@ public class Booking {
 	@Column(nullable = false, length = 30)
 	private String roomType;
 
+	private UUID paymentId;
+
 	@Version
 	private Long version;
 
