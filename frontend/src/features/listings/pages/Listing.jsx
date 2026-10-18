@@ -7,6 +7,7 @@ import ListingGallery from "../components/listing/ListingGallery";
 import ListingAdminControls from "../components/listing/ListingAdminControls";
 import BookingCard from "../components/booking/BookingCard";
 import ListingMap from "../components/listing/ListingMap";
+import HostCard from "../components/listing/HostCard";
 import FavoriteButton from "../../favorites/components/FavoriteButton";
 import { focusRing } from "../components/create-listing/formStyles";
 import { useAuth } from "../../../context/AuthContext";
@@ -17,11 +18,10 @@ const prettyAmenity = (a) => {
   return s.charAt(0).toUpperCase() + s.slice(1);
 };
 
-const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`;
+const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`;
 
 const Listing = () => {
   const { user } = useAuth();
-
   const { id } = useParams();
 
   // After a suspend, a pause or an edit anywhere, the tags refetch this by themselves
@@ -85,9 +85,6 @@ const Listing = () => {
 
   if (!listing) return null;
 
-  // ↓ the main `return ( ... )` stays exactly as you have it, with one change:
-  //   <ListingAdminControls listing={listing} className="mb-6" />   (no onChanged)
-
   return (
     <div className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
@@ -99,6 +96,9 @@ const Listing = () => {
           title={listing.title}
           className="mb-4"
         />
+
+        {/* Admins only; renders nothing for everyone else */}
+        <ListingAdminControls listing={listing} className="mb-6" />
 
         {/* Title: location, with the favorite button */}
         <div className="mb-6 flex items-start justify-between gap-4">
@@ -123,11 +123,14 @@ const Listing = () => {
         <ListingGallery images={listing.images} title={listing.title} />
 
         <div className="mt-10 grid gap-12 lg:grid-cols-[minmax(0,1fr)_380px]">
-          {/* Left: description + amenities */}
+          {/* Left: description, host, amenities */}
           <div>
             <p className="max-w-prose whitespace-pre-line leading-relaxed text-subtext">
               {listing.description}
             </p>
+
+            {/* Hidden when host is null (account deleted) */}
+            <HostCard host={listing.host} className="mt-10" />
 
             <section className="mt-10 border-t border-border pt-8">
               <h2 className="mb-5 text-xl font-semibold">
@@ -138,7 +141,6 @@ const Listing = () => {
                 {listing.amenities?.map((a) => (
                   <li key={a} className="flex items-center gap-3 text-text">
                     <span className="h-1.5 w-1.5 rounded-full bg-primary" />
-
                     {prettyAmenity(a)}
                   </li>
                 ))}
@@ -164,7 +166,6 @@ const Listing = () => {
 
         <section className="mt-12 border-t border-border pt-8">
           <h2 className="mb-2 text-xl font-semibold">Where you'll be</h2>
-
           <p className="mb-5 text-subtext">{listing.location}</p>
 
           <ListingMap
