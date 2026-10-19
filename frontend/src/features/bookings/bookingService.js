@@ -63,3 +63,25 @@ export const listingExists = (listingId) =>
     .get(`/v3/listings/${listingId}`)
     .then(() => true)
     .catch(() => false);
+
+//! PAYMENT SERVICE
+// Starts payment. No body: the server uses its own amount.
+// data: { paymentId, bookingId, bookingReference, provider, orderId, amount, currency, mock, holdExpiresAt }
+export const payBooking = (bookingId) =>
+  axiosInstance
+    .post(`${BOOKINGS}/${bookingId}/pay`)
+    .then((res) => res.data.data);
+
+// Mock provider only. outcome: "SUCCESS" | "FAILURE"
+// data: { paymentId, bookingId, paymentStatus, message }
+export const completeMockPayment = (orderId, outcome) =>
+  axiosInstance
+    .post(`/v5/payments/mock/${encodeURIComponent(orderId)}/complete`, {
+      outcome,
+    })
+    .then((res) => res.data.data);
+
+// Lets the Navbar badge refresh after a payment, without a route change
+export const BOOKINGS_CHANGED = "blinkstay:bookings-changed";
+export const announceBookingsChanged = () =>
+  window.dispatchEvent(new Event(BOOKINGS_CHANGED));

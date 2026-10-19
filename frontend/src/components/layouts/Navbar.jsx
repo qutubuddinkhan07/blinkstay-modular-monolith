@@ -38,7 +38,10 @@ import {
 } from "../../features/admin/adminService";
 import NotificationBell from "../../features/notifications/components/NotificationBell";
 import { useFavorites } from "../../context/FavoriteContext";
-import { getMyBookings } from "../../features/bookings/bookingService";
+import {
+  BOOKINGS_CHANGED,
+  getMyBookings,
+} from "../../features/bookings/bookingService";
 
 /* ------------------------------------------------------------------ */
 /* Config                                                              */
@@ -303,6 +306,10 @@ const Navbar = () => {
     let ignore = false;
     let timer;
 
+    // BookingPage fires this after a payment or a refund
+    const onChanged = () => setPaymentsTick((t) => t + 1);
+    window.addEventListener(BOOKINGS_CHANGED, onChanged);
+
     getMyBookings({ status: "PENDING_PAYMENT", size: 10 })
       .then((data) => {
         if (ignore) return;
@@ -328,6 +335,7 @@ const Navbar = () => {
     return () => {
       ignore = true;
       clearTimeout(timer);
+      window.removeEventListener(BOOKINGS_CHANGED, onChanged);
     };
   }, [isAuthenticated, pathname, paymentsTick]);
 

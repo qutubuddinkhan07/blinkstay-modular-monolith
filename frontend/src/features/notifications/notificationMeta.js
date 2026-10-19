@@ -1,9 +1,11 @@
 import {
   FiAlertTriangle,
   FiBell,
+  FiCalendar,
   FiCheckCircle,
   FiInbox,
   FiRefreshCw,
+  FiRotateCcw,
   FiSlash,
   FiUnlock,
   FiXCircle,
@@ -17,6 +19,9 @@ const ICONS = {
   LISTING_RESTORED: FiRefreshCw,
   ACCOUNT_BLOCKED: FiSlash,
   ACCOUNT_UNBLOCKED: FiUnlock,
+  BOOKING_CONFIRMED: FiCheckCircle,
+  PAYMENT_REFUNDED: FiRotateCcw,
+  BOOKING_RECEIVED: FiCalendar,
 };
 
 export const getNotificationIcon = (type) => ICONS[type] ?? FiBell;
@@ -37,6 +42,17 @@ export const getNotificationPath = (n) => {
     case "ACCOUNT_BLOCKED":
     case "ACCOUNT_UNBLOCKED":
       return "/profile";
+
+    // Guest's own booking (referenceId = bookingId)
+    case "BOOKING_CONFIRMED":
+    case "PAYMENT_REFUNDED":
+      return n.referenceId ? `/bookings/${n.referenceId}` : "/bookings";
+
+    // Host's copy: /bookings/{id} is guest-only and would 404 for the host.
+    // Switch to the host reservations page once it exists.
+    case "BOOKING_RECEIVED":
+      return "/my-listings";
+
     default:
       return "/notifications";
   }

@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { FiArrowLeft, FiClock, FiMapPin } from "react-icons/fi";
+import { FiArrowLeft, FiCheckCircle, FiClock, FiMapPin } from "react-icons/fi";
 import Loading from "../../../components/common/Loading";
 import StatusBadge from "../../../components/common/StatusBadge";
 import { handleApiError } from "../../../api/errors/handleApiError";
@@ -14,11 +14,15 @@ import {
   formatTimestamp,
   plural,
 } from "../../../utils/format";
+import MockCheckoutDialog from "../components/MockCheckoutDialog";
 import {
   BOOKING_STATUS,
+  announceBookingsChanged,
+  completeMockPayment,
   effectiveStatus,
   getBooking,
   listingExists,
+  payBooking,
 } from "../bookingService";
 
 const focusRing =
@@ -49,6 +53,66 @@ const Row = ({ label, children, strong }) => (
   </div>
 );
 
+// Shown once, right after a successful payment
+const ConfirmationPanel = ({ booking: b }) => (
+  <section
+    role="status"
+    aria-labelledby="confirmed-heading"
+    className="mt-6 rounded-2xl border border-primary/40 bg-surface p-6"
+  >
+    <div className="flex items-start gap-3">
+      <FiCheckCircle
+        className="mt-1 shrink-0 text-primary"
+        size={24}
+        aria-hidden="true"
+      />
+      <div className="flex-1">
+        <h2
+          id="confirmed-heading"
+          className="font-display text-2xl font-semibold"
+        >
+          You're booked!
+        </h2>
+        <p className="mt-1 text-sm text-subtext">
+          Payment received. Keep this reference for check-in:{" "}
+          <span className="font-semibold tracking-wide text-text">
+            {b.reference}
+          </span>
+        </p>
+
+        <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-3 text-sm sm:grid-cols-4">
+          <div>
+            <dt className="text-subtext">Dates</dt>
+            <dd className="font-semibold">
+              {formatDateLabel(b.checkIn)} – {formatDateLabel(b.checkOut)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtext">Rooms</dt>
+            <dd className="font-semibold">
+              {formatRoomType(b.roomType)} × {b.rooms}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-subtext">Guests</dt>
+            <dd className="font-semibold">{b.guests}</dd>
+          </div>
+          <div>
+            <dt className="text-subtext">Total paid</dt>
+            <dd className="font-semibold">
+              {formatINR(b.totalAmount, b.currency)}
+            </dd>
+          </div>
+        </dl>
+
+        <Link to="/bookings" className={`mt-5 ${ghostLink}`}>
+          View my bookings
+        </Link>
+      </div>
+    </div>
+  </section>
+);
+
 const BookingPage = () => {
   const { id } = useParams();
   const [booking, setBooking] = useState(null);
@@ -57,6 +121,14 @@ const BookingPage = () => {
   const [hasListing, setHasListing] = useState(false);
   const requestRef = useRef(0); // only the latest request may update state
   const { secondsLeft, startUntil } = useCooldown();
+
+  // Payment
+  const [paying, setPaying] = useState(false); // POST /pay running
+  const [checkout, setCheckout] = useState(null); // /pay response = dialog open
+  const [completing, setCompleting] = useState(null); // "SUCCESS" | "FAILURE" | null
+  const [checkoutMsg, setCheckoutMsg] = useState(null);
+  const [justConfirmed, setJustConfirmed] = useState(false);
+  const [notice, setNotice] = useState("");
 
   // quiet = refresh in the background (keep showing the booking, toast on failure)
   const load = useCallback(
@@ -83,6 +155,15 @@ const BookingPage = () => {
   useEffect(() => {
     load();
   }, [load]);
+
+  // A different booking: start clean
+  useEffect(() => {
+    setCheckout(null);
+    setCheckoutMsg(null);
+    setJustConfirmed(false);
+    setNotice("");
+    window.scrollTo({ top: 0 });
+  }, [id]);
 
   // Link to the listing only if it's still open to guests
   const listingId = booking?.listingId;
@@ -118,9 +199,89 @@ const BookingPage = () => {
     return () => clearTimeout(timer);
   }, [holdEndsAt, load]);
 
+  // The booking stopped being payable while the dialog sat idle: close it
   useEffect(() => {
-    window.scrollTo({ top: 0 });
-  }, [id]);
+    if (checkout && !completing && status && status !== "PENDING_PAYMENT") {
+      setCheckout(null);
+    }
+  }, [checkout, completing, status]);
+
+  const handlePayNow = async () => {
+    if (paying) return;
+    setPaying(true);
+    setNotice("");
+    try {
+      const data = await payBooking(id);
+      if (data.mock) {
+        setCheckoutMsg(null);
+        setCheckout(data);
+      } else {
+        // Real provider (later): open its checkout here with the same data
+        notify.info("Online payment isn't available yet.");
+      }
+    } catch (err) {
+      notify.error(handleApiError(err, "payment"));
+      // "already paid" or "hold expired / cancelled": show the real state
+      if (err.response?.status === 409) {
+        announceBookingsChanged();
+        await load({ quiet: true });
+      }
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  const finishPayment = async (outcome) => {
+    if (!checkout || completing) return;
+    setCompleting(outcome);
+    setCheckoutMsg(null);
+    try {
+      const res = await completeMockPayment(checkout.orderId, outcome);
+
+      if (res.paymentStatus === "SUCCEEDED") {
+        setCheckout(null);
+        setJustConfirmed(true);
+        notify.success(res.message || "Payment received.");
+      } else if (res.paymentStatus === "REFUNDED") {
+        setCheckout(null);
+        setNotice(
+          "The booking could not be kept, so your payment was refunded.",
+        );
+        if (res.message) notify.info(res.message);
+      } else if (res.paymentStatus === "FAILED") {
+        setCheckoutMsg({
+          tone: "danger",
+          text: res.message || "The payment failed. You can try again.",
+        });
+      } else {
+        // CREATED: still processing
+        setCheckoutMsg({
+          tone: "info",
+          text: res.message || "Payment is still processing.",
+        });
+      }
+
+      if (
+        res.paymentStatus === "SUCCEEDED" ||
+        res.paymentStatus === "REFUNDED"
+      ) {
+        announceBookingsChanged();
+        await load({ quiet: true });
+      }
+    } catch (err) {
+      const message = handleApiError(err, "payment");
+      if (err.response?.status === 409) {
+        setCheckout(null);
+        notify.error(message);
+        announceBookingsChanged();
+        await load({ quiet: true });
+      } else {
+        setCheckoutMsg({ tone: "danger", text: message });
+      }
+    } finally {
+      setCompleting(null);
+    }
+  };
 
   if (loading) return <Loading />;
 
@@ -178,6 +339,15 @@ const BookingPage = () => {
           <StatusBadge status={status} statuses={BOOKING_STATUS} />
         </header>
 
+        {notice && (
+          <section
+            role="alert"
+            className="mt-6 rounded-2xl border border-danger/40 bg-surface p-5"
+          >
+            <p className="font-semibold">{notice}</p>
+          </section>
+        )}
+
         {/* What happens next, per status */}
         {status === "PENDING_PAYMENT" && (
           <section
@@ -209,10 +379,13 @@ const BookingPage = () => {
                 </p>
                 <button
                   type="button"
-                  disabled
-                  className="mt-4 w-full cursor-not-allowed rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary opacity-50 sm:w-auto"
+                  onClick={handlePayNow}
+                  disabled={paying || secondsLeft === 0}
+                  className={`mt-4 w-full cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${focusRing}`}
                 >
-                  Payment coming soon
+                  {paying
+                    ? "Starting payment…"
+                    : `Pay now · ${formatINR(b.totalAmount, b.currency)}`}
                 </button>
               </div>
             </div>
@@ -244,17 +417,20 @@ const BookingPage = () => {
           </section>
         )}
 
-        {status === "CONFIRMED" && (
-          <section
-            role="status"
-            className="mt-6 rounded-2xl border border-border bg-surface p-5"
-          >
-            <h2 className="font-semibold">Your stay is confirmed</h2>
-            <p className="mt-1 text-sm text-subtext">
-              Confirmed on {formatTimestamp(b.confirmedAt)}.
-            </p>
-          </section>
-        )}
+        {status === "CONFIRMED" &&
+          (justConfirmed ? (
+            <ConfirmationPanel booking={b} />
+          ) : (
+            <section
+              role="status"
+              className="mt-6 rounded-2xl border border-border bg-surface p-5"
+            >
+              <h2 className="font-semibold">Your stay is confirmed</h2>
+              <p className="mt-1 text-sm text-subtext">
+                Confirmed on {formatTimestamp(b.confirmedAt)}.
+              </p>
+            </section>
+          ))}
 
         {status === "CANCELLED" && (
           <section
@@ -330,11 +506,25 @@ const BookingPage = () => {
               <Row label="Total" strong>
                 {formatINR(b.totalAmount, b.currency)}
               </Row>
+              {b.confirmedAt && (
+                <Row label="Confirmed on">{formatTimestamp(b.confirmedAt)}</Row>
+              )}
               <Row label="Booked on">{formatTimestamp(b.createdAt)}</Row>
             </dl>
           </section>
         </div>
       </div>
+
+      <MockCheckoutDialog
+        checkout={checkout}
+        busy={completing}
+        message={checkoutMsg}
+        onPay={() => finishPayment("SUCCESS")}
+        onFail={() => finishPayment("FAILURE")}
+        onClose={() => {
+          if (!completing) setCheckout(null);
+        }}
+      />
     </div>
   );
 };
