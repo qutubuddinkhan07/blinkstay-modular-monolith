@@ -7,7 +7,7 @@ drop database blinkstay;
 
 use blinkstay;
 
-show tables from blinkstay;
+show tables;
 
 alter table notifications drop check notifications_chk_1;
 
@@ -19,6 +19,7 @@ select * from listing_images;
 select * from listing_rooms;
 select * from listings;
 select * from blocked_token;
+select * from payment_events;
 
 select * from blinkstay.users;
 
