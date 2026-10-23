@@ -2,6 +2,7 @@ package blinkstay.notification.serviceImpl;
 
 import blinkstay.common.booking.BookingConfirmedEvent;
 import blinkstay.common.booking.PaymentRefundedEvent;
+import blinkstay.common.payment.BookingCancelledEvent;
 import blinkstay.notification.event.SimpleMessageEvent;
 import blinkstay.notification.service.NotificationService;
 import blinkstay.notification.util.EmailMessageBuilderUtil;
@@ -103,6 +104,18 @@ public class NotificationServiceImpl implements NotificationService {
     @Override
     public void sendPaymentRefunded(String username, String receiverId, PaymentRefundedEvent event) {
         publish(receiverId, "Your payment was refunded", messages.paymentRefundedMessage(username, event));
+    }
+
+    @Override
+    public void sendBookingCancelledToGuest(String username, String receiverId, BookingCancelledEvent event) {
+        publish(receiverId, "Booking " + event.reference() + " cancelled",
+                messages.bookingCancelledGuestMessage(username, event));
+    }
+
+    @Override
+    public void sendBookingCancelledToHost(String hostName, String hostMail, String guestName, BookingCancelledEvent event) {
+        publish(hostMail, "Booking " + event.reference() + " cancelled",
+                messages.bookingCancelledHostMessage(hostName, guestName, event));
     }
 
 }

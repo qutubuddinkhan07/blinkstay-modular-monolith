@@ -2,6 +2,7 @@ package blinkstay.notification.util;
 
 import blinkstay.common.booking.BookingConfirmedEvent;
 import blinkstay.common.booking.PaymentRefundedEvent;
+import blinkstay.common.payment.BookingCancelledEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
@@ -113,5 +114,37 @@ public class EmailMessageBuilderUtil {
         return "Hi " + username + ",\n\nYour payment of " + e.currency() + " " + e.amount().toPlainString()
                 + " for booking " + e.bookingReference() + " was refunded.\n\nReason: " + e.reason()
                 + "\n\nThe refund can take a few days to appear in your account." + FOOTER;
+    }
+
+    private String refundLine(BookingCancelledEvent e) {
+        if (!e.wasPaid()) {
+            return "";
+        }
+        if (e.refundAmount() == null || e.refundAmount().signum() == 0) {
+            return "\n\nThis was inside the no-refund period, so no refund is due.";
+        }
+        return "\n\nA refund of " + e.currency() + " " + e.refundAmount().toPlainString()
+                + " was issued. It can take a few days to appear in your account.";
+    }
+
+    private String cancelledStay(BookingCancelledEvent e) {
+        return "Listing: " + e.listingTitle() + "\nDates: " + DAY.format(e.checkIn()) + " to " + DAY.format(e.checkOut());
+    }
+
+    public String bookingCancelledGuestMessage(String username, BookingCancelledEvent e) {
+        String by = switch (e.cancelledBy()) {
+            case "HOST" -> "The host cancelled your booking ";
+            case "ADMIN" -> "BlinkStay support cancelled your booking ";
+            default -> "You cancelled booking ";
+        };
+        String reason = "GUEST".equals(e.cancelledBy()) ? "" : "\n\nReason: " + e.reason();
+        return "Hi " + username + ",\n\n" + by + e.reference() + ".\n\n" + cancelledStay(e) + reason + refundLine(e)
+                + FOOTER;
+    }
+
+    public String bookingCancelledHostMessage(String hostName, String guestName, BookingCancelledEvent e) {
+        String by = "ADMIN".equals(e.cancelledBy()) ? "BlinkStay support cancelled" : guestName + " cancelled";
+        return "Hi " + hostName + ",\n\n" + by + " booking " + e.reference() + ".\n\n" + cancelledStay(e)
+                + "\n\nReason: " + e.reason() + "\n\nThe rooms are available again for those dates." + FOOTER;
     }
 }

@@ -5,6 +5,7 @@ import blinkstay.common.booking.PaymentRefundedEvent;
 import blinkstay.common.directory.UserContact;
 import blinkstay.common.directory.UserDirectory;
 import blinkstay.common.events.*;
+import blinkstay.common.payment.BookingCancelledEvent;
 import blinkstay.notification.enums.NotificationType;
 import blinkstay.notification.service.InAppNotificationService;
 import blinkstay.notification.service.NotificationService;
@@ -143,5 +144,38 @@ public class NotificationEventListener {
         save(e.guestId(), NotificationType.PAYMENT_REFUNDED, "Payment refunded",
                 "Booking " + e.bookingReference() + ": " + e.reason(), e.bookingId());
         contact(e.guestId()).ifPresent(c -> emails.sendPaymentRefunded(c.username(), c.email(), e));
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(BookingCancelledEvent e) {
+        String dates = DAY.format(e.checkIn()) + " to " + DAY.format(e.checkOut());
+        boolean byGuest = "GUEST".equals(e.cancelledBy());
+        Optional<UserContact> guest = contact(e.guestId());
+
+        String money = "";
+        if (e.wasPaid()) {
+            money = e.refundAmount() != null && e.refundAmount().signum() > 0
+                    ? " Refund: " + e.currency() + " " + e.refundAmount().toPlainString() + "."
+                    : " No refund was due.";
+        }
+
+        // the guest hears about it, unless they cancelled their own unpaid hold
+        if (e.wasPaid() || !byGuest) {
+            save(e.guestId(), NotificationType.BOOKING_CANCELLED,
+                    byGuest ? "Booking cancelled" : "Your booking was cancelled",
+                    e.listingTitle() + ", " + dates + " (" + e.reference() + ")." + money, e.bookingId());
+            guest.ifPresent(c -> emails.sendBookingCancelledToGuest(c.username(), c.email(), e));
+        }
+
+        // the host hears about paid bookings cancelled by someone else
+        if (e.wasPaid() && !"HOST".equals(e.cancelledBy())) {
+            String guestName = guest.map(UserContact::username).orElse("A guest");
+            save(e.hostId(), NotificationType.BOOKING_CANCELLED, "Booking cancelled",
+                    ("ADMIN".equals(e.cancelledBy()) ? "Support" : guestName) + " cancelled " + e.listingTitle() + ", "
+                            + dates + " (" + e.reference() + ")",
+                    e.bookingId());
+            contact(e.hostId()).ifPresent(c -> emails.sendBookingCancelledToHost(c.username(), c.email(), guestName, e));
+        }
     }
 }

@@ -2,6 +2,7 @@ package blinkstay.notification.service;
 
 import blinkstay.common.booking.BookingConfirmedEvent;
 import blinkstay.common.booking.PaymentRefundedEvent;
+import blinkstay.common.payment.BookingCancelledEvent;
 
 public interface NotificationService {
     void sendOtpUserRegistration(String username, String receiverId, String subject, String otp, int validMinutes);
@@ -38,4 +39,8 @@ public interface NotificationService {
     void sendBookingReceived(String hostName, String hostEmail, String guestName, BookingConfirmedEvent event);
 
     void sendPaymentRefunded(String username, String receiverId, PaymentRefundedEvent event);
+
+    void sendBookingCancelledToGuest(String username, String receiverId, BookingCancelledEvent event);
+
+    void sendBookingCancelledToHost(String hostName, String hostMail, String guestName, BookingCancelledEvent event);
 }
