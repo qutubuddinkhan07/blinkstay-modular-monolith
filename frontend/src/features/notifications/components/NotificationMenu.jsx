@@ -2,12 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { FiMoreHorizontal } from "react-icons/fi";
 import { useDispatch } from "react-redux";
 import { notify } from "../../../utils/notify";
-import { handleApiError } from "../../../api/errors/handleApiError";
 import ConfirmDialog from "../../../components/common/ConfirmDialogBox";
 import {
   clearAllNotifications,
   clearReadNotifications,
-} from "../notificationService";
+} from "../notificationsSlice";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";

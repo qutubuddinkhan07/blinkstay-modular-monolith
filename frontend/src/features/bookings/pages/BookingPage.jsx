@@ -24,6 +24,9 @@ import {
   listingExists,
   payBooking,
 } from "../bookingService";
+import BookingCancelDialog, {
+  CancellationNote,
+} from "../components/BookingCancelDialog";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -31,6 +34,18 @@ const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font
 const ghostLink = `inline-block rounded-lg border border-border px-5 py-2.5 text-sm font-semibold text-text transition-colors hover:bg-input ${focusRing}`;
 
 const mmss = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+
+// The line under "Need to cancel?": what cancelling would mean right now
+const cancellationHint = (status, b) => {
+  if (status === "PENDING_PAYMENT") {
+    return "You haven't paid yet, so cancelling costs nothing.";
+  }
+  if (status !== "CONFIRMED" || !b.freeCancellationUntil) return "";
+
+  return new Date(b.freeCancellationUntil) > new Date()
+    ? `Free cancellation until ${formatTimestamp(b.freeCancellationUntil)}.`
+    : "Free cancellation has ended. Cancelling now gives no refund.";
+};
 
 const Centered = ({ title, text, children }) => (
   <div className="flex min-h-[60vh] items-center justify-center px-4 text-center text-text">
@@ -129,6 +144,7 @@ const BookingPage = () => {
   const [checkoutMsg, setCheckoutMsg] = useState(null);
   const [justConfirmed, setJustConfirmed] = useState(false);
   const [notice, setNotice] = useState("");
+  const [cancelOpen, setCancelOpen] = useState(false);
 
   // quiet = refresh in the background (keep showing the booking, toast on failure)
   const load = useCallback(
@@ -162,6 +178,7 @@ const BookingPage = () => {
     setCheckoutMsg(null);
     setJustConfirmed(false);
     setNotice("");
+    setCancelOpen(false);
     window.scrollTo({ top: 0 });
   }, [id]);
 
@@ -314,6 +331,20 @@ const BookingPage = () => {
 
   const b = booking;
 
+  // The server decides cancellable (false once the stay has started or the booking is closed)
+  const canCancel =
+    b.cancellable && (status === "PENDING_PAYMENT" || status === "CONFIRMED");
+  const hint = cancellationHint(status, b);
+  const paymentBusy = paying || Boolean(checkout) || Boolean(completing);
+
+  const handleCancelled = async () => {
+    setCancelOpen(false);
+    setCheckout(null);
+    setJustConfirmed(false);
+    // the dialog already told the navbar (BOOKINGS_CHANGED), so only this page needs the fresh booking
+    await load({ quiet: true });
+  };
+
   return (
     <div className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
@@ -440,16 +471,34 @@ const BookingPage = () => {
             <h2 className="font-semibold">
               Cancelled on {formatTimestamp(b.cancelledAt)}
             </h2>
-            {b.cancellationReason && (
-              <p className="mt-1 text-sm text-subtext">
-                Reason: {b.cancellationReason}
-              </p>
-            )}
-            {b.refundAmount != null && (
-              <p className="mt-1 text-sm text-subtext">
-                Refund: {formatINR(b.refundAmount, b.currency)}
-              </p>
-            )}
+            <CancellationNote booking={b} viewer="guest" />
+          </section>
+        )}
+
+        {canCancel && (
+          <section
+            aria-labelledby="cancel-heading"
+            className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-border bg-surface p-5"
+          >
+            <div className="min-w-0">
+              <h2 id="cancel-heading" className="font-semibold">
+                Need to cancel?
+              </h2>
+              {hint && <p className="mt-1 text-sm text-subtext">{hint}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={() => setCancelOpen(true)}
+              disabled={paymentBusy}
+              title={
+                paymentBusy
+                  ? "Finish or close the payment window first"
+                  : undefined
+              }
+              className={`cursor-pointer rounded-lg border border-danger/50 bg-bg px-4 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`}
+            >
+              Cancel booking
+            </button>
           </section>
         )}
 
@@ -524,6 +573,14 @@ const BookingPage = () => {
         onClose={() => {
           if (!completing) setCheckout(null);
         }}
+      />
+
+      <BookingCancelDialog
+        open={cancelOpen}
+        booking={b}
+        role="guest"
+        onClose={() => setCancelOpen(false)}
+        onDone={handleCancelled}
       />
     </div>
   );

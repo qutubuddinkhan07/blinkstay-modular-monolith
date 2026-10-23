@@ -43,6 +43,12 @@ const ProtectedRoute = ({ allowedRoles }) => {
   if (allowedRoles?.length) {
     const roles = user?.roles ?? [];
     const allowed = allowedRoles.some((role) => roles.includes(role));
+
+    console.warn("[ProtectedRoute] forbidden", {
+      path: location.pathname,
+      needs: allowedRoles,
+      has: roles,
+    });
     if (!allowed) return <Forbidden />;
   }
 

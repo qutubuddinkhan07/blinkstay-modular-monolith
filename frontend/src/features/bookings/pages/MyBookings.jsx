@@ -13,10 +13,20 @@ import {
   effectiveStatus,
   getMyBookings,
 } from "../bookingService";
+import BookingCancelDialog from "../components/BookingCancelDialog";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+// for elements inside the rounded, clipped card
+const focusRingInset =
+  "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-primary";
 const PAGE_SIZE = 10;
+
+const CANCELLED_BY = {
+  GUEST: "Cancelled by you",
+  HOST: "Cancelled by the host",
+  ADMIN: "Cancelled by an admin",
+};
 
 const TABS = [
   {
@@ -47,13 +57,46 @@ const TABS = [
   },
 ];
 
-const BookingRow = ({ booking: b }) => {
+const formatDeadline = (value) => {
+  const d = new Date(value);
+  return Number.isNaN(d.getTime())
+    ? ""
+    : d.toLocaleString(undefined, {
+        day: "numeric",
+        month: "short",
+        hour: "numeric",
+        minute: "2-digit",
+      });
+};
+
+const BookingRow = ({ booking: b, onCancel }) => {
   const status = effectiveStatus(b);
+
+  // the server decides: cancellable is false once the stay has started, or the booking is closed
+  const canCancel =
+    b.cancellable && (status === "PENDING_PAYMENT" || status === "CONFIRMED");
+
+  const freeEnds = b.freeCancellationUntil
+    ? new Date(b.freeCancellationUntil)
+    : null;
+  const freeOpen = status === "CONFIRMED" && freeEnds && freeEnds > new Date();
+  const freeEnded =
+    status === "CONFIRMED" && freeEnds && freeEnds <= new Date();
+
+  const hint =
+    status === "PENDING_PAYMENT"
+      ? "Not paid yet, so cancelling is free."
+      : freeOpen
+        ? `Free cancellation until ${formatDeadline(b.freeCancellationUntil)}`
+        : freeEnded
+          ? "Free cancellation has ended. Cancelling now gives no refund."
+          : "";
+
   return (
-    <li>
+    <li className="overflow-hidden rounded-2xl border border-border bg-surface">
       <Link
         to={`/bookings/${b.id}`}
-        className={`flex gap-4 rounded-2xl border border-border bg-surface p-3 transition-colors hover:bg-input sm:p-4 ${focusRing}`}
+        className={`flex gap-4 p-3 transition-colors hover:bg-input sm:p-4 ${focusRingInset}`}
       >
         <img
           src={b.coverImageUrl}
@@ -83,8 +126,37 @@ const BookingRow = ({ booking: b }) => {
             {status === "PENDING_PAYMENT" &&
               ` · Pay by ${formatTime(b.holdExpiresAt)}`}
           </p>
+
+          {status === "CANCELLED" && b.cancelledByRole && (
+            <p className="mt-1 text-xs text-subtext">
+              {CANCELLED_BY[b.cancelledByRole]}
+              {b.refundAmount != null &&
+                (Number(b.refundAmount) > 0
+                  ? ` · Refunded ${formatINR(b.refundAmount, b.currency)}`
+                  : " · No refund")}
+            </p>
+          )}
+          {status === "CANCELLED" && b.cancellationReason && (
+            <p className="mt-0.5 line-clamp-2 break-words text-xs text-subtext">
+              Reason: {b.cancellationReason}
+            </p>
+          )}
         </div>
       </Link>
+
+      {/* A sibling of the link, never inside it: a button can't live in an anchor */}
+      {canCancel && (
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border px-3 py-2.5 sm:px-4">
+          <p className="text-xs text-subtext">{hint}</p>
+          <button
+            type="button"
+            onClick={() => onCancel(b)}
+            className={`cursor-pointer rounded-lg border border-danger/50 bg-bg px-3 py-1.5 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 ${focusRing}`}
+          >
+            Cancel booking
+          </button>
+        </div>
+      )}
     </li>
   );
 };
@@ -98,6 +170,7 @@ const MyBookings = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [reloadKey, setReloadKey] = useState(0);
+  const [toCancel, setToCancel] = useState(null);
 
   useEffect(() => {
     let ignore = false;
@@ -127,6 +200,25 @@ const MyBookings = () => {
 
   const items = data?.content ?? [];
   const totalPages = data?.totalPages ?? 0;
+
+  // a cancel can empty the last page: step back one page
+  useEffect(() => {
+    if (!loading && !error && data && items.length === 0 && page > 0) {
+      setSearchParams(
+        { tab: tab.key, page: String(Math.max(0, totalPages - 1)) },
+        { replace: true },
+      );
+    }
+  }, [
+    loading,
+    error,
+    data,
+    items.length,
+    page,
+    totalPages,
+    tab.key,
+    setSearchParams,
+  ]);
 
   return (
     <div className="min-h-screen bg-bg text-text">
@@ -212,7 +304,7 @@ const MyBookings = () => {
           {!loading && !error && items.length > 0 && (
             <ul className="space-y-3">
               {items.map((b) => (
-                <BookingRow key={b.id} booking={b} />
+                <BookingRow key={b.id} booking={b} onCancel={setToCancel} />
               ))}
             </ul>
           )}
@@ -245,6 +337,17 @@ const MyBookings = () => {
           )}
         </section>
       </div>
+
+      <BookingCancelDialog
+        open={Boolean(toCancel)}
+        booking={toCancel}
+        role="guest"
+        onClose={() => setToCancel(null)}
+        onDone={() => {
+          setToCancel(null);
+          setReloadKey((k) => k + 1);
+        }}
+      />
     </div>
   );
 };

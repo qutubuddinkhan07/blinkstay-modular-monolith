@@ -10,6 +10,7 @@ import {
   FiUnlock,
   FiXCircle,
 } from "react-icons/fi";
+import { getBooking } from "../bookings/bookingService";
 
 const ICONS = {
   HOST_REQUEST_SUBMITTED: FiInbox,
@@ -22,11 +23,38 @@ const ICONS = {
   BOOKING_CONFIRMED: FiCheckCircle,
   PAYMENT_REFUNDED: FiRotateCcw,
   BOOKING_RECEIVED: FiCalendar,
+  BOOKING_CANCELLED: FiXCircle,
 };
 
 export const getNotificationIcon = (type) => ICONS[type] ?? FiBell;
 
-// Where a notification opens
+// Booking and payment notifications can reach the guest or the host
+const isBookingType = (type = "") =>
+  type.startsWith("BOOKING_") || type.startsWith("PAYMENT_");
+
+// Types that only ever go to the host. Used only when the booking can't be looked up.
+const HOST_COPY = new Set(["BOOKING_RECEIVED"]);
+
+// Guest -> their booking page. Host -> Reservations.
+export const resolveBookingPath = async (n, { isManager = false } = {}) => {
+  const mine = n.referenceId ? `/bookings/${n.referenceId}` : "/bookings";
+  const asHost = "/manager/reservations";
+
+  // Only hosts have a Reservations page, so anyone else can only be the guest
+  if (!isManager) return mine;
+  if (!n.referenceId) return HOST_COPY.has(n.type) ? asHost : mine;
+
+  try {
+    await getBooking(n.referenceId); // owner-only: succeeds only for the guest who booked it
+    return mine;
+  } catch (err) {
+    // 404: it's someone else's booking, so this is the host's copy
+    if (err?.response?.status === 404) return asHost;
+    return HOST_COPY.has(n.type) ? asHost : mine; // couldn't tell: go by type
+  }
+};
+
+// Where every other notification opens
 export const getNotificationPath = (n) => {
   switch (n.type) {
     case "HOST_REQUEST_SUBMITTED":
@@ -42,17 +70,6 @@ export const getNotificationPath = (n) => {
     case "ACCOUNT_BLOCKED":
     case "ACCOUNT_UNBLOCKED":
       return "/profile";
-
-    // Guest's own booking (referenceId = bookingId)
-    case "BOOKING_CONFIRMED":
-    case "PAYMENT_REFUNDED":
-      return n.referenceId ? `/bookings/${n.referenceId}` : "/bookings";
-
-    // Host's copy: /bookings/{id} is guest-only and would 404 for the host.
-    // Switch to the host reservations page once it exists.
-    case "BOOKING_RECEIVED":
-      return "/my-listings";
-
     default:
       return "/notifications";
   }
@@ -60,9 +77,17 @@ export const getNotificationPath = (n) => {
 
 // An approved host still has the old roles in this browser, and /my-listings is manager-only,
 // so refresh the user first or they'd land on the "no access" screen.
-export const openNotification = async (n, { navigate, refreshUser }) => {
+export const openNotification = async (
+  n,
+  { navigate, refreshUser, isManager },
+) => {
   if (n.type === "HOST_REQUEST_APPROVED") await refreshUser?.();
-  navigate(getNotificationPath(n));
+
+  const path = isBookingType(n.type)
+    ? await resolveBookingPath(n, { isManager })
+    : getNotificationPath(n);
+
+  navigate(path);
 };
 
 const UNITS = [

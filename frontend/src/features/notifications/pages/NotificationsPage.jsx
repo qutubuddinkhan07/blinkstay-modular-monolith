@@ -25,7 +25,7 @@ const TABS = [
 const NotificationsPage = () => {
   const navigate = useNavigate();
   const dispatch = useDispatch();
-  const { refreshUser } = useAuth();
+  const { refreshUser, isManager } = useAuth();
 
   const version = useSelector(selectVersion);
   const { items, status, error, totalPages } = useSelector(selectList);
@@ -62,7 +62,7 @@ const NotificationsPage = () => {
 
   const handleSelect = async (n) => {
     if (!n.read) dispatch(markNotificationRead(n));
-    await openNotification(n, { navigate, refreshUser });
+    await openNotification(n, { navigate, refreshUser, isManager });
   };
 
   const handleDelete = (n) => {

@@ -98,6 +98,10 @@ const BookingPage = Loadable(
   lazy(() => import("../features/bookings/pages/BookingPage")),
 );
 
+const BookingsPage = Loadable(
+  lazy(() => import("../features/bookings/pages/BookingsPage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -189,7 +193,7 @@ const route = createBrowserRouter([
               },
               {
                 path: "/manager/reservations",
-                element: <ComingSoon title="Reservations" />,
+                element: <BookingsPage mode="host" />,
               },
               { path: "/host/business", element: <BusinessProfile /> },
             ],
@@ -214,6 +218,10 @@ const route = createBrowserRouter([
               {
                 path: "/admin/host-requests",
                 element: <AdminHostRequests />,
+              },
+              {
+                path: "/admin/bookings",
+                element: <BookingsPage mode="admin" />,
               },
             ],
           },

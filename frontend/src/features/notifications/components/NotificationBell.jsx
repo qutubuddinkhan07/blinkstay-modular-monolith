@@ -29,7 +29,7 @@ const NotificationBell = ({ onOpenChange }) => {
   const navigate = useNavigate();
   const { pathname } = useLocation();
   const dispatch = useDispatch();
-  const { refreshUser } = useAuth();
+  const { refreshUser, isManager } = useAuth();
 
   const count = useSelector(selectUnreadCount);
   const version = useSelector(selectVersion);
@@ -120,7 +120,11 @@ const NotificationBell = ({ onOpenChange }) => {
   const handleSelect = async (n) => {
     setOpen(false);
     if (!n.read) dispatch(markNotificationRead(n)); // optimistic; rolls itself back on failure
-    await openNotification(n, { navigate, refreshUser: refreshRef.current });
+    await openNotification(n, {
+      navigate,
+      refreshUser: refreshRef.current,
+      isManager,
+    });
   };
 
   const handleDelete = (n) => {

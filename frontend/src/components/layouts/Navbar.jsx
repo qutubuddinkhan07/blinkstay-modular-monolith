@@ -16,6 +16,7 @@ import {
   FiBriefcase,
   FiCalendar,
   FiChevronDown,
+  FiClipboard,
   FiGrid,
   FiHeart,
   FiHome,
@@ -85,7 +86,7 @@ const ACCOUNT_SECTIONS = [
       {
         label: "Reservations",
         to: "/manager/reservations",
-        icon: FiCalendar,
+        icon: FiClipboard,
         roles: ["HOTEL_MANAGER"],
       },
       {
@@ -110,6 +111,12 @@ const ACCOUNT_SECTIONS = [
         label: "Host requests",
         to: "/admin/host-requests",
         icon: FiInbox,
+        roles: ["ADMIN"],
+      },
+      {
+        label: "All bookings",
+        to: "/admin/bookings",
+        icon: FiCalendar,
         roles: ["ADMIN"],
       },
     ],
