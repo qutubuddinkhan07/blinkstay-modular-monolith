@@ -11,6 +11,9 @@ import HostCard from "../components/listing/HostCard";
 import FavoriteButton from "../../favorites/components/FavoriteButton";
 import { focusRing } from "../components/create-listing/formStyles";
 import { useAuth } from "../../../context/AuthContext";
+import ListingRooms, {
+  useRoomsTonight,
+} from "../components/listing/ListingRooms";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -33,6 +36,8 @@ const Listing = () => {
     error,
     refetch,
   } = useGetListingByIdQuery(id, { refetchOnMountOrArgChange: true });
+
+  const tonight = useRoomsTonight(id);
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
@@ -131,6 +136,13 @@ const Listing = () => {
 
             {/* Hidden when host is null (account deleted) */}
             <HostCard host={listing.host} className="mt-10" />
+
+            <ListingRooms
+              rooms={listing.rooms}
+              tonight={listing.status === "PUBLISHED" ? tonight.data : null}
+              loading={listing.status === "PUBLISHED" && tonight.loading}
+              className="mt-10"
+            />
 
             <section className="mt-10 border-t border-border pt-8">
               <h2 className="mb-5 text-xl font-semibold">

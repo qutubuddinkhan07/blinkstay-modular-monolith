@@ -9,7 +9,8 @@ export default defineConfig({
 
   server: {
     host: "0.0.0.0",
-    allowedHosts: [".ngrok-free.app"],
+    allowedHosts: [".ngrok-free.app", ".trycloudflare.com"],
+    hmr: { clientPort: 443 },
 
     proxy: {
       "/api": {

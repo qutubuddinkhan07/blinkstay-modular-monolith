@@ -39,6 +39,12 @@ export const getAvailability = (
     })
     .then((res) => res.data.data);
 
+// Public. data: { listingId, date, rooms: [{ roomId, roomType, totalRooms, freeTonight }] }
+export const getRoomsTonight = (listingId) =>
+  axiosInstance
+    .get(`${AVAILABILITY}/${listingId}/tonight`)
+    .then((res) => res.data.data);
+
 // body: { roomId, checkIn, checkOut, rooms, guests } -> the new booking
 export const createBooking = (body) =>
   axiosInstance.post(BOOKINGS, body).then((res) => res.data.data);
