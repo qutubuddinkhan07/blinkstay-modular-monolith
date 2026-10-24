@@ -3,7 +3,6 @@ package blinkstay.room.service;
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.NewRoom;
 import blinkstay.room.dto.RoomResponseDto;
-import blinkstay.room.dto.RoomSummaryDto;
 
 import java.util.List;
 import java.util.UUID;
@@ -12,9 +11,7 @@ public interface RoomService {
     String createRoom(UUID listingId, AddRoomDto addRoomDto);
 
     void createRooms(UUID listingId, List<NewRoom> rooms);
-
-    RoomSummaryDto getRoomSummary(UUID listingId);
-
+    
     boolean checkDoesListingHaveRooms(UUID listingId);
 
     String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto);

@@ -1,20 +1,15 @@
 package blinkstay.listing.dto;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
-
 import blinkstay.common.directory.HostSummary;
 import blinkstay.listing.enums.ListingCategory;
 import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.room.dto.RoomResponseDto;
-import blinkstay.room.dto.RoomSummaryDto;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
 
 @Getter
 @Setter
@@ -22,39 +17,37 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class ListingDetailsResponseDto {
-	private UUID id;
+    private UUID id;
 
-	private String title;
+    private String title;
 
-	private String location;
+    private String location;
 
-	private String description;
+    private String description;
 
-	private String country;
+    private String country;
 
-	private List<String> amenities;
+    private List<String> amenities;
 
-	private ListingStatus status;
+    private ListingStatus status;
 
-	private ListingCategory category;
+    private ListingCategory category;
 
-	private GeometryDto geometry;
+    private GeometryDto geometry;
 
-	private List<ImageDto> images;
+    private List<ImageDto> images;
 
-	private List<RoomResponseDto> rooms;
+    private List<RoomResponseDto> rooms;
 
-	private RoomSummaryDto roomSummary;
+    private HostSummary host;
 
-	private HostSummary host;
+    private LocalDateTime createdAt;
 
-	private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
-	private LocalDateTime updatedAt;
+    private SuspensionSource suspensionSource;
 
-	private SuspensionSource suspensionSource;
+    private String suspensionReason;
 
-	private String suspensionReason;
-
-	private LocalDateTime suspendedAt;
+    private LocalDateTime suspendedAt;
 }

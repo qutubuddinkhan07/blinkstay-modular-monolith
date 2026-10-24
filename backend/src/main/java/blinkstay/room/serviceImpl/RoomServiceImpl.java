@@ -4,7 +4,6 @@ import blinkstay.common.booking.BookingGuard;
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.NewRoom;
 import blinkstay.room.dto.RoomResponseDto;
-import blinkstay.room.dto.RoomSummaryDto;
 import blinkstay.room.entities.ListingRoom;
 import blinkstay.room.mapper.ModelMapper;
 import blinkstay.room.repository.RoomRepository;
@@ -56,16 +55,6 @@ public class RoomServiceImpl implements RoomService {
                         .availableRooms(r.totalRooms()).maxGuests(r.maxGuests()).build())
                 .toList();
         roomRepo.saveAll(entities);
-    }
-
-    @Override
-    public RoomSummaryDto getRoomSummary(UUID listingId) {
-
-        long totalRooms = roomRepo.countByListingId(listingId);
-
-        long availableRooms = roomRepo.countByListingIdAndAvailableRoomsGreaterThan(listingId, 0);
-
-        return RoomSummaryDto.builder().totalRooms((int) totalRooms).availableRooms((int) availableRooms).build();
     }
 
     @Override
