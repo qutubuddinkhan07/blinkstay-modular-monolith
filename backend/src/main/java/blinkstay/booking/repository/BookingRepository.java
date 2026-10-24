@@ -63,4 +63,10 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
 
     @Query("select b.paymentId from Booking b where b.id = :id")
     UUID findPaymentIdById(@Param("id") UUID id);
+
+    @Modifying(clearAutomatically = true)
+    @Query("update Booking b set b.status = blinkstay.booking.enums.BookingStatus.COMPLETED, "
+            + "b.version = b.version + 1, b.updatedAt = :now "
+            + "where b.status = blinkstay.booking.enums.BookingStatus.CONFIRMED and b.checkOut < :today")
+    int completeFinished(@Param("today") LocalDate today, @Param("now") Instant now);
 }

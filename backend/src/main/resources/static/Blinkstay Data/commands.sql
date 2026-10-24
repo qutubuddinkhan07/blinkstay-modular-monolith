@@ -48,3 +48,15 @@ select * from bookings;
 show tables like '%booking%';
 describe bookings;   -- use the table name from the line above
 select * from bookings order by created_at desc limit 3;
+
+update bookings set check_in = '2026-10-10', check_out = '2026-10-12'
+where booking_ref = 'BS-SCEB9X89' and status = 'CONFIRMED';
+
+commit;
+
+select trx_id, trx_started, trx_state, trx_mysql_thread_id
+from information_schema.innodb_trx;
+
+SELECT id, user, host, db, command, time, state, info
+FROM information_schema.processlist
+WHERE id IN (20, 52);
