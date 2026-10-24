@@ -20,6 +20,7 @@ select * from listing_rooms;
 select * from listings;
 select * from blocked_token;
 select * from payment_events;
+select * from listing_rooms;
 
 select * from blinkstay.users;
 
@@ -52,11 +53,14 @@ select * from bookings order by created_at desc limit 3;
 update bookings set check_in = '2026-10-10', check_out = '2026-10-12'
 where booking_ref = 'BS-SCEB9X89' and status = 'CONFIRMED';
 
-commit;
 
 select trx_id, trx_started, trx_state, trx_mysql_thread_id
 from information_schema.innodb_trx;
 
-SELECT id, user, host, db, command, time, state, info
-FROM information_schema.processlist
-WHERE id IN (20, 52);
+--SELECT id, user, host, db, command, time, state, info
+--FROM information_schema.processlist
+--WHERE id IN (20, 52);
+
+alter table listing_rooms drop column available_rooms;
+
+commit;

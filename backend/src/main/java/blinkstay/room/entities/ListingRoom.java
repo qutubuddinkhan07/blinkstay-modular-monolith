@@ -1,33 +1,19 @@
 package blinkstay.room.entities;
 
-import java.math.BigDecimal;
-import java.util.UUID;
-
+import blinkstay.room.enums.RoomCategory;
+import jakarta.persistence.*;
+import lombok.*;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
 import org.hibernate.type.SqlTypes;
 
-import blinkstay.room.enums.RoomCategory;
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.Id;
-import jakarta.persistence.Index;
-import jakarta.persistence.Table;
-import jakarta.persistence.UniqueConstraint;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
+import java.math.BigDecimal;
+import java.util.UUID;
 
 @Entity
 @Table(name = "listing_rooms", indexes = {
-		@Index(name = "idx_listings_id", columnList = "listingId") }, uniqueConstraints = @UniqueConstraint(name = "uk_listing_room_type", columnNames = {
-				"listing_id", "room_type" }))
+        @Index(name = "idx_listings_id", columnList = "listingId")}, uniqueConstraints = @UniqueConstraint(name = "uk_listing_room_type", columnNames = {
+        "listing_id", "room_type"}))
 @Getter
 @Setter
 @NoArgsConstructor
@@ -35,30 +21,27 @@ import lombok.ToString;
 @ToString
 @Builder
 public class ListingRoom {
-	@Id
-	@GeneratedValue
-	@UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
-	@JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
-	@Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
-	private UUID id;
+    @Id
+    @GeneratedValue
+    @UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
+    @JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
+    @Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
+    private UUID id;
 
-	@Column(nullable = false)
-	private UUID listingId;
+    @Column(nullable = false)
+    private UUID listingId;
 
-	@Enumerated(EnumType.STRING)
-	@Column(nullable = false)
-	private RoomCategory roomType;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private RoomCategory roomType;
 
-	@Column(nullable = false, precision = 10, scale = 2)
-	private BigDecimal price;
+    @Column(nullable = false, precision = 10, scale = 2)
+    private BigDecimal price;
 
-	@Column(nullable = false)
-	private Integer totalRooms;
+    @Column(nullable = false)
+    private Integer totalRooms;
 
-	@Column(nullable = false)
-	private Integer availableRooms;
-
-	@Builder.Default
-	@Column(name = "max_guests", nullable = false, columnDefinition = "INT DEFAULT 2")
-	private Integer maxGuests = 2;
+    @Builder.Default
+    @Column(name = "max_guests", nullable = false, columnDefinition = "INT DEFAULT 2")
+    private Integer maxGuests = 2;
 }

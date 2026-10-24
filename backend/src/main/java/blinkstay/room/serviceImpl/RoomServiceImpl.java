@@ -1,6 +1,7 @@
 package blinkstay.room.serviceImpl;
 
 import blinkstay.common.booking.BookingGuard;
+import blinkstay.common.cache.AfterCommitCacheEvictor;
 import blinkstay.room.dto.AddRoomDto;
 import blinkstay.room.dto.NewRoom;
 import blinkstay.room.dto.RoomResponseDto;
@@ -8,12 +9,13 @@ import blinkstay.room.entities.ListingRoom;
 import blinkstay.room.mapper.ModelMapper;
 import blinkstay.room.repository.RoomRepository;
 import blinkstay.room.service.RoomService;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -29,6 +31,8 @@ public class RoomServiceImpl implements RoomService {
     private final ModelMapper modelMapper;
 
     private final BookingGuard bookingGuard;
+
+    private final AfterCommitCacheEvictor cacheEvictor;
 
     @Override
     @CacheEvict(value = "listingById", key = "#listingId")
@@ -50,9 +54,7 @@ public class RoomServiceImpl implements RoomService {
     public void createRooms(UUID listingId, List<NewRoom> rooms) {
         List<ListingRoom> entities = rooms.stream()
                 .map(r -> ListingRoom.builder().listingId(listingId).roomType(r.roomType()).price(r.price())
-                        .totalRooms(r.totalRooms())
-                        // legacy column, kept equal to totalRooms only for compatibility
-                        .availableRooms(r.totalRooms()).maxGuests(r.maxGuests()).build())
+                        .totalRooms(r.totalRooms()).maxGuests(r.maxGuests()).build())
                 .toList();
         roomRepo.saveAll(entities);
     }
@@ -63,18 +65,19 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    @CacheEvict(value = "listingById", key = "#listingId")
+    @Transactional
     public String updateRoom(UUID listingId, UUID roomId, AddRoomDto addRoomDto) {
+        // RULE: lock the room row FIRST (same as booking creation), so this change and a booking can never run together
+        ListingRoom listingRoom = roomRepo.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No room found with " + roomId));
+
+        if (!listingRoom.getListingId().equals(listingId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room does not belong to this listing.");
+        }
+
         if (roomRepo.existsByListingIdAndRoomTypeAndIdNot(listingId, addRoomDto.getRoomType(), roomId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This listing already has a " + addRoomDto.getRoomType() + " room.");
-        }
-        ListingRoom listingRoom = roomRepo.findById(roomId)
-                .orElseThrow(() -> new RuntimeException("No room found with " + roomId));
-        boolean sameListing = listingRoom.getListingId().equals(listingId);
-
-        if (!sameListing) {
-            throw new RuntimeException("Listing Id not same as rooms listing id");
         }
 
         int peak = bookingGuard.peakRoomsBooked(roomId);
@@ -88,7 +91,6 @@ public class RoomServiceImpl implements RoomService {
                     "The room type cannot change while it has upcoming bookings");
         }
 
-        listingRoom.setAvailableRooms(addRoomDto.getTotalRooms());
         listingRoom.setPrice(addRoomDto.getPrice());
         listingRoom.setRoomType(addRoomDto.getRoomType());
         listingRoom.setTotalRooms(addRoomDto.getTotalRooms());
@@ -98,8 +100,29 @@ public class RoomServiceImpl implements RoomService {
         }
 
         roomRepo.save(listingRoom);
+        cacheEvictor.clear("listingById");
 
         return "Room updated";
+    }
+
+    @Override
+    @Transactional
+    public String deleteRoom(UUID listingId, UUID roomId) {
+        // lock first: a booking being created for this room finishes before we check, or waits until we are done
+        ListingRoom room = roomRepo.findByIdForUpdate(roomId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No room found with " + roomId));
+
+        if (!room.getListingId().equals(listingId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room does not belong to this listing.");
+        }
+
+        if (bookingGuard.roomHasActiveBookings(roomId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This room has upcoming bookings and cannot be deleted");
+        }
+
+        roomRepo.delete(room);
+        cacheEvictor.clear("listingById");
+        return "Room with id: " + roomId + " deleted";
     }
 
     @Override
@@ -109,35 +132,16 @@ public class RoomServiceImpl implements RoomService {
     }
 
     @Override
-    @CacheEvict(value = "listingById", key = "#listingId")
-    public String deleteRoom(UUID listingId, UUID roomId) {
-        ListingRoom room = roomRepo.findById(roomId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "No room found with " + roomId));
-
-        if (!room.getListingId().equals(listingId)) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Room does not belong to this listing.");
-        }
-
-        if (bookingGuard.roomHasActiveBookings(roomId)) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This room has upcoming bookings cannot be deleted");
-        }
-
-        roomRepo.delete(room);
-        return "Room with id: " + roomId + " deleted";
-    }
-
-    @Override
     @Transactional
     public void deleteRoomsByListingId(UUID listingId) {
         roomRepo.deleteByListingId(listingId);
     }
 
     @Override
-    @Transactional(Transactional.TxType.MANDATORY)
+    @Transactional(propagation = Propagation.MANDATORY)
     public RoomResponseDto lockRoom(UUID roomId) {
         ListingRoom room = roomRepo.findByIdForUpdate(roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Room not found"));
         return modelMapper.listingRoomToRoomResponseDto(List.of(room)).get(0);
     }
-
 }

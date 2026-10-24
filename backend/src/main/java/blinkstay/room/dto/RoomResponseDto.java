@@ -1,15 +1,10 @@
 package blinkstay.room.dto;
 
+import blinkstay.room.enums.RoomCategory;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.util.UUID;
-
-import blinkstay.room.enums.RoomCategory;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 @Getter
 @Setter
@@ -18,17 +13,15 @@ import lombok.ToString;
 @ToString
 @Builder
 public class RoomResponseDto {
-	private UUID roomId;
+    private UUID roomId;
 
-	private UUID listingId;
+    private UUID listingId;
 
-	private RoomCategory roomType;
+    private RoomCategory roomType;
 
-	private BigDecimal price;
+    private BigDecimal price;
 
-	private Integer totalRooms;
+    private Integer totalRooms;
 
-	private Integer availableRooms;
-
-	private Integer maxGuests;
+    private Integer maxGuests;
 }
