@@ -202,3 +202,19 @@ export const loadRazorpayCheckout = () => {
   }
   return razorpayLoading;
 };
+
+// Drops Razorpay's script and everything it created, so the next payment starts clean.
+// Used as a last resort when its window refused to open.
+export const resetRazorpayCheckout = () => {
+  document.querySelectorAll(".razorpay-container").forEach((el) => el.remove());
+  document
+    .querySelectorAll(`script[src="${RAZORPAY_SRC}"]`)
+    .forEach((el) => el.remove());
+
+  try {
+    delete window.Razorpay;
+  } catch {
+    window.Razorpay = undefined;
+  }
+  razorpayLoading = null; // the next payment loads a fresh copy
+};

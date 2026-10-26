@@ -14,6 +14,7 @@ import { useAuth } from "../../../context/AuthContext";
 import ListingRooms, {
   useRoomsTonight,
 } from "../components/listing/ListingRooms";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -36,6 +37,8 @@ const Listing = () => {
     error,
     refetch,
   } = useGetListingByIdQuery(id, { refetchOnMountOrArgChange: true });
+
+  usePageTitle(listing?.title);
 
   const tonight = useRoomsTonight(id);
 

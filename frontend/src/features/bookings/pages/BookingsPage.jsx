@@ -159,6 +159,10 @@ const BookingRow = ({ booking: b, mode, onCancel }) => {
 
 const BookingsPage = ({ mode = "host" }) => {
   const cfg = MODES[mode];
+  if (!cfg) throw new Error('BookingsPage needs mode="host" or mode="admin"');
+
+  usePageTitle(cfg.title);
+
   const isAdmin = mode === "admin";
 
   const [params, setParams] = useSearchParams();

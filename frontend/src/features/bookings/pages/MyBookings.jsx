@@ -14,6 +14,7 @@ import {
   getMyBookings,
 } from "../bookingService";
 import BookingCancelDialog from "../components/BookingCancelDialog";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -162,6 +163,8 @@ const BookingRow = ({ booking: b, onCancel }) => {
 };
 
 const MyBookings = () => {
+  usePageTitle("My Bookings");
+
   const [searchParams, setSearchParams] = useSearchParams();
   const tab = TABS.find((t) => t.key === searchParams.get("tab")) ?? TABS[0];
   const page = Math.max(0, Number.parseInt(searchParams.get("page"), 10) || 0);

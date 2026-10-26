@@ -24,6 +24,7 @@ import {
   listingExists,
   loadRazorpayCheckout,
   payBooking,
+  resetRazorpayCheckout,
   verifyRazorpayPayment,
 } from "../bookingService";
 import BookingCancelDialog, {
@@ -133,6 +134,8 @@ const ConfirmationPanel = ({ booking: b }) => (
 
 const BookingPage = () => {
   const { id } = useParams();
+  const { user } = useAuth();
+
   const [booking, setBooking] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null); // { status, message }
@@ -142,7 +145,7 @@ const BookingPage = () => {
 
   // Payment
   const [paying, setPaying] = useState(false); // POST /pay running
-  const [checkout, setCheckout] = useState(null); // /pay response = dialog open
+  const [checkout, setCheckout] = useState(null); // mock provider: /pay response = dialog open
   const [completing, setCompleting] = useState(null); // "SUCCESS" | "FAILURE" | null
   const [checkoutMsg, setCheckoutMsg] = useState(null);
   const [justConfirmed, setJustConfirmed] = useState(false);
@@ -150,11 +153,43 @@ const BookingPage = () => {
   const [cancelOpen, setCancelOpen] = useState(false);
 
   // Razorpay (real provider)
-  const { user } = useAuth();
   const [rzpOpen, setRzpOpen] = useState(false); // the window is open, or its result is being checked
   const [verifying, setVerifying] = useState(false); // POST .../verify running
   const rzpRef = useRef(null); // the open Razorpay instance
   const verifyingRef = useRef(false); // readable inside Razorpay's callbacks
+  const savedOverflowRef = useRef(null); // page scroll setting from before Razorpay opened (null = nothing to restore)
+
+  /* ------------------------------------------------------------------ */
+  /* Razorpay cleanup: one function, used by every exit path             */
+  /* ------------------------------------------------------------------ */
+
+  // Closes the instance, removes its overlay and gives the page its scrolling back.
+  // Safe to call at any time, including when nothing is open.
+  const closeRazorpayDom = useCallback(() => {
+    try {
+      rzpRef.current?.close?.();
+    } catch {
+      // already closed
+    }
+    rzpRef.current = null;
+
+    if (savedOverflowRef.current !== null) {
+      document.body.style.overflow = savedOverflowRef.current;
+      savedOverflowRef.current = null;
+    }
+  }, []);
+
+  const endRazorpay = useCallback(() => {
+    closeRazorpayDom();
+    setRzpOpen(false);
+  }, [closeRazorpayDom]);
+
+  // leaving the page closes a payment window that is still open
+  useEffect(() => closeRazorpayDom, [closeRazorpayDom]);
+
+  /* ------------------------------------------------------------------ */
+  /* Loading the booking                                                 */
+  /* ------------------------------------------------------------------ */
 
   // quiet = refresh in the background (keep showing the booking, toast on failure)
   const load = useCallback(
@@ -189,16 +224,50 @@ const BookingPage = () => {
     setJustConfirmed(false);
     setNotice("");
     setCancelOpen(false);
+    endRazorpay();
     window.scrollTo({ top: 0 });
-  }, [id]);
+  }, [id, endRazorpay]);
 
-  // leaving the page closes a payment window that is still open
-  useEffect(
-    () => () => {
-      rzpRef.current?.close?.();
-    },
-    [],
-  );
+  // Razorpay doesn't always call ondismiss (for example when its checkout fails to open),
+  // so also watch whether its window is still on screen
+  useEffect(() => {
+    if (!rzpOpen || verifying) return;
+
+    const startedAt = Date.now();
+    let seen = false; // the window has appeared at least once
+    let closedAt = null;
+
+    const timer = setInterval(() => {
+      const el = document.querySelector(".razorpay-container");
+      const showing =
+        Boolean(el) &&
+        el.getClientRects().length > 0 &&
+        getComputedStyle(el).visibility !== "hidden";
+
+      if (showing) {
+        seen = true;
+        closedAt = null;
+        return;
+      }
+
+      if (seen) {
+        // gone after being shown. Wait a moment: after a successful payment Razorpay
+        // closes first and calls the success handler right after
+        closedAt ??= Date.now();
+        if (Date.now() - closedAt > 1500) {
+          clearInterval(timer);
+          endRazorpay();
+        }
+      } else if (Date.now() - startedAt > 10000) {
+        clearInterval(timer);
+        endRazorpay();
+        resetRazorpayCheckout(); // the next click loads a fresh copy: no page reload needed
+        notify.error("The payment window didn't open. Please try again.");
+      }
+    }, 400);
+
+    return () => clearInterval(timer);
+  }, [rzpOpen, verifying, endRazorpay]);
 
   // Link to the listing only if it's still open to guests
   const listingId = booking?.listingId;
@@ -234,12 +303,16 @@ const BookingPage = () => {
     return () => clearTimeout(timer);
   }, [holdEndsAt, load]);
 
-  // The booking stopped being payable while the dialog sat idle: close it
+  // The booking stopped being payable while the mock dialog sat idle: close it
   useEffect(() => {
     if (checkout && !completing && status && status !== "PENDING_PAYMENT") {
       setCheckout(null);
     }
   }, [checkout, completing, status]);
+
+  /* ------------------------------------------------------------------ */
+  /* Payment                                                             */
+  /* ------------------------------------------------------------------ */
 
   // Shared by the mock dialog and Razorpay. inDialog: show failures inside the mock dialog.
   const applyPaymentResult = async (res, { inDialog }) => {
@@ -303,7 +376,7 @@ const BookingPage = () => {
     } finally {
       verifyingRef.current = false;
       setVerifying(false);
-      setRzpOpen(false);
+      endRazorpay();
     }
   };
 
@@ -323,10 +396,11 @@ const BookingPage = () => {
       return;
     }
 
-    // Razorpay wants the theme as a hex colour: read it from the current theme
-    const themeColor = getComputedStyle(document.documentElement)
+    // Razorpay wants a hex colour: use the theme's, only if it really is one
+    const color = getComputedStyle(document.documentElement)
       .getPropertyValue("--color-primary")
       .trim();
+    const theme = /^#[0-9a-f]{3,8}$/i.test(color) ? { color } : undefined;
 
     try {
       const rzp = new Razorpay({
@@ -339,22 +413,31 @@ const BookingPage = () => {
           ? `Booking ${order.bookingReference}`
           : "Booking",
         prefill: { name: user?.username, email: user?.email },
-        theme: themeColor ? { color: themeColor } : undefined,
+        theme,
         handler: (response) => verifyRazorpay(order.orderId, response),
         modal: {
           // closed without paying: do nothing, the booking stays on hold
           ondismiss: () => {
-            if (!verifyingRef.current) setRzpOpen(false);
+            if (!verifyingRef.current) endRazorpay();
           },
         },
       });
 
+      // Razorpay keeps its window open after a failed payment so the user can retry:
+      // we only say why
+      rzp.on("payment.failed", (resp) => {
+        const reason = resp?.error?.description;
+        if (reason) notify.error(reason);
+      });
+
+      savedOverflowRef.current = document.body.style.overflow;
       rzpRef.current = rzp;
       setRzpOpen(true);
       rzp.open();
     } catch (err) {
       console.error("Razorpay could not open", err);
-      setRzpOpen(false);
+      endRazorpay();
+      resetRazorpayCheckout();
       notify.error("Couldn't open the payment window. Please try again.");
     }
   };
@@ -406,6 +489,10 @@ const BookingPage = () => {
     }
   };
 
+  /* ------------------------------------------------------------------ */
+  /* Render                                                              */
+  /* ------------------------------------------------------------------ */
+
   if (loading) return <Loading />;
 
   if (error?.status === 404) {
@@ -442,7 +529,7 @@ const BookingPage = () => {
     b.cancellable && (status === "PENDING_PAYMENT" || status === "CONFIRMED");
   const hint = cancellationHint(status, b);
   const paymentBusy =
-    paying || rzpOpen || Boolean(checkout) || Boolean(completing);
+    paying || rzpOpen || verifying || Boolean(checkout) || Boolean(completing);
 
   const handleCancelled = async () => {
     setCancelOpen(false);
@@ -527,7 +614,7 @@ const BookingPage = () => {
                       ? "Confirming your payment…"
                       : rzpOpen
                         ? "Payment window open…"
-                        : `Pay now · ${formatINR(b.totalAmount, b.currency)}`}{" "}
+                        : `Pay now · ${formatINR(b.totalAmount, b.currency)}`}
                 </button>
               </div>
             </div>
