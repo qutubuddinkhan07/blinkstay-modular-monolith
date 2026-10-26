@@ -12,10 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 
@@ -28,6 +25,7 @@ import java.util.UUID;
 public class RazorpayPaymentController {
     private final RazorpayCheckoutService checkout;
 
+    @PostMapping("/{orderId}/verify")
     public ResponseEntity<PaymentApiResponse<PaymentResultDto>> verify(@AuthenticationPrincipal UserDetails userDetails, @PathVariable("orderId") String orderId, @Valid @RequestBody RazorpayVerifyDto dto) {
         PaymentResultDto result = checkout.verify(UUID.fromString(userDetails.getUsername()), orderId, dto);
         return ResponseEntity.ok(PaymentApiResponse.success(result.getMessage(), result));

@@ -1,9 +1,13 @@
 package blinkstay.common.exceptionhandler;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-
+import blinkstay.auth.dtos.ApiResponse;
+import blinkstay.common.exception.AccountBlockedException;
+import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.common.exception.UserAlreadyExistsException;
+import blinkstay.common.exception.UserNotFoundException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.coyote.BadRequestException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -12,6 +16,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.security.authorization.AuthorizationDeniedException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,215 +24,225 @@ import org.springframework.web.method.annotation.HandlerMethodValidationExceptio
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
-import com.fasterxml.jackson.databind.exc.InvalidFormatException;
-
-import blinkstay.auth.dtos.ApiResponse;
-import blinkstay.common.exception.AccountBlockedException;
-import blinkstay.common.exception.ManagerNotOwnerException;
-import blinkstay.common.exception.UserAlreadyExistsException;
-import blinkstay.common.exception.UserNotFoundException;
-import jakarta.validation.ConstraintViolationException;
-import lombok.extern.slf4j.Slf4j;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
-	@ExceptionHandler(IllegalArgumentException.class)
-	public ResponseEntity<ApiResponse<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(ex.getMessage())
-				.data(null).build();
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<String>> handleIllegalArgumentException(IllegalArgumentException ex) {
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(ex.getMessage())
+                .data(null).build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	@ExceptionHandler({ MethodArgumentNotValidException.class, HandlerMethodValidationException.class })
-	public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(Exception ex) {
+    @ExceptionHandler({MethodArgumentNotValidException.class, HandlerMethodValidationException.class})
+    public ResponseEntity<ApiResponse<Map<String, String>>> handleValidationExceptions(Exception ex) {
 
-		Map<String, String> errors = new HashMap<>();
+        Map<String, String> errors = new HashMap<>();
 
-		if (ex instanceof MethodArgumentNotValidException methodEx) {
+        if (ex instanceof MethodArgumentNotValidException methodEx) {
 
-			methodEx.getBindingResult().getFieldErrors()
-					.forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
+            methodEx.getBindingResult().getFieldErrors()
+                    .forEach(error -> errors.put(error.getField(), error.getDefaultMessage()));
 
-		} else if (ex instanceof HandlerMethodValidationException handlerEx) {
+        } else if (ex instanceof HandlerMethodValidationException handlerEx) {
 
-			handlerEx.getAllErrors().forEach(error -> {
+            handlerEx.getAllErrors().forEach(error -> {
 
-				if (error instanceof FieldError fieldError) {
+                if (error instanceof FieldError fieldError) {
 
-					errors.put(fieldError.getField(), fieldError.getDefaultMessage());
+                    errors.put(fieldError.getField(), fieldError.getDefaultMessage());
 
-				} else {
+                } else {
 
-					errors.put("validationError", error.getDefaultMessage());
-				}
-			});
-		}
+                    errors.put("validationError", error.getDefaultMessage());
+                }
+            });
+        }
 
-		ApiResponse<Map<String, String>> apiResponse = ApiResponse.<Map<String, String>>builder().success(false)
-				.message("Validation failed").data(errors).build();
+        ApiResponse<Map<String, String>> apiResponse = ApiResponse.<Map<String, String>>builder().success(false)
+                .message("Validation failed").data(errors).build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	@ExceptionHandler(AccountBlockedException.class)
-	public ResponseEntity<ApiResponse<String>> handleAccountBlocked(AccountBlockedException ex) {
-		return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
-				ApiResponse.<String>builder().success(false).message(ex.getMessage()).data("ACCOUNT_BLOCKED").build());
-	}
+    @ExceptionHandler(AccountBlockedException.class)
+    public ResponseEntity<ApiResponse<String>> handleAccountBlocked(AccountBlockedException ex) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                ApiResponse.<String>builder().success(false).message(ex.getMessage()).data("ACCOUNT_BLOCKED").build());
+    }
 
-	@ExceptionHandler(UserNotFoundException.class)
-	public ResponseEntity<ApiResponse<String>> handleUserNotFound(UserNotFoundException ex) {
-		return ResponseEntity.status(HttpStatus.NOT_FOUND)
-				.body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
-	}
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<String>> handleUserNotFound(UserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
+    }
 
-	@ExceptionHandler(UserAlreadyExistsException.class)
-	public ResponseEntity<ApiResponse<String>> handleUserAlreadyExists(UserAlreadyExistsException ex) {
-		return ResponseEntity.status(HttpStatus.CONFLICT)
-				.body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
-	}
+    @ExceptionHandler(UserAlreadyExistsException.class)
+    public ResponseEntity<ApiResponse<String>> handleUserAlreadyExists(UserAlreadyExistsException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.<String>builder().success(false).message(ex.getMessage()).data(null).build());
+    }
 
-	@ExceptionHandler({ ResponseStatusException.class, AuthorizationDeniedException.class,
-			ManagerNotOwnerException.class })
-	public ResponseEntity<ApiResponse<String>> handleAuthorizationExceptions(Exception ex) {
+    @ExceptionHandler({ResponseStatusException.class, AuthorizationDeniedException.class,
+            ManagerNotOwnerException.class})
+    public ResponseEntity<ApiResponse<String>> handleAuthorizationExceptions(Exception ex) {
 
-		HttpStatusCode status;
-		String message;
+        HttpStatusCode status;
+        String message;
 
-		if (ex instanceof ResponseStatusException rse) {
+        if (ex instanceof ResponseStatusException rse) {
 
-			status = rse.getStatusCode();
-			message = rse.getReason();
+            status = rse.getStatusCode();
+            message = rse.getReason();
 
-		} else if (ex instanceof ManagerNotOwnerException managerEx) {
+        } else if (ex instanceof ManagerNotOwnerException managerEx) {
 
-			status = HttpStatus.FORBIDDEN;
-			message = managerEx.getMessage();
+            status = HttpStatus.FORBIDDEN;
+            message = managerEx.getMessage();
 
-		} else {
+        } else {
 
-			// AuthorizationDeniedException
-			status = HttpStatus.FORBIDDEN;
-			message = "Access denied";
-		}
+            // AuthorizationDeniedException
+            status = HttpStatus.FORBIDDEN;
+            message = "Access denied";
+        }
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
-				.build();
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
+                .build();
 
-		return ResponseEntity.status(status).body(apiResponse);
-	}
+        return ResponseEntity.status(status).body(apiResponse);
+    }
 
-	// This is for handling the errors occurring while providing invalid "ENUM"
-	// values
-	@ExceptionHandler(HttpMessageNotReadableException.class)
-	public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadableExceptino(
-			HttpMessageNotReadableException ex) {
-		String errorMessage = "Malformed JSON request or invalid input format.";
+    // This is for handling the errors occurring while providing invalid "ENUM"
+    // values
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<String>> handleHttpMessageNotReadableExceptino(
+            HttpMessageNotReadableException ex) {
+        String errorMessage = "Malformed JSON request or invalid input format.";
 
-		// Check if the cause is an invalid Enum/target format mismatch
-		if (ex.getCause() instanceof InvalidFormatException invalidFormatException) {
-			Class<?> targetType = invalidFormatException.getTargetType();
+        // Check if the cause is an invalid Enum/target format mismatch
+        if (ex.getCause() instanceof InvalidFormatException invalidFormatException) {
+            Class<?> targetType = invalidFormatException.getTargetType();
 
-			if (targetType != null && targetType.isEnum()) {
-				Object value = invalidFormatException.getValue();
-				Object[] enumCOnstants = targetType.getEnumConstants();
+            if (targetType != null && targetType.isEnum()) {
+                Object value = invalidFormatException.getValue();
+                Object[] enumCOnstants = targetType.getEnumConstants();
 
-				errorMessage = String.format("Invalid value '%s' for field '%s'. Accepted values are: %s", value,
-						invalidFormatException.getPath().isEmpty() ? "field"
-								: invalidFormatException.getPath().get(0).getFieldName(),
-						java.util.Arrays.toString(enumCOnstants));
-			}
-		}
+                errorMessage = String.format("Invalid value '%s' for field '%s'. Accepted values are: %s", value,
+                        invalidFormatException.getPath().isEmpty() ? "field"
+                                : invalidFormatException.getPath().get(0).getFieldName(),
+                        java.util.Arrays.toString(enumCOnstants));
+            }
+        }
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(errorMessage).data(null)
-				.build();
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(errorMessage).data(null)
+                .build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	// This is used to track the file not provided exception
-	@ExceptionHandler(ConstraintViolationException.class)
-	public ResponseEntity<ApiResponse<List<String>>> handleConstraintViolationException(
-			ConstraintViolationException ex) {
-		List<String> errors = ex.getConstraintViolations().stream()
-				.map(violation -> violation.getPropertyPath() + ": " + violation.getMessage()).toList();
+    // This is used to track the file not provided exception
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<List<String>>> handleConstraintViolationException(
+            ConstraintViolationException ex) {
+        List<String> errors = ex.getConstraintViolations().stream()
+                .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage()).toList();
 
-		ApiResponse<List<String>> apiResponse = ApiResponse.<List<String>>builder().success(false)
-				.message("Parameter validation failed").data(errors).build();
+        ApiResponse<List<String>> apiResponse = ApiResponse.<List<String>>builder().success(false)
+                .message("Parameter validation failed").data(errors).build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	// for handling image related errors
+    // for handling image related errors
 
-	@ExceptionHandler(MissingServletRequestPartException.class)
-	public ResponseEntity<ApiResponse<String>> handleMissingServletRequestPartException(
-			MissingServletRequestPartException ex) {
-		String errorMessage = String.format("Required request part '%s' is missing from the multipart request.",
-				ex.getRequestPartName());
+    @ExceptionHandler(MissingServletRequestPartException.class)
+    public ResponseEntity<ApiResponse<String>> handleMissingServletRequestPartException(
+            MissingServletRequestPartException ex) {
+        String errorMessage = String.format("Required request part '%s' is missing from the multipart request.",
+                ex.getRequestPartName());
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(errorMessage).data(null)
-				.build();
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(errorMessage).data(null)
+                .build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	@ExceptionHandler(NullPointerException.class)
-	public ResponseEntity<ApiResponse<String>> handleNullPointerException(NullPointerException ex) {
+    @ExceptionHandler(NullPointerException.class)
+    public ResponseEntity<ApiResponse<String>> handleNullPointerException(NullPointerException ex) {
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false)
-				.message("A required value was missing or null: " + ex.getMessage()).data(null).build();
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false)
+                .message("A required value was missing or null: " + ex.getMessage()).data(null).build();
 
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+    }
 
-	@ExceptionHandler(BadRequestException.class)
-	public ResponseEntity<ApiResponse<String>> handleBadRequestException(BadRequestException ex) {
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(ex.getMessage()) // Safe
-																												// user-facing
-																												// message
-				.data(null).build();
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity<ApiResponse<String>> handleBadRequestException(BadRequestException ex) {
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(ex.getMessage()) // Safe
+                // user-facing
+                // message
+                .data(null).build();
 
-		return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
-	}
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(apiResponse);
+    }
 
-	@ExceptionHandler(MethodArgumentTypeMismatchException.class)
-	public ResponseEntity<ApiResponse<Void>> handleBadId(MethodArgumentTypeMismatchException ex) {
-		return ResponseEntity.badRequest().body(
-				ApiResponse.<Void>builder().success(false).message("Invalid value for '" + ex.getName() + "'").build());
-	}
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleBadId(MethodArgumentTypeMismatchException ex) {
+        return ResponseEntity.badRequest().body(
+                ApiResponse.<Void>builder().success(false).message("Invalid value for '" + ex.getName() + "'").build());
+    }
 
-	@ExceptionHandler(ObjectOptimisticLockingFailureException.class)
-	public ResponseEntity<ApiResponse<String>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
-		return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.of(false,
-				"This record was changed by someone else. Please try reload and try again.", null));
-	}
+    @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
+    public ResponseEntity<ApiResponse<String>> handleOptimisticLock(ObjectOptimisticLockingFailureException ex) {
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.of(false,
+                "This record was changed by someone else. Please try reload and try again.", null));
+    }
 
-	@ExceptionHandler(RuntimeException.class)
-	public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
-		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
-				: "A runtime error occurred processing your request.";
+    // a URL that no controller serves
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ApiResponse<String>> handleNoResource(NoResourceFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.<String>builder().success(false).message("Resource not found").data(null).build());
+    }
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
-				.build();
+    // right URL, wrong HTTP method (for example GET on a POST endpoint)
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<String>> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(
+                ApiResponse.<String>builder().success(false).message("Method not allowed for this endpoint").data(null)
+                        .build());
+    }
 
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
-	}
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse<String>> handleRuntimeException(RuntimeException ex) {
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
+                : "A runtime error occurred processing your request.";
 
-	@ExceptionHandler(Exception.class)
-	public ResponseEntity<ApiResponse<String>> handleGeneralException(Exception ex) {
-		log.error("Unhandled exception", ex);
-		String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
-				: "An unexpected error occurred";
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
+                .build();
 
-		ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
-				.build();
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+    }
 
-		return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
-	}
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<String>> handleGeneralException(Exception ex) {
+        log.error("Unhandled exception", ex);
+        String message = (ex.getMessage() != null && !ex.getMessage().isBlank()) ? ex.getMessage()
+                : "An unexpected error occurred";
+
+        ApiResponse<String> apiResponse = ApiResponse.<String>builder().success(false).message(message).data(null)
+                .build();
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(apiResponse);
+    }
 
 }
