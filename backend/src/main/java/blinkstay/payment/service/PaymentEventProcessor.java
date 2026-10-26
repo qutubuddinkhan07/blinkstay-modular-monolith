@@ -41,6 +41,10 @@ public class PaymentEventProcessor {
             return;
         }
 
+        if (eventRepo.existsByProviderAndProviderEventId(provider, event.eventId())) {
+            return; // same event delivered again (provider retry double click)
+        }
+
         eventRepo.save(PaymentEvent.builder().provider(provider).providerEventId(event.eventId()).type(event.type().name()).orderId(event.orderId()).build());
 
         if (p.getStatus() == PaymentStatus.SUCCEEDED || p.getStatus() == PaymentStatus.REFUNDED) {

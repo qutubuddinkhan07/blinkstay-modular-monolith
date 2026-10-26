@@ -12,9 +12,16 @@ export default defineConfig({
     allowedHosts: [".ngrok-free.app", ".trycloudflare.com"],
     hmr: { clientPort: 443 },
 
+    // proxy: {
+    //   "/api": {
+    //     target: "http://localhost:8080",
+    //     changeOrigin: true,
+    //   },
+    // },
     proxy: {
       "/api": {
-        target: "http://localhost:8080",
+        target: "https://bingo-mud-professionals-breakfast.trycloudflare.com", // always changing
+        
         changeOrigin: true,
       },
     },

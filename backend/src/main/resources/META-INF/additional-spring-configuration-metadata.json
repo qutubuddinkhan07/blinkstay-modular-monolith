@@ -134,6 +134,21 @@
       "name": "app.booking.complete-interval-ms",
       "type": "java.lang.Integer",
       "description": "Description for app.booking.complete-interval-ms."
+    },
+    {
+      "name": "app.payment.razorpay.key-secret",
+      "type": "java.lang.String",
+      "description": "Description for app.payment.razorpay.key-secret."
+    },
+    {
+      "name": "app.payment.razorpay.key-id",
+      "type": "java.lang.String",
+      "description": "Description for app.payment.razorpay.key-id."
+    },
+    {
+      "name": "app.payment.razorpay.webhook-secret",
+      "type": "java.lang.String",
+      "description": "Description for app.payment.razorpay.webhook-secret."
     }
   ]
 }

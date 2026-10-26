@@ -15,6 +15,7 @@ import blinkstay.payment.repository.PaymentRepository;
 import blinkstay.payment.service.PaymentEventProcessor;
 import blinkstay.payment.service.PaymentService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
@@ -29,6 +30,9 @@ public class PaymentServiceImpl implements PaymentService {
     private final PaymentGateway gateway;
     private final PaymentEventProcessor processor;
 
+    @Value("${app.payment.razorpay.key-id:}")
+    private String razorpayKeyId;
+
     @Override
     public PaymentSessionDto startPayment(UUID guestId, UUID bookingId) {
         PayableBooking booking = bookings.getPayableBooking(guestId, bookingId); // 404 or 409
@@ -41,7 +45,9 @@ public class PaymentServiceImpl implements PaymentService {
         return PaymentSessionDto.builder().paymentId(payment.getId()).bookingId(bookingId)
                 .bookingReference(booking.reference()).provider(payment.getProvider())
                 .orderId(payment.getProviderOrderId()).amount(payment.getAmount()).currency(payment.getCurrency())
-                .mock("MOCK".equals(payment.getProvider())).holdExpiresAt(booking.holdExpiresAt()).build();
+                .mock("MOCK".equals(payment.getProvider()))
+                .publicKey("RAZORPAY".equals(payment.getProvider()) ? razorpayKeyId : null)
+                .holdExpiresAt(booking.holdExpiresAt()).build();
     }
 
     private Payment createPayment(UUID guestId, PayableBooking booking) {

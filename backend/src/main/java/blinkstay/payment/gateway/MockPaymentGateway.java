@@ -15,7 +15,7 @@ public class MockPaymentGateway implements PaymentGateway {
     }
 
     @Override
-    public ProviderOrder createOrder(String receipt, BigDecimal amount, String currency) {
+    public ProviderOrder createOrder(String reference, BigDecimal amount, String currency) {
         return new ProviderOrder("mock_order_" + shortId());
     }
 

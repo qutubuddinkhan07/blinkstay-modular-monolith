@@ -22,11 +22,14 @@ import {
   effectiveStatus,
   getBooking,
   listingExists,
+  loadRazorpayCheckout,
   payBooking,
+  verifyRazorpayPayment,
 } from "../bookingService";
 import BookingCancelDialog, {
   CancellationNote,
 } from "../components/BookingCancelDialog";
+import { useAuth } from "../../../context/AuthContext";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -146,6 +149,13 @@ const BookingPage = () => {
   const [notice, setNotice] = useState("");
   const [cancelOpen, setCancelOpen] = useState(false);
 
+  // Razorpay (real provider)
+  const { user } = useAuth();
+  const [rzpOpen, setRzpOpen] = useState(false); // the window is open, or its result is being checked
+  const [verifying, setVerifying] = useState(false); // POST .../verify running
+  const rzpRef = useRef(null); // the open Razorpay instance
+  const verifyingRef = useRef(false); // readable inside Razorpay's callbacks
+
   // quiet = refresh in the background (keep showing the booking, toast on failure)
   const load = useCallback(
     async ({ quiet = false } = {}) => {
@@ -181,6 +191,14 @@ const BookingPage = () => {
     setCancelOpen(false);
     window.scrollTo({ top: 0 });
   }, [id]);
+
+  // leaving the page closes a payment window that is still open
+  useEffect(
+    () => () => {
+      rzpRef.current?.close?.();
+    },
+    [],
+  );
 
   // Link to the listing only if it's still open to guests
   const listingId = booking?.listingId;
@@ -223,8 +241,126 @@ const BookingPage = () => {
     }
   }, [checkout, completing, status]);
 
+  // Shared by the mock dialog and Razorpay. inDialog: show failures inside the mock dialog.
+  const applyPaymentResult = async (res, { inDialog }) => {
+    const paymentStatus = res.paymentStatus;
+
+    if (paymentStatus === "SUCCEEDED") {
+      setCheckout(null);
+      setJustConfirmed(true);
+      notify.success(res.message || "Payment received.");
+    } else if (paymentStatus === "REFUNDED") {
+      setCheckout(null);
+      setNotice("The booking could not be kept, so your payment was refunded.");
+      if (res.message) notify.info(res.message);
+    } else if (paymentStatus === "FAILED") {
+      const text = res.message || "The payment failed. You can try again.";
+      if (inDialog) setCheckoutMsg({ tone: "danger", text });
+      else notify.error(text);
+    } else {
+      // CREATED: still processing
+      const text = res.message || "Payment is still processing.";
+      if (inDialog) setCheckoutMsg({ tone: "info", text });
+      else notify.info(text);
+    }
+
+    if (paymentStatus === "SUCCEEDED" || paymentStatus === "REFUNDED") {
+      announceBookingsChanged();
+      await load({ quiet: true });
+    }
+  };
+
+  // Razorpay hands back the payment id and a signature; the server checks them
+  const verifyRazorpay = async (orderId, response) => {
+    verifyingRef.current = true;
+    setVerifying(true);
+    try {
+      const res = await verifyRazorpayPayment(orderId, {
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      });
+
+      // If the server only sends a message, the booking itself tells us what happened
+      let paymentStatus = res?.paymentStatus;
+      if (!paymentStatus) {
+        const fresh = await getBooking(id);
+        setBooking(fresh);
+        paymentStatus = fresh.status === "CONFIRMED" ? "SUCCEEDED" : "CREATED";
+      }
+      await applyPaymentResult({ ...res, paymentStatus }, { inDialog: false });
+    } catch (err) {
+      const message = handleApiError(err, "payment");
+      if (err.response?.status === 409) {
+        notify.error(message);
+      } else {
+        // The payment may still have gone through (the provider also tells the server directly)
+        notify.error(
+          "We couldn't confirm your payment yet. If it went through, this page will update shortly.",
+        );
+      }
+      announceBookingsChanged();
+      await load({ quiet: true });
+    } finally {
+      verifyingRef.current = false;
+      setVerifying(false);
+      setRzpOpen(false);
+    }
+  };
+
+  const openRazorpay = async (order) => {
+    if (!order.publicKey) {
+      notify.error("Online payment isn't set up yet.");
+      return;
+    }
+
+    let Razorpay;
+    try {
+      Razorpay = await loadRazorpayCheckout();
+    } catch {
+      notify.error(
+        "Couldn't load the payment window. Check your connection and try again.",
+      );
+      return;
+    }
+
+    // Razorpay wants the theme as a hex colour: read it from the current theme
+    const themeColor = getComputedStyle(document.documentElement)
+      .getPropertyValue("--color-primary")
+      .trim();
+
+    try {
+      const rzp = new Razorpay({
+        key: order.publicKey,
+        order_id: order.orderId,
+        amount: Math.round(Number(order.amount) * 100), // paise
+        currency: order.currency,
+        name: "BlinkStay",
+        description: order.bookingReference
+          ? `Booking ${order.bookingReference}`
+          : "Booking",
+        prefill: { name: user?.username, email: user?.email },
+        theme: themeColor ? { color: themeColor } : undefined,
+        handler: (response) => verifyRazorpay(order.orderId, response),
+        modal: {
+          // closed without paying: do nothing, the booking stays on hold
+          ondismiss: () => {
+            if (!verifyingRef.current) setRzpOpen(false);
+          },
+        },
+      });
+
+      rzpRef.current = rzp;
+      setRzpOpen(true);
+      rzp.open();
+    } catch (err) {
+      console.error("Razorpay could not open", err);
+      setRzpOpen(false);
+      notify.error("Couldn't open the payment window. Please try again.");
+    }
+  };
+
   const handlePayNow = async () => {
-    if (paying) return;
+    if (paying || rzpOpen) return;
     setPaying(true);
     setNotice("");
     try {
@@ -233,8 +369,7 @@ const BookingPage = () => {
         setCheckoutMsg(null);
         setCheckout(data);
       } else {
-        // Real provider (later): open its checkout here with the same data
-        notify.info("Online payment isn't available yet.");
+        await openRazorpay(data);
       }
     } catch (err) {
       notify.error(handleApiError(err, "payment"));
@@ -248,43 +383,14 @@ const BookingPage = () => {
     }
   };
 
+  // Mock provider only
   const finishPayment = async (outcome) => {
     if (!checkout || completing) return;
     setCompleting(outcome);
     setCheckoutMsg(null);
     try {
       const res = await completeMockPayment(checkout.orderId, outcome);
-
-      if (res.paymentStatus === "SUCCEEDED") {
-        setCheckout(null);
-        setJustConfirmed(true);
-        notify.success(res.message || "Payment received.");
-      } else if (res.paymentStatus === "REFUNDED") {
-        setCheckout(null);
-        setNotice(
-          "The booking could not be kept, so your payment was refunded.",
-        );
-        if (res.message) notify.info(res.message);
-      } else if (res.paymentStatus === "FAILED") {
-        setCheckoutMsg({
-          tone: "danger",
-          text: res.message || "The payment failed. You can try again.",
-        });
-      } else {
-        // CREATED: still processing
-        setCheckoutMsg({
-          tone: "info",
-          text: res.message || "Payment is still processing.",
-        });
-      }
-
-      if (
-        res.paymentStatus === "SUCCEEDED" ||
-        res.paymentStatus === "REFUNDED"
-      ) {
-        announceBookingsChanged();
-        await load({ quiet: true });
-      }
+      await applyPaymentResult(res, { inDialog: true });
     } catch (err) {
       const message = handleApiError(err, "payment");
       if (err.response?.status === 409) {
@@ -335,7 +441,8 @@ const BookingPage = () => {
   const canCancel =
     b.cancellable && (status === "PENDING_PAYMENT" || status === "CONFIRMED");
   const hint = cancellationHint(status, b);
-  const paymentBusy = paying || Boolean(checkout) || Boolean(completing);
+  const paymentBusy =
+    paying || rzpOpen || Boolean(checkout) || Boolean(completing);
 
   const handleCancelled = async () => {
     setCancelOpen(false);
@@ -411,12 +518,16 @@ const BookingPage = () => {
                 <button
                   type="button"
                   onClick={handlePayNow}
-                  disabled={paying || secondsLeft === 0}
+                  disabled={paying || rzpOpen || secondsLeft === 0}
                   className={`mt-4 w-full cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto ${focusRing}`}
                 >
                   {paying
                     ? "Starting payment…"
-                    : `Pay now · ${formatINR(b.totalAmount, b.currency)}`}
+                    : verifying
+                      ? "Confirming your payment…"
+                      : rzpOpen
+                        ? "Payment window open…"
+                        : `Pay now · ${formatINR(b.totalAmount, b.currency)}`}{" "}
                 </button>
               </div>
             </div>

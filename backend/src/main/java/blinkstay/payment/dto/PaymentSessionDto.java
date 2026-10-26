@@ -21,4 +21,5 @@ public class PaymentSessionDto {
     private String currency;
     private boolean mock;
     private Instant holdExpiresAt;
+    private String publicKey;
 }

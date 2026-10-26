@@ -159,3 +159,46 @@ export const adminCancelBooking = (id, reason) =>
   axiosInstance
     .post(`/v5/admin/bookings/${id}/cancel`, { reason })
     .then(unwrapData);
+
+// Real provider (Razorpay). data: { paymentId, bookingId, paymentStatus, message }
+// If your server answers with only a message, the booking page reads the booking's real status.
+export const verifyRazorpayPayment = (
+  orderId,
+  { razorpayPaymentId, razorpaySignature },
+) =>
+  axiosInstance
+    .post(`/v5/payments/razorpay/${encodeURIComponent(orderId)}/verify`, {
+      razorpayPaymentId,
+      razorpaySignature,
+    })
+    .then((res) => res.data.data);
+
+// Loads Razorpay's checkout script once, when the first real payment starts
+const RAZORPAY_SRC = "https://checkout.razorpay.com/v1/checkout.js";
+let razorpayLoading = null;
+
+export const loadRazorpayCheckout = () => {
+  if (window.Razorpay) return Promise.resolve(window.Razorpay);
+
+  if (!razorpayLoading) {
+    razorpayLoading = new Promise((resolve, reject) => {
+      const script = document.createElement("script");
+      script.src = RAZORPAY_SRC;
+      script.async = true;
+      script.onload = () =>
+        window.Razorpay
+          ? resolve(window.Razorpay)
+          : reject(new Error("Razorpay did not start"));
+      script.onerror = () => {
+        razorpayLoading = null; // allow a retry
+        script.remove();
+        reject(new Error("Could not load Razorpay"));
+      };
+      document.head.appendChild(script);
+    });
+    razorpayLoading.catch(() => {
+      razorpayLoading = null;
+    });
+  }
+  return razorpayLoading;
+};
