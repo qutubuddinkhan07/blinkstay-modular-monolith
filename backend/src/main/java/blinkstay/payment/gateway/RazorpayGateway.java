@@ -46,14 +46,26 @@ public class RazorpayGateway implements PaymentGateway {
     @Override
     public ProviderRefund refund(String providerPaymentId, BigDecimal amount, String reason) {
         try {
+            long minor = toMinorUnits(amount);
+
+            // already refunded earlier (for example the app crashed after Razorpay accepted it)? reuse it
+            for (Refund existing : client.payments.fetchAllRefunds(providerPaymentId)) {
+                Number existingAmount = existing.get("amount");
+                String existingStatus = existing.get("status");
+                if (existingAmount != null && existingAmount.longValue() == minor
+                        && !"failed".equals(existingStatus)) {
+                    String existingId = existing.get("id");
+                    return new ProviderRefund(existingId);
+                }
+            }
+
             JSONObject req = new JSONObject();
-            req.put("amount", toMinorUnits(amount));
+            req.put("amount", minor);
             req.put("notes", new JSONObject().put("reason", reason == null ? "" : reason));
             Refund refund = client.payments.refund(providerPaymentId, req);
             String refundId = refund.get("id");
             return new ProviderRefund(refundId);
         } catch (RazorpayException e) {
-            // thrown so the surrounding transaction rolls back; stage 2 will move this out of the transaction
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Refund could not be sent to the provider");
         }
     }

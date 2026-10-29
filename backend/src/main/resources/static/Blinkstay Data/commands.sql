@@ -21,6 +21,15 @@ select * from listings;
 select * from blocked_token;
 select * from payment_events;
 select * from listing_rooms;
+select * from payments
+order by created_at desc;
+select * from bookings
+order by created_at desc;
+
+select * from bookings
+where date(created_at) = curdate();
+
+select booking_ref, created_at, confirmed_at from bookings order by created_at desc limit 1;
 
 select * from blinkstay.users;
 
@@ -62,5 +71,8 @@ from information_schema.innodb_trx;
 --WHERE id IN (20, 52);
 
 alter table listing_rooms drop column available_rooms;
+
+show create table payments;
+alter table payments drop check payments_chk_1;
 
 commit;

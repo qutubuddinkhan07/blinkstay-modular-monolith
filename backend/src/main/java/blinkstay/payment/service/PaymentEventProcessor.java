@@ -2,10 +2,10 @@ package blinkstay.payment.service;
 
 import blinkstay.common.booking.BookingPayments;
 import blinkstay.common.booking.PaymentConfirmation;
-import blinkstay.common.booking.PaymentRefundedEvent;
 import blinkstay.payment.entities.Payment;
 import blinkstay.payment.entities.PaymentEvent;
 import blinkstay.payment.enums.PaymentStatus;
+import blinkstay.payment.event.RefundRequestedEvent;
 import blinkstay.payment.gateway.PaymentGateway;
 import blinkstay.payment.gateway.ProviderEvent;
 import blinkstay.payment.repository.PaymentEventRepository;
@@ -47,7 +47,8 @@ public class PaymentEventProcessor {
 
         eventRepo.save(PaymentEvent.builder().provider(provider).providerEventId(event.eventId()).type(event.type().name()).orderId(event.orderId()).build());
 
-        if (p.getStatus() == PaymentStatus.SUCCEEDED || p.getStatus() == PaymentStatus.REFUNDED) {
+        if (p.getStatus() == PaymentStatus.SUCCEEDED || p.getStatus() == PaymentStatus.REFUNDED
+                || p.getStatus() == PaymentStatus.REFUND_PENDING || p.getStatus() == PaymentStatus.REFUND_FAILED) {
             return; // final states never change again
         }
 
@@ -101,13 +102,14 @@ public class PaymentEventProcessor {
     }
 
     private void refund(Payment p, Instant now, String reason) {
-        gateway.refund(p.getProviderPaymentId(), p.getAmount(), reason);
-        p.setStatus(PaymentStatus.REFUNDED);
-        p.setRefundedAmount(p.getAmount());
-        p.setRefundedAt(now);
+        // only recorded here; RefundProcessor sends it to the provider after this transaction commits
+        p.setStatus(PaymentStatus.REFUND_PENDING);
+        p.setRefundReason(cut(reason, 255));
+        p.setRefundNotify(true); // the guest gets a "payment refunded" email once the money is sent back
+        p.setRefundAttempts(0);
+        p.setNextRefundAt(now);
         paymentRepo.save(p);
-        publisher.publishEvent(new PaymentRefundedEvent(p.getId(), p.getBookingId(), p.getGuestId(),
-                p.getBookingReference(), p.getAmount(), p.getCurrency(), reason));
+        publisher.publishEvent(new RefundRequestedEvent(p.getId()));
     }
 
     private static String cut(String s, int max) {

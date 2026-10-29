@@ -56,6 +56,7 @@ public class RazorpayCheckoutService {
         return switch (p.getStatus()) {
             case SUCCEEDED -> "Payment received. Your booking is confirmed.";
             case REFUNDED -> "The booking could not be kept, so your payment was refunded.";
+            case REFUND_PENDING, REFUND_FAILED -> "The booking could not be kept, so your payment is being refunded.";
             case FAILED -> p.getFailureReason() != null ? p.getFailureReason() : "Payment failed. You can try again.";
             case CREATED -> "Payment is still being processed.";
         };

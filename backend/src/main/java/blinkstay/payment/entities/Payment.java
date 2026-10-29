@@ -16,7 +16,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments", indexes = {
         @Index(name = "idx_payment_booking", columnList = "bookingId, status"),
-        @Index(name = "idx_payment_guest", columnList = "guestId, createdAt")
+        @Index(name = "idx_payment_guest", columnList = "guestId, createdAt"),
+        @Index(name = "idx_payment_refund", columnList = "status, nextRefundAt")
 })
 @Getter
 @Setter
@@ -62,6 +63,14 @@ public class Payment {
     private String failureReason;
     private Instant paidAt;
     private Instant refundedAt;
+
+    @Column(length = 255)
+    private String refundReason;
+    private Integer refundAttempts;
+    private Instant nextRefundAt;
+    @Column(length = 255)
+    private String refundError;
+    private Boolean refundNotify; // true: send the guest a "payment refunded email" when done
 
     @Version
     private Long version;

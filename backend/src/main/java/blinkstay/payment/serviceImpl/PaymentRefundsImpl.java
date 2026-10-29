@@ -3,10 +3,11 @@ package blinkstay.payment.serviceImpl;
 import blinkstay.common.payment.PaymentRefunds;
 import blinkstay.payment.entities.Payment;
 import blinkstay.payment.enums.PaymentStatus;
-import blinkstay.payment.gateway.PaymentGateway;
+import blinkstay.payment.event.RefundRequestedEvent;
 import blinkstay.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -22,7 +23,7 @@ import java.util.UUID;
 @Slf4j
 public class PaymentRefundsImpl implements PaymentRefunds {
     private final PaymentRepository paymentRepo;
-    private final PaymentGateway gateway;
+    private final ApplicationEventPublisher publisher;
 
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
@@ -31,27 +32,35 @@ public class PaymentRefundsImpl implements PaymentRefunds {
                 "Payment not found"));
     }
 
+    /**
+     * Only RECORDS the refund request. The money is sent by RefundProcessor after this transaction commits.
+     */
     @Override
     @Transactional(propagation = Propagation.MANDATORY)
     public BigDecimal refundInFull(UUID paymentId, String reason) {
         Payment p = paymentRepo.findByIdForUpdate(paymentId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
-        if (p.getStatus() == PaymentStatus.REFUNDED) {
-            return p.getRefundedAmount();
+        switch (p.getStatus()) {
+            case REFUNDED, REFUND_PENDING, REFUND_FAILED -> {
+                return p.getAmount(); // already asked for
+            }
+            case SUCCEEDED -> {
+                // continue below
+            }
+            default -> throw new ResponseStatusException(HttpStatus.CONFLICT, "This payment cannot be refunded");
         }
 
-        if (p.getStatus() != PaymentStatus.SUCCEEDED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "This payment cannot be refunded");
-        }
-
-        gateway.refund(p.getProviderPaymentId(), p.getAmount(), reason);
-        p.setStatus(PaymentStatus.REFUNDED);
-        p.setRefundedAmount(p.getAmount());
-        p.setRefundedAt(Instant.now());
+        p.setStatus(PaymentStatus.REFUND_PENDING);
+        p.setRefundReason(reason != null && reason.length() > 255 ? reason.substring(0, 255) : reason);
+        p.setRefundNotify(false); // the cancellation email already tells the guest about the refund
+        p.setRefundAttempts(0);
+        p.setNextRefundAt(Instant.now());
         paymentRepo.save(p);
 
-        log.info("Payment {} refund in full ({} {})", p.getId(), p.getAmount(), p.getCurrency());
+        publisher.publishEvent(new RefundRequestedEvent(p.getId()));
+
+        log.info("Refund requested for payment {} ({} {})", p.getId(), p.getAmount(), p.getCurrency());
 
         return p.getAmount();
     }

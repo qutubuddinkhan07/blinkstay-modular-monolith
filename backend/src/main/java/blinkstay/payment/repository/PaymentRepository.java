@@ -3,12 +3,15 @@ package blinkstay.payment.repository;
 import blinkstay.payment.entities.Payment;
 import blinkstay.payment.enums.PaymentStatus;
 import jakarta.persistence.LockModeType;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -25,4 +28,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select p from Payment p where p.id = :id")
     Optional<Payment> findByIdForUpdate(@Param("id") UUID id);
+
+    @Query("select p.id from Payment p where p.status = blinkstay.payment.enums.PaymentStatus.REFUND_PENDING"
+            + " and (p.nextRefundAt is null or p.nextRefundAt <= :now) order by p.nextRefundAt")
+    List<UUID> findDueRefundIds(@Param("now") Instant now, Pageable pageable);
 }
