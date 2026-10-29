@@ -17,6 +17,7 @@ import {
 import BookingCancelDialog, {
   CancellationNote,
 } from "../components/BookingCancelDialog";
+import { usePageTitle } from "../../../utils/usePageTitle";
 
 const PAGE_SIZE = 10;
 

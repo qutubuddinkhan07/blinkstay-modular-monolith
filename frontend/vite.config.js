@@ -20,8 +20,9 @@ export default defineConfig({
     // },
     proxy: {
       "/api": {
-        target: "https://bingo-mud-professionals-breakfast.trycloudflare.com", // always changing
-        
+        target:
+          "https://committee-likelihood-brings-remarkable.trycloudflare.com", // always changing
+
         changeOrigin: true,
       },
     },
