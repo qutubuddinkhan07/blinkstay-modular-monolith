@@ -83,9 +83,13 @@ public class PaymentEventProcessor {
                         "it was cancelled.");
             }
             case MISMATCH -> {
-                // money that dose not match the booking is never confirmend automatically
+                // money that dose not match the booking is never confirmed automatically
                 p.setStatus(PaymentStatus.FAILED);
+                p.setProviderPaymentId(event.providerPaymentId()); // kept so that money can be found and refunded
                 p.setFailureReason("The amount paid did not match the booking total");
+                p.setReviewReason("Provider received " + event.amount() + " " + event.currency() + " but the booking " +
+                        "total is " + p.getAmount() + " " + p.getCurrency() + ". Refund or resolve it in the provider " +
+                        "dashboard.");
                 paymentRepo.save(p);
 
                 log.error("Payment {} for booking {} does not match the booking total (paid {} {}. Needs review.",

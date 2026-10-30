@@ -35,7 +35,7 @@ public class RefundProcessor {
     private final TransactionTemplate tx;
     private final ApplicationEventPublisher publisher;
 
-    private record Claim(String providerPaymentId, BigDecimal amount, String reason) {
+    private record Claim(String provider, String providerPaymentId, BigDecimal amount, String reason) {
     }
 
     /**
@@ -55,6 +55,12 @@ public class RefundProcessor {
             Claim claim = tx.execute(status -> claim(paymentId));
             if (claim == null) {
                 return; // not pending, not due yet, or another worker has it
+            }
+
+            if (!gateway.name().equals(claim.provider())) {
+                recordFailure(paymentId, new IllegalStateException("Payment was made with " + claim.provider()
+                        + " but the active provider is " + gateway.name() + ". Refund it with that provider."));
+                return;
             }
 
             ProviderRefund refund;
@@ -85,7 +91,7 @@ public class RefundProcessor {
         p.setRefundAttempts(attempts(p) + 1);
         p.setNextRefundAt(now.plus(LEASE));
         paymentRepo.save(p);
-        return new Claim(p.getProviderPaymentId(), p.getAmount(), p.getRefundReason());
+        return new Claim(p.getProvider(), p.getProviderPaymentId(), p.getAmount(), p.getRefundReason());
     }
 
     // STEP 3a: the provider accepted the refund

@@ -21,8 +21,19 @@ select * from listings;
 select * from blocked_token;
 select * from payment_events;
 select * from listing_rooms;
+
 select * from payments
-order by created_at desc;
+order by created_at desc
+limit 3;
+
+--UPDATE payments
+--SET next_refund_at = UTC_TIMESTAMP(6)
+--WHERE status = 'REFUND_PENDING';
+
+update payments set status = 'REFUNDED', refunded_amount = amount,
+       refunded_at = utc_timestamp(6), refund_error = null
+where provider = 'MOCK' and status = 'REFUND_FAILED';
+
 select * from bookings
 order by created_at desc;
 
@@ -76,3 +87,7 @@ show create table payments;
 alter table payments drop check payments_chk_1;
 
 commit;
+
+-- to check whether any transaction holding anything
+select trx_mysql_thread_id, trx_started, trx_state
+from information_schema.innodb_trx;

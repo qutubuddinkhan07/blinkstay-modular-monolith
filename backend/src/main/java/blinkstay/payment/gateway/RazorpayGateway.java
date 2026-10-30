@@ -12,6 +12,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.Optional;
 
 @Component
 @ConditionalOnProperty(name = "app.payment.provider", havingValue = "razorpay")
@@ -67,6 +68,25 @@ public class RazorpayGateway implements PaymentGateway {
             return new ProviderRefund(refundId);
         } catch (RazorpayException e) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Refund could not be sent to the provider");
+        }
+    }
+
+    @Override
+    public Optional<ProviderCapture> findCapturedPayment(String orderId) {
+        try {
+            for (com.razorpay.Payment pay : client.orders.fetchPayments(orderId)) {
+                String status = pay.get("status");
+                if ("captured".equals(status)) {
+                    String id = pay.get("id");
+                    Number amount = pay.get("amount");
+                    String currency = pay.get("currency");
+                    return Optional.of(new ProviderCapture(id,
+                            BigDecimal.valueOf(amount.longValue()).movePointLeft(2), currency));
+                }
+            }
+            return Optional.empty();
+        } catch (RazorpayException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Payment provider is unavailable");
         }
     }
 

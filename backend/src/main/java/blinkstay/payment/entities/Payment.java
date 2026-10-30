@@ -71,6 +71,8 @@ public class Payment {
     @Column(length = 255)
     private String refundError;
     private Boolean refundNotify; // true: send the guest a "payment refunded email" when done
+    @Column(length = 255)
+    private String reviewReason;
 
     @Version
     private Long version;
