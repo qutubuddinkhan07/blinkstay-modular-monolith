@@ -33,7 +33,7 @@ export const CancellationNote = ({ booking: b, viewer }) => {
     b.refundAmount == null
       ? "No payment was taken."
       : Number(b.refundAmount) > 0
-        ? `Refunded ${formatINR(b.refundAmount, b.currency)}.`
+         ? `Refund of ${formatINR(b.refundAmount, b.currency)} is on its way.`
         : "No refund was due.";
 
   return (
@@ -129,10 +129,11 @@ const BookingCancelDialog = ({
     try {
       const result = await CALLS[role](booking.id, reason);
       const refund = Number(result?.refundAmount);
+      const who = role === "guest" ? "Your" : "The guest's";
       notify.success(
         refund > 0
-          ? `Booking cancelled. ${formatINR(refund, booking.currency)} will be refunded.`
-          : "Booking cancelled.",
+          ? `Booking cancelled. ${who} refund of ${formatINR(refund, booking.currency)} is on its way.`
+           : "Booking cancelled.",
       );
       finish(result);
     } catch (err) {

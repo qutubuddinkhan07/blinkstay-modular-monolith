@@ -324,7 +324,7 @@ const BookingPage = () => {
       notify.success(res.message || "Payment received.");
     } else if (paymentStatus === "REFUNDED") {
       setCheckout(null);
-      setNotice("The booking could not be kept, so your payment was refunded.");
+      setNotice("The booking could not be kept, so your refund is on its way.");
       if (res.message) notify.info(res.message);
     } else if (paymentStatus === "FAILED") {
       const text = res.message || "The payment failed. You can try again.";

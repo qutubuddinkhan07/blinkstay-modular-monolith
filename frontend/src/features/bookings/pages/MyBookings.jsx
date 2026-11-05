@@ -133,7 +133,7 @@ const BookingRow = ({ booking: b, onCancel }) => {
               {CANCELLED_BY[b.cancelledByRole]}
               {b.refundAmount != null &&
                 (Number(b.refundAmount) > 0
-                  ? ` · Refunded ${formatINR(b.refundAmount, b.currency)}`
+                  ? ` · Refund of ${formatINR(b.refundAmount, b.currency)} on its way`
                   : " · No refund")}
             </p>
           )}

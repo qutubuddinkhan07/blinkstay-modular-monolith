@@ -20,8 +20,7 @@ export default defineConfig({
     // },
     proxy: {
       "/api": {
-        target:
-          "https://committee-likelihood-brings-remarkable.trycloudflare.com", // always changing
+        target: "https://potential-anime-manufacturer-thehun.trycloudflare.com", // always changing
 
         changeOrigin: true,
       },

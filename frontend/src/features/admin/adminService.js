@@ -60,3 +60,18 @@ export const approveHostRequest = (id) =>
 // reason is required, max 500
 export const rejectHostRequest = (id, reason) =>
   axiosInstance.post(`${HOST_REQUESTS}/${id}/reject`, { reason });
+
+const ADMIN_PAYMENTS = "/v5/admin/payments";
+
+// data: [{ paymentId, bookingReference, provider, amount, currency, status,
+//          refundAttempts, refundError, reviewReason, updatedAt }]
+export const getPaymentsNeedingAttention = () =>
+  axiosInstance.get(`${ADMIN_PAYMENTS}/attention`);
+
+// for status REFUND_FAILED
+export const retryRefund = (paymentId) =>
+  axiosInstance.post(`${ADMIN_PAYMENTS}/${paymentId}/retry-refund`);
+
+// for a payment with a reviewReason
+export const resolvePayment = (paymentId) =>
+  axiosInstance.post(`${ADMIN_PAYMENTS}/${paymentId}/resolve`);

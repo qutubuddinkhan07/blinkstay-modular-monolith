@@ -2,7 +2,7 @@ import axiosInstance from "../../api/axiosInstance";
 
 const ROOM_URL = "/v4/rooms";
 
-// POST /{listingId}/rooms   body = AddRoomDto { roomType, price, totalRooms, availableRooms }
+// POST /{listingId}/rooms  body = AddRoomDto { roomType, price, totalRooms, maxGuests }
 export const createRoom = (listingId, room) => {
   return axiosInstance.post(`${ROOM_URL}/${listingId}/rooms`, room);
 };

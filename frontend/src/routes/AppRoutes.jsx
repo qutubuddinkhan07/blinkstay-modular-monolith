@@ -102,6 +102,10 @@ const BookingsPage = Loadable(
   lazy(() => import("../features/bookings/pages/BookingsPage")),
 );
 
+const AdminPayments = Loadable(
+  lazy(() => import("../features/admin/pages/AdminPayments")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -222,6 +226,10 @@ const route = createBrowserRouter([
               {
                 path: "/admin/bookings",
                 element: <BookingsPage mode="admin" />,
+              },
+              {
+                path: "/admin/payments",
+                element: <AdminPayments />,
               },
             ],
           },

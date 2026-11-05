@@ -59,10 +59,6 @@ export const normalizeListing = (l) => ({
   suspensionReason: l.suspensionReason ?? null,
   suspensionSource: l.suspensionSource ?? null,
   suspendedAt: l.suspendedAt ?? null,
-
-  // RoomSummaryDto.totalRooms counts room TYPES (one row per type), so it is named for that.
-  // The detail endpoint sends the full rooms list instead of a summary, so fall back to its length.
-  roomTypeCount: l.roomSummary?.totalRooms ?? (l.rooms ?? []).length,
 });
 
 // Only the fields sent on PUT /{listingId} (AddListingDto)
