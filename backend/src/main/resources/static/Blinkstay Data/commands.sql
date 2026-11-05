@@ -21,6 +21,7 @@ select * from listings;
 select * from blocked_token;
 select * from payment_events;
 select * from listing_rooms;
+select * from earnings_entries;
 
 select * from payments
 order by created_at desc
@@ -72,6 +73,19 @@ select * from bookings order by created_at desc limit 3;
 
 update bookings set check_in = '2026-10-10', check_out = '2026-10-12'
 where booking_ref = 'BS-SCEB9X89' and status = 'CONFIRMED';
+
+-- EARNINGS INITIALIZATION FOR EXISTING BOOKINGS
+insert into earnings_entries (id, booking_id, booking_reference, host_id, listing_id, listing_title, check_in,
+    check_out, currency, gross, refunded, commission_percent, commission, host_amount, status, earned_at,
+    version, created_at, updated_at)
+select UUID_TO_BIN(uuid()), b.id, b.booking_ref, b.host_id, b.listing_id, b.listing_title, b.check_in,
+    b.check_out, b.currency, b.total_amount, 0, 10, round(b.total_amount * 0.10, 2),
+    b.total_amount - round(b.total_amount * 0.10, 2),
+    if(b.check_out < curdate(), 'EARNED', 'PENDING'),
+    if(b.check_out < curdate(), utc_timestamp(6), null), 0, b.created_at, utc_timestamp(6)
+from bookings b
+where b.status in ('CONFIRMED', 'COMPLETED')
+  and not exists (select 1 from earnings_entries e where e.booking_id = b.id);
 
 
 select trx_id, trx_started, trx_state, trx_mysql_thread_id

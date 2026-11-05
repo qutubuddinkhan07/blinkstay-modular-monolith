@@ -149,6 +149,21 @@
       "name": "app.payment.razorpay.webhook-secret",
       "type": "java.lang.String",
       "description": "Description for app.payment.razorpay.webhook-secret."
+    },
+    {
+      "name": "app.earnings.commission-percent",
+      "type": "java.lang.Integer",
+      "description": "Description for app.earnings.commission-percent."
+    },
+    {
+      "name": "app.earnings.currency",
+      "type": "java.lang.String",
+      "description": "Description for app.earnings.currency."
+    },
+    {
+      "name": "app.earnings.earn-interval-ms",
+      "type": "java.lang.Integer",
+      "description": "Description for app.earnings.earn-interval-ms."
     }
   ]
 }
