@@ -106,6 +106,10 @@ const AdminPayments = Loadable(
   lazy(() => import("../features/admin/pages/AdminPayments")),
 );
 
+const HostDashboard = Loadable(
+  lazy(() => import("../features/host/pages/HostDashboard")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -184,6 +188,7 @@ const route = createBrowserRouter([
                 path: "listings/:listingId/edit",
                 element: <EditListing />,
               },
+              { path: "/host/dashboard", element: <HostDashboard /> },
             ],
           },
 
