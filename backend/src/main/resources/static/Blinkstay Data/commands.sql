@@ -67,6 +67,19 @@ from payments order by created_at desc limit 5;
 
 select * from bookings;
 
+select * from payments
+order by 'created_at' desc
+limit 3;
+
+select * from bookings
+where booking_ref = 'BS-KJEKSLPT';
+
+select * from bookings b
+join users u
+where b.guest_id = u.id
+order by b.created_at desc
+limit 3;
+
 show tables like '%booking%';
 describe bookings;   -- use the table name from the line above
 select * from bookings order by created_at desc limit 3;
@@ -105,3 +118,12 @@ commit;
 -- to check whether any transaction holding anything
 select trx_mysql_thread_id, trx_started, trx_state
 from information_schema.innodb_trx;
+
+select
+    table_schema as "Database Name",
+    round(sum(data_length + index_length) / 1024 / 1024, 2) as "Total Size (MB)",
+    round(sum(data_length) / 1024 / 1024, 2) as "Data Size (MB)",
+    round(sum(index_length) / 1024 / 1024, 2) as "Index Size (MB)"
+from information_schema.tables
+where table_schema = 'blinkstay'
+group by table_schema;
