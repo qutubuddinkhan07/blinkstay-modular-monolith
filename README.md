@@ -24,7 +24,7 @@ Guests discover and book stays, hosts manage listings and reservations, and admi
   5. Commit. The video now plays inside the README.
 -->
 
-PASTE_VIDEO_LINK_HERE
+[PASTE_VIDEO_LINK_HERE](https://github.com/user-attachments/assets/6e0ace0b-c67c-47ad-9766-521ee323b3ad)
 
 > Can't see the player? [Download the demo video](docs/screenshots/demo.mp4)
 
