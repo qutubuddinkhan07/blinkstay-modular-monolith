@@ -24,7 +24,7 @@ Guests discover and book stays, hosts manage listings and reservations, and admi
   5. Commit. The video now plays inside the README.
 -->
 
-[PASTE_VIDEO_LINK_HERE](https://github.com/user-attachments/assets/6e0ace0b-c67c-47ad-9766-521ee323b3ad)
+[DEMO_VIDEO_LINK_HERE](https://github.com/user-attachments/assets/6e0ace0b-c67c-47ad-9766-521ee323b3ad)
 
 > Can't see the player? [Download the demo video](docs/screenshots/demo.mp4)
 
@@ -53,11 +53,11 @@ Guests discover and book stays, hosts manage listings and reservations, and admi
 
 BlinkStay is a booking platform with three roles:
 
-| Role | What they can do |
-|------|------------------|
-| **USER** (guest) | Browse and search listings on a map, save favorites, book rooms, pay, cancel, and get notifications |
+| Role                     | What they can do                                                                                                        |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| **USER** (guest)         | Browse and search listings on a map, save favorites, book rooms, pay, cancel, and get notifications                     |
 | **HOTEL_MANAGER** (host) | Apply to become a host, create and manage listings and rooms, publish or pause listings, view reservations and earnings |
-| **ADMIN** | Review host requests, block or unblock users, suspend listings, and view all bookings and payments |
+| **ADMIN**                | Review host requests, block or unblock users, suspend listings, and view all bookings and payments                      |
 
 The backend is a **modular monolith**: each business area (auth, listing, room, booking, payment, earnings, notification) lives in its own package. Modules talk to each other through **domain events** and small shared interfaces instead of calling each other's internals, so the system can later be split into microservices.
 
@@ -66,6 +66,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 ## Features
 
 ### Authentication and accounts
+
 - Sign-up with **email OTP verification**
 - **JWT stored in HttpOnly cookies** with **CSRF protection** (`X-XSRF-TOKEN` header)
 - Logout with **token revocation** (blocked-token table plus a scheduled cleanup job)
@@ -74,6 +75,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Role-based access with Spring method security
 
 ### Hosts
+
 - **Become a host** request flow: user applies, admin approves or rejects
 - Separate **host business profile** (`HotelManagerProfile`)
 - Create listings with **image upload** (Cloudinary) and a **location picker** (Mapbox geocoding)
@@ -83,6 +85,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - **Earnings dashboard** with an event-driven earnings ledger
 
 ### Booking and payments
+
 - **Instant booking**, no host approval needed
 - Availability is **computed per night** from existing bookings (no counters to drift out of sync)
 - **15-minute payment hold**: unpaid bookings expire automatically
@@ -94,11 +97,13 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Safe under concurrency (for example, a cancel racing a payment, or two cancels at once)
 
 ### Discovery
+
 - Explore page with categories, pagination and skeleton loading
 - Listing detail page with gallery, map, rooms and date-range picker
 - **Favorites**
 
 ### Administration
+
 - Users table with search and filters, plus block or unblock with a reason
 - Blocking a host **suspends all their listings**; unblocking **restores** the ones that were live
 - Listing moderation: suspend or unsuspend with a reason
@@ -107,6 +112,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Cache admin endpoint
 
 ### Notifications
+
 - **Email notifications** (OTP, booking and account events), sent asynchronously
 - **In-app notification bell** with read and delete actions
 
@@ -116,34 +122,34 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 
 ### Explore and listings
 
-| Explore | Favorites |
-|---------|-----------|
+| Explore                                       | Favorites                                                    |
+| --------------------------------------------- | ------------------------------------------------------------ |
 | ![Explore page](docs/screenshots/explore.png) | ![Favorites](docs/screenshots/listing/listing-favorites.png) |
 
-| Listing details | Rooms and booking card | Location map |
-|-----------------|------------------------|--------------|
+| Listing details                                                  | Rooms and booking card                                              | Location map                                                        |
+| ---------------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------------------------- |
 | ![Listing details](docs/screenshots/listing/listing-details.png) | ![Listing details 2](docs/screenshots/listing/listing-details2.png) | ![Listing details 3](docs/screenshots/listing/listing-details3.png) |
 
 ### Booking and payment
 
-| Booking and payment | My bookings |
-|---------------------|-------------|
+| Booking and payment                                              | My bookings                                              |
+| ---------------------------------------------------------------- | -------------------------------------------------------- |
 | ![Booking and payment](docs/screenshots/booking/booking-pay.png) | ![My bookings](docs/screenshots/booking/my-bookings.png) |
 
 ### Host
 
-| Earnings dashboard | Earnings by listing |
-|--------------------|---------------------|
+| Earnings dashboard                                             | Earnings by listing                                           |
+| -------------------------------------------------------------- | ------------------------------------------------------------- |
 | ![Earnings dashboard](docs/screenshots/host/earnings-page.png) | ![Earnings details](docs/screenshots/host/earnings-page2.png) |
 
-| My listings | Reservations |
-|-------------|--------------|
+| My listings                                           | Reservations                                            |
+| ----------------------------------------------------- | ------------------------------------------------------- |
 | ![My listings](docs/screenshots/host/my-listings.png) | ![Reservations](docs/screenshots/host/reservations.png) |
 
 ### Admin
 
-| Overview | Users and blocking | Payments needing attention |
-|----------|--------------------|----------------------------|
+| Overview                                               | Users and blocking                                               | Payments needing attention                                                          |
+| ------------------------------------------------------ | ---------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | ![Admin overview](docs/screenshots/admin/overview.png) | ![Users and blocking](docs/screenshots/admin/users-blocking.png) | ![Payments needing attention](docs/screenshots/admin/payment-needing-attention.png) |
 
 ### Profile
@@ -155,6 +161,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 ## Tech stack
 
 **Backend**
+
 - Java, Spring Boot, Spring Security, Spring Data JPA (Hibernate)
 - MySQL (run in Docker)
 - JWT (cookie-based) and CSRF protection
@@ -165,6 +172,7 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Maven (wrapper included)
 
 **Frontend**
+
 - React with Vite
 - React Router
 - Axios with global error-handling interceptors
@@ -199,16 +207,16 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 
 Diagrams are in [`docs/diagrams`](docs/diagrams):
 
-| Diagram | File |
-|---------|------|
-| Use cases | [01-use-cases.png](docs/diagrams/01-use-cases.png) |
-| Modules and event bus | [02-modules-event-bus.png](docs/diagrams/02-modules-event-bus.png) |
-| Blocking a host (sequence) | [03-block-host-sequence.png](docs/diagrams/03-block-host-sequence.png) |
+| Diagram                     | File                                                                               |
+| --------------------------- | ---------------------------------------------------------------------------------- |
+| Use cases                   | [01-use-cases.png](docs/diagrams/01-use-cases.png)                                 |
+| Modules and event bus       | [02-modules-event-bus.png](docs/diagrams/02-modules-event-bus.png)                 |
+| Blocking a host (sequence)  | [03-block-host-sequence.png](docs/diagrams/03-block-host-sequence.png)             |
 | Blocked user's next request | [04-blocked-user-next-request.png](docs/diagrams/04-blocked-user-next-request.png) |
-| Listing statuses | [05-listing-statuses.png](docs/diagrams/05-listing-statuses.png) |
-| Target microservices split | [06-microservices-target.png](docs/diagrams/06-microservices-target.png) |
-| Booking and payment | [booking-and-payment.puml](docs/diagrams/booking-and-payment.puml) |
-| Booking statuses | [booking-statuses.puml](docs/diagrams/booking-statuses.puml) |
+| Listing statuses            | [05-listing-statuses.png](docs/diagrams/05-listing-statuses.png)                   |
+| Target microservices split  | [06-microservices-target.png](docs/diagrams/06-microservices-target.png)           |
+| Booking and payment         | [booking-and-payment.puml](docs/diagrams/booking-and-payment.puml)                 |
+| Booking statuses            | [booking-statuses.puml](docs/diagrams/booking-statuses.puml)                       |
 
 ![Modules and event bus](docs/diagrams/02-modules-event-bus.png)
 
@@ -261,6 +269,7 @@ Each backend module follows the same layout: `controller`, `dto`, `entities`, `e
 ## Getting started
 
 ### Prerequisites
+
 - JDK (version as set in `backend/pom.xml`)
 - Node.js 18 or newer and npm
 - Docker (for MySQL)
@@ -321,16 +330,16 @@ Open http://localhost:5173.
 
 The API is versioned by area. Full request and response details are in Swagger and in [`system-design/05-api-design.md`](system-design/05-api-design.md).
 
-| Area | Base path |
-|------|-----------|
-| Auth (register, OTP, login, logout, forgot/reset password) | `/api/v1/auth` |
-| Admin users (list, block, unblock) | `/api/v2/admin/users` |
-| Listings, publish/pause/resume, my listings | `/api/v3/listings` |
-| Admin listing moderation | `/api/v3/admin/listings` |
-| Favorites | `/api/v3/favorites` |
-| Availability and bookings | `/api/v5/bookings` |
-| Host reservations | `/api/v5/host/bookings` |
-| Admin bookings | `/api/v5/admin/bookings` |
+| Area                                                       | Base path                |
+| ---------------------------------------------------------- | ------------------------ |
+| Auth (register, OTP, login, logout, forgot/reset password) | `/api/v1/auth`           |
+| Admin users (list, block, unblock)                         | `/api/v2/admin/users`    |
+| Listings, publish/pause/resume, my listings                | `/api/v3/listings`       |
+| Admin listing moderation                                   | `/api/v3/admin/listings` |
+| Favorites                                                  | `/api/v3/favorites`      |
+| Availability and bookings                                  | `/api/v5/bookings`       |
+| Host reservations                                          | `/api/v5/host/bookings`  |
+| Admin bookings                                             | `/api/v5/admin/bookings` |
 
 ---
 
