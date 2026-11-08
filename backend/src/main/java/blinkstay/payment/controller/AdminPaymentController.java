@@ -1,4 +1,4 @@
-package blinkstay.payment.serviceImpl;
+package blinkstay.payment.controller;
 
 import blinkstay.payment.dto.AdminPaymentDto;
 import blinkstay.payment.dto.PaymentApiResponse;
@@ -22,12 +22,12 @@ public class AdminPaymentController {
 
     @GetMapping("/attention")
     public ResponseEntity<PaymentApiResponse<List<AdminPaymentDto>>> attention() {
-        return ResponseEntity.ok(PaymentApiResponse.success("Payment needing attention", service.needingAttention()));
+        return ResponseEntity.ok(PaymentApiResponse.success("Payments needing attention", service.needingAttention()));
     }
 
     @PostMapping("/{paymentId}/retry-refund")
     public ResponseEntity<PaymentApiResponse<AdminPaymentDto>> retryRefund(@PathVariable("paymentId") UUID paymentId) {
-        return ResponseEntity.ok(PaymentApiResponse.success("Refund queue again", service.retryRefund(paymentId)));
+        return ResponseEntity.ok(PaymentApiResponse.success("Refund queued again", service.retryRefund(paymentId)));
     }
 
     @PostMapping("/{paymentId}/resolve")

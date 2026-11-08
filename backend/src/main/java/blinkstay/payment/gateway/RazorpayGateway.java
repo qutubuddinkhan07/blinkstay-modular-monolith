@@ -4,6 +4,7 @@ import com.razorpay.Order;
 import com.razorpay.RazorpayClient;
 import com.razorpay.RazorpayException;
 import com.razorpay.Refund;
+import lombok.extern.slf4j.Slf4j;
 import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.util.Optional;
 
+@Slf4j
 @Component
 @ConditionalOnProperty(name = "app.payment.provider", havingValue = "razorpay")
 public class RazorpayGateway implements PaymentGateway {
@@ -40,6 +42,7 @@ public class RazorpayGateway implements PaymentGateway {
             String id = order.get("id");
             return new ProviderOrder(id);
         } catch (RazorpayException e) {
+            log.warn("Razorpay createOrder failed for {}: {}", reference, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Payment provider is unavailable, try again");
         }
     }
@@ -67,8 +70,17 @@ public class RazorpayGateway implements PaymentGateway {
             String refundId = refund.get("id");
             return new ProviderRefund(refundId);
         } catch (RazorpayException e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Refund could not be sent to the provider");
+            // the real reason is logged and kept in refund_error, so an admin can see why it failed
+            log.warn("Razorpay refund failed for payment {} (amount {}): {}", providerPaymentId, amount,
+                    e.getMessage(), e);
+            String hint = e.getMessage() != null && e.getMessage().contains("invalid request sent")
+                    ? " (Razorpay gave no reason; in test mode try the refund from the Razorpay dashboard)" : "";
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Refund rejected by provider: " + shorten(e.getMessage()) + hint);
         }
+        /**
+         * if the balance is low on RAZORPAY then there will be no refund
+         */
     }
 
     @Override
@@ -86,8 +98,14 @@ public class RazorpayGateway implements PaymentGateway {
             }
             return Optional.empty();
         } catch (RazorpayException e) {
+            log.warn("Razorpay fetchPayments failed for order {}: {}", orderId, e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Payment provider is unavailable");
         }
+    }
+
+    private static String shorten(String message) {
+        if (message == null || message.isBlank()) return "no details from provider";
+        return message.length() > 150 ? message.substring(0, 150) : message;
     }
 
     // Razorpay wants the smallest unit: rupees -> paise

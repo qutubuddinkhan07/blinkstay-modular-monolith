@@ -29,7 +29,8 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
     @Override
     @Transactional(readOnly = true)
     public List<AdminPaymentDto> needingAttention() {
-        return paymentRepo.findNeedingAttention(PageRequest.of(0, 50)).stream().map(AdminPaymentServiceImpl::toDto).toList();
+        return paymentRepo.findNeedingAttention(PageRequest.of(0, 50)).stream().map(AdminPaymentServiceImpl::toDto)
+                .toList();
     }
 
     @Override
@@ -39,7 +40,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
         if (p.getStatus() != PaymentStatus.REFUND_FAILED) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a failed refund can be retried.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Only a failed refund can be retried");
         }
 
         p.setStatus(PaymentStatus.REFUND_PENDING);
@@ -49,10 +50,13 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
         paymentRepo.save(p);
 
         publisher.publishEvent(new RefundRequestedEvent(p.getId())); // runs after this transaction commits
-        log.info("Refund of payment {} again by an admin", p.getId());
+        log.info("Refund of payment {} queued again by an admin", p.getId());
         return toDto(p);
     }
 
+    /**
+     * The admin dealt with it outside the app (for example in the provider dashboard).
+     */
     @Override
     @Transactional
     public AdminPaymentDto resolve(UUID paymentId) {
@@ -60,7 +64,7 @@ public class AdminPaymentServiceImpl implements AdminPaymentService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found"));
 
         if (p.getReviewReason() == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "This payment is not waiting for a review");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "This payment is not waiting for a review");
         }
 
         p.setReviewReason(null);

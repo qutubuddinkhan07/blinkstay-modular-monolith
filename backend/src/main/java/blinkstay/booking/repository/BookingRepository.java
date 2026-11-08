@@ -69,4 +69,8 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
             + "b.version = b.version + 1, b.updatedAt = :now "
             + "where b.status = blinkstay.booking.enums.BookingStatus.CONFIRMED and b.checkOut < :today")
     int completeFinished(@Param("today") LocalDate today, @Param("now") Instant now);
+
+    @Query("select b.status, count(b) from Booking b where b.createdAt >= :from and b.createdAt < :to" +
+            " group by b.status")
+    List<Object[]> countByStatusBetween(@Param("from") Instant from, @Param("to") Instant to);
 }

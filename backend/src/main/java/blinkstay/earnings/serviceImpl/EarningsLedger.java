@@ -42,7 +42,7 @@ public class EarningsLedger {
         EarningsEntry entry = EarningsEntry.builder().bookingId(e.bookingId()).bookingReference(e.reference())
                 .hostId(e.hostId()).listingId(e.listingId()).listingTitle(e.listingTitle()).checkIn(e.checkIn())
                 .checkOut(e.checkOut()).currency(e.currency()).gross(e.totalAmount()).refunded(BigDecimal.ZERO)
-                .commissionPercent(commissionPercent).status(EarningsStatus.PENDING).build();
+                .commissionPercent(commissionPercent).status(EarningsStatus.PENDING).soldOn(clock.today()).build();
 
         recalculate(entry);
         repo.save(entry);
@@ -91,7 +91,6 @@ public class EarningsLedger {
             en.setStatus(EarningsStatus.REVERSED);
             return;
         }
-
         BigDecimal commission = base.multiply(en.getCommissionPercent()).divide(HUNDRED, 2, RoundingMode.HALF_UP);
         en.setCommission(commission);
         en.setHostAmount(base.subtract(commission));

@@ -17,7 +17,8 @@ import java.util.UUID;
 @Entity
 @Table(name = "earnings_entries", indexes = {
         @Index(name = "idx_earn_host_checkin", columnList = "hostId, checkIn"),
-        @Index(name = "idx_earn_status_checkout", columnList = "status, checkOut")
+        @Index(name = "idx_earn_status_checkout", columnList = "status, checkOut"),
+        @Index(name = "idx_earn_sold_on", columnList = "soldOn")
 })
 @Getter
 @Setter
@@ -67,6 +68,7 @@ public class EarningsEntry {
     private EarningsStatus status;
 
     private Instant earnedAt;
+    private LocalDate soldOn; // the hotel-zone date the booking was confirmed (admin reports filter on this)
 
     @Version
     private Long version;

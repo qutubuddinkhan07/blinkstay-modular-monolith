@@ -31,6 +31,10 @@ limit 3;
 --SET next_refund_at = UTC_TIMESTAMP(6)
 --WHERE status = 'REFUND_PENDING';
 
+update payments
+set next_refund_at = utc_timestamp(6)
+where booking_reference = 'BS-9BPETVZD';
+
 update payments set status = 'REFUNDED', refunded_amount = amount,
        refunded_at = utc_timestamp(6), refund_error = null
 where provider = 'MOCK' and status = 'REFUND_FAILED';
@@ -67,9 +71,37 @@ from payments order by created_at desc limit 5;
 
 select * from bookings;
 
-select * from payments
-order by 'created_at' desc
+select
+    BIN_TO_UUID(id) as id,
+    amount,
+    BIN_TO_UUID(booking_id) as booking_id,
+    booking_reference,
+    created_at,
+    currency,
+    failure_reason,
+    cast(guest_id as char) as guest_id,
+    paid_at,
+    provider,
+    provider_order_id,
+    provider_payment_id,
+    refunded_amount,
+    refunded_at,
+    status,
+    updated_at,
+    version,
+    next_refund_at,
+    refund_attempts,
+    refund_error,
+    refund_notify,
+    refund_reason,
+    review_reason
+from payments
+order by created_at desc
 limit 3;
+
+-- IF PAYMENT REFUND GOT STUCK USE THIS
+update payments set next_refund_at = utc_timestamp(6)
+where id = 'c0a80122-a1ba-1c1e-81a1-bae84c710011' and status = 'REFUND_PENDING';
 
 select * from bookings
 where booking_ref = 'BS-KJEKSLPT';
@@ -100,7 +132,6 @@ from bookings b
 where b.status in ('CONFIRMED', 'COMPLETED')
   and not exists (select 1 from earnings_entries e where e.booking_id = b.id);
 
-
 select trx_id, trx_started, trx_state, trx_mysql_thread_id
 from information_schema.innodb_trx;
 
@@ -127,3 +158,10 @@ select
 from information_schema.tables
 where table_schema = 'blinkstay'
 group by table_schema;
+
+-- updating the sold on dates
+update earnings_entries
+set sold_on = date(convert_tz(created_at, '+00:00', '+05:30'))
+where sold_on is null;
+
+select utc_timestamp(6), now(6);

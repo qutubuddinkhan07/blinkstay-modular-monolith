@@ -1,8 +1,6 @@
 package blinkstay.earnings.repository;
 
-import blinkstay.earnings.dto.ListingEarningsDto;
-import blinkstay.earnings.dto.MonthlyEarningsDto;
-import blinkstay.earnings.dto.StatusTotals;
+import blinkstay.earnings.dto.*;
 import blinkstay.earnings.entities.EarningsEntry;
 import blinkstay.earnings.enums.EarningsStatus;
 import jakarta.persistence.LockModeType;
@@ -67,4 +65,37 @@ public interface EarningsRepository extends JpaRepository<EarningsEntry, UUID> {
 
     Page<EarningsEntry> findByHostIdAndStatusAndCheckInBetween(UUID hostId, EarningsStatus status, LocalDate from,
                                                                LocalDate to, Pageable pageable);
+
+    // ---- platform-wide (admin), filtered on the "sold on" date ----
+
+    @Query("select new blinkstay.earnings.dto.StatusTotals(e.status, count(e), sum(e.gross), sum(e.refunded),"
+            + " sum(e.commission), sum(e.hostAmount)) from EarningsEntry e"
+            + " where e.soldOn between :from and :to and e.currency = :currency group by e.status")
+    List<StatusTotals> platformTotals(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                      @Param("currency") String currency);
+
+    @Query("select new blinkstay.earnings.dto.PlatformMonthlyDto(extract(year from e.soldOn),"
+            + " extract(month from e.soldOn), count(e), sum(e.gross), sum(e.commission)) from EarningsEntry e"
+            + " where e.soldOn between :from and :to and e.currency = :currency"
+            + " and e.status <> blinkstay.earnings.enums.EarningsStatus.REVERSED"
+            + " group by extract(year from e.soldOn), extract(month from e.soldOn)"
+            + " order by extract(year from e.soldOn), extract(month from e.soldOn)")
+    List<PlatformMonthlyDto> platformMonthly(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                             @Param("currency") String currency);
+
+    @Query("select new blinkstay.earnings.dto.TopHostDto(e.hostId, count(e), sum(e.gross), sum(e.commission),"
+            + " sum(e.hostAmount)) from EarningsEntry e"
+            + " where e.soldOn between :from and :to and e.currency = :currency"
+            + " and e.status <> blinkstay.earnings.enums.EarningsStatus.REVERSED"
+            + " group by e.hostId order by sum(e.gross) desc")
+    List<TopHostDto> topHosts(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                              @Param("currency") String currency, Pageable pageable);
+
+    @Query("select new blinkstay.earnings.dto.ListingEarningsDto(e.listingId, max(e.listingTitle), count(e),"
+            + " sum(e.gross), sum(e.hostAmount)) from EarningsEntry e"
+            + " where e.soldOn between :from and :to and e.currency = :currency"
+            + " and e.status <> blinkstay.earnings.enums.EarningsStatus.REVERSED"
+            + " group by e.listingId order by sum(e.gross) desc")
+    List<ListingEarningsDto> topListings(@Param("from") LocalDate from, @Param("to") LocalDate to,
+                                         @Param("currency") String currency, Pageable pageable);
 }

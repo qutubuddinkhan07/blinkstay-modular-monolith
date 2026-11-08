@@ -42,4 +42,8 @@ public interface PaymentRepository extends JpaRepository<Payment, UUID> {
             + " and p.createdAt > :after and p.createdAt < :before order by p.createdAt")
     List<Payment> findStaleCreated(@Param("provider") String provider, @Param("after") Instant after,
                                    @Param("before") Instant before, Pageable pageable);
+
+    @Query("select count(p) from Payment p where p.status = blinkstay.payment.enums.PaymentStatus.REFUND_FAILED" +
+            " or p.reviewReason is not null")
+    long countNeedingAttention();
 }
