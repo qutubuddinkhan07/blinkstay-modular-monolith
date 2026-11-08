@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router-dom";
+import { createBrowserRouter, Navigate } from "react-router-dom";
 import { lazy, Suspense } from "react";
 import Layout from "../components/layouts/Layout";
 import ProtectedRoute from "./ProtectedRoute";
@@ -110,6 +110,10 @@ const HostDashboard = Loadable(
   lazy(() => import("../features/host/pages/HostDashboard")),
 );
 
+const AdminOverview = Loadable(
+  lazy(() => import("../features/admin/pages/AdminOverview")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -214,7 +218,11 @@ const route = createBrowserRouter([
             children: [
               {
                 path: "/admin",
-                element: <ComingSoon title="Admin dashboard" />,
+                element: <Navigate to="/admin/dashboard" replace />,
+              },
+              {
+                path: "/admin/dashboard",
+                element: <AdminOverview />,
               },
               {
                 path: "/admin/users",

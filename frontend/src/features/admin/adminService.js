@@ -75,3 +75,38 @@ export const retryRefund = (paymentId) =>
 // for a payment with a reviewReason
 export const resolvePayment = (paymentId) =>
   axiosInstance.post(`${ADMIN_PAYMENTS}/${paymentId}/resolve`);
+
+/* ---- Overview dashboard ---- */
+
+const DASH = "/v5/admin/dashboard";
+const dashUnwrap = (res) => res.data?.data ?? res.data;
+const dashClean = (params = {}) =>
+  Object.fromEntries(
+    Object.entries(params).filter(([, v]) => v !== "" && v != null),
+  );
+
+// range: { from, to } as "YYYY-MM-DD" (dates mean the day a booking was CONFIRMED). Empty = last 12 months.
+
+// { from, to, currency, money, bookingsByStatus, users, listingsByStatus, paymentsNeedingAttention }
+export const getAdminOverview = (range) =>
+  axiosInstance
+    .get(`${DASH}/overview`, { params: dashClean(range) })
+    .then(dashUnwrap);
+
+// [{ year, month, bookings, gross, commission }]
+export const getAdminMonthly = (range) =>
+  axiosInstance
+    .get(`${DASH}/monthly`, { params: dashClean(range) })
+    .then(dashUnwrap);
+
+// [{ hostId, hostName, bookings, gross, commission, hostAmount }]
+export const getTopHosts = (range, limit = 5) =>
+  axiosInstance
+    .get(`${DASH}/top-hosts`, { params: dashClean({ ...range, limit }) })
+    .then(dashUnwrap);
+
+// [{ listingId, listingTitle, bookings, gross, hostAmount }]
+export const getTopListings = (range, limit = 5) =>
+  axiosInstance
+    .get(`${DASH}/top-listings`, { params: dashClean({ ...range, limit }) })
+    .then(dashUnwrap);

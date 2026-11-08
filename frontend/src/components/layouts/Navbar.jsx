@@ -108,7 +108,12 @@ const ACCOUNT_SECTIONS = [
   {
     title: "Administration",
     links: [
-      { label: "Dashboard", to: "/admin", icon: FiGrid, roles: ["ADMIN"] },
+      {
+        label: "Overview",
+        to: "/admin/dashboard",
+        icon: FiGrid,
+        roles: ["ADMIN"],
+      },
       {
         label: "Manage users",
         to: "/admin/users",

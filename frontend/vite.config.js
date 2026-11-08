@@ -20,7 +20,7 @@ export default defineConfig({
     // },
     proxy: {
       "/api": {
-        target: "https://celebrities-discusses-tend-julie.trycloudflare.com", // always changing
+        target: "https://boards-fill-duncan-geographic.trycloudflare.com", // always changing
 
         changeOrigin: true,
       },
