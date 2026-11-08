@@ -1,7 +1,10 @@
-package blinkstay.payment.gateway;
+package blinkstay.payment.serviceImpl;
 
 import blinkstay.payment.entities.Payment;
 import blinkstay.payment.enums.ProviderEventType;
+import blinkstay.payment.gateway.PaymentGateway;
+import blinkstay.payment.gateway.ProviderCapture;
+import blinkstay.payment.gateway.ProviderEvent;
 import blinkstay.payment.repository.PaymentRepository;
 import blinkstay.payment.service.PaymentEventProcessor;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +37,8 @@ public class PaymentReconciler {
 
     public int run() {
         Instant now = Instant.now();
-        List<Payment> stale = paymentRepo.findStaleCreated(gateway.name(),
-                now.minus(Duration.ofMinutes(maxAgeMinutes)), now.minus(Duration.ofMinutes(minAgeMinutes)),
-                PageRequest.of(0, 20));
+        List<Payment> stale = paymentRepo.findStaleCreated(gateway.name(), now.minus(Duration.ofMinutes(maxAgeMinutes)),
+                now.minus(Duration.ofMinutes(minAgeMinutes)), PageRequest.of(0, 20));
 
         int fixed = 0;
         for (Payment p : stale) {
@@ -52,13 +54,12 @@ public class PaymentReconciler {
                         ProviderEventType.PAYMENT_SUCCEEDED, p.getProviderOrderId(), c.paymentId(), c.amount(),
                         c.currency(), null));
                 fixed++;
-                log.info("Reconciled payment {} (booking {}) from ptovider payment {}", p.getId(),
+                log.info("Reconciled payment {} (booking {}) from provider payment {}", p.getId(),
                         p.getBookingReference(), c.paymentId());
             } catch (Exception e) {
                 log.warn("Could not reconcile payment {}: {}", p.getId(), e.getMessage());
             }
         }
-
         return fixed;
     }
 }
