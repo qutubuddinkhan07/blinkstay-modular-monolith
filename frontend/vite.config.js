@@ -20,7 +20,7 @@ export default defineConfig({
     // },
     proxy: {
       "/api": {
-        target: "https://boards-fill-duncan-geographic.trycloudflare.com", // always changing
+        target: "https://supreme-chair-guidance-intelligence.trycloudflare.com", // always changing
 
         changeOrigin: true,
       },

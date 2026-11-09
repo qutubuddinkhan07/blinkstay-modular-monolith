@@ -448,7 +448,7 @@ const BookingPage = () => {
     setNotice("");
     try {
       const data = await payBooking(id);
-      if (data.mock) {
+      if (data.mock === true) {
         setCheckoutMsg(null);
         setCheckout(data);
       } else {

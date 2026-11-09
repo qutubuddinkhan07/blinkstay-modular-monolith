@@ -23,6 +23,9 @@ select * from payment_events;
 select * from listing_rooms;
 select * from earnings_entries;
 
+select * from notifications;
+
+
 select * from payments
 order by created_at desc
 limit 3;
@@ -31,13 +34,13 @@ limit 3;
 --SET next_refund_at = UTC_TIMESTAMP(6)
 --WHERE status = 'REFUND_PENDING';
 
-update payments
-set next_refund_at = utc_timestamp(6)
-where booking_reference = 'BS-9BPETVZD';
+--update payments
+--set next_refund_at = utc_timestamp(6)
+--where booking_reference = 'BS-9BPETVZD';
 
-update payments set status = 'REFUNDED', refunded_amount = amount,
-       refunded_at = utc_timestamp(6), refund_error = null
-where provider = 'MOCK' and status = 'REFUND_FAILED';
+--update payments set status = 'REFUNDED', refunded_amount = amount,
+--       refunded_at = utc_timestamp(6), refund_error = null
+--where provider = 'MOCK' and status = 'REFUND_FAILED';
 
 select * from bookings
 order by created_at desc;
@@ -66,10 +69,16 @@ show tables;
 select * from payments
 where booking_id = UUID_TO_BIN('c0a80121-a161-1c84-81a1-616234b10000');
 
-select id, booking_reference, status, host_id, listing_id
+select * from payment_events
+order by received_at desc
+limit 3;
+
+select id, booking_reference, status, listing_id
 from payments order by created_at desc limit 5;
 
-select * from bookings;
+select * from bookings
+order by created_at desc
+limit 4;
 
 select
     BIN_TO_UUID(id) as id,
@@ -98,6 +107,9 @@ select
 from payments
 order by created_at desc
 limit 3;
+
+delete from payments
+where id = 'c0a80122-a1ba-1c1e-81a1-bab1a6f6000d';
 
 -- IF PAYMENT REFUND GOT STUCK USE THIS
 update payments set next_refund_at = utc_timestamp(6)
