@@ -1,23 +1,5 @@
 package blinkstay.auth.serviceImpl;
 
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
-
-import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
-
 import blinkstay.auth.dtos.AdminHostRequestDto;
 import blinkstay.auth.dtos.HostRequestDto;
 import blinkstay.auth.dtos.HostRequestResponseDto;
@@ -38,6 +20,23 @@ import blinkstay.common.events.HotelManagerRequestSubmittedEvent;
 import blinkstay.common.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -111,7 +110,7 @@ public class HostRequestServiceImpl implements HostRequestService {
 				.collect(Collectors.toMap(User::getId, Function.identity()));
 
 		List<AdminHostRequestDto> content = result.getContent().stream()
-				.map(r -> modelMapper.hostRequestToAdminDto(r, users.get(r.getId()))).toList();
+				.map(r -> modelMapper.hostRequestToAdminDto(r, users.get(r.getUserId()))).toList();
 
 		return new PageResult<>(content, result.getNumber(), result.getSize(), result.getTotalElements(),
 				result.getTotalPages());

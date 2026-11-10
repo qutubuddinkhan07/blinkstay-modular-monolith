@@ -1,33 +1,6 @@
 package blinkstay.listing.controller;
 
-import java.util.List;
-import java.util.UUID;
-
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
-
-import blinkstay.listing.dto.AddListingDto;
-import blinkstay.listing.dto.ImageDto;
-import blinkstay.listing.dto.ListingApiResponse;
-import blinkstay.listing.dto.ListingDetailsResponseDto;
-import blinkstay.listing.dto.PagedResponse;
-import blinkstay.listing.dto.PublishedListingDto;
+import blinkstay.listing.dto.*;
 import blinkstay.listing.service.ListingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -37,210 +10,226 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/v3/listings")
 @RequiredArgsConstructor
 @Validated
 public class ListingController {
-	private final ListingService listingService;
+    private final ListingService listingService;
 
-//	@GetMapping("/published")
-	@GetMapping("/all")
-	public ResponseEntity<PagedResponse<PublishedListingDto>> getPublishedListings(
-			@RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
-			@RequestParam(defaultValue = "createdAt") String sortBy,
-			@RequestParam(defaultValue = "desc") String direction, @RequestParam(required = false) String location,
-			@RequestParam(required = false) String name, @RequestParam(required = false) String category) {
+    //	@GetMapping("/published")
+    @GetMapping("/all")
+    public ResponseEntity<PagedResponse<PublishedListingDto>> getPublishedListings(
+            @RequestParam(defaultValue = "0") int page, @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String direction, @RequestParam(required = false) String location,
+            @RequestParam(required = false) String name, @RequestParam(required = false) String category) {
 
-		return ResponseEntity
-				.ok(listingService.getPublishedListings(page, size, sortBy, direction, location, name, category));
-	}
+        // keep the request sane: no negative pages, at most 50 per page
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 50);
 
-	@Operation(summary = "Create a new listing with images")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ResponseEntity<ListingApiResponse<String>> createListing(@AuthenticationPrincipal UserDetails userDetails,
-			@Parameter(description = "Listing details in JSON format", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddListingDto.class))) @Valid @RequestPart("listing") AddListingDto addListingDto,
-			@NotEmpty(message = "At least one image is required") @RequestPart("images") List<MultipartFile> images) {
+        return ResponseEntity.ok(
+                listingService.getPublishedListings(safePage, safeSize, sortBy, direction, location, name, category));
+    }
 
-		// Validate that at least 1 image for (or minimum required) is provided
-		if (images == null || images.isEmpty() || images.stream().allMatch(MultipartFile::isEmpty)) {
-			throw new IllegalArgumentException("At least one image file must be uploaded.");
-		}
+    @Operation(summary = "Create a new listing with images")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @PostMapping(value = "/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ListingApiResponse<String>> createListing(@AuthenticationPrincipal UserDetails userDetails,
+                                                                    @Parameter(description = "Listing details in JSON format", content = @Content(mediaType = MediaType.APPLICATION_JSON_VALUE, schema = @Schema(implementation = AddListingDto.class))) @Valid @RequestPart("listing") AddListingDto addListingDto,
+                                                                    @NotEmpty(message = "At least one image is required") @RequestPart("images") List<MultipartFile> images) {
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+        // Validate that at least 1 image for (or minimum required) is provided
+        if (images == null || images.isEmpty() || images.stream().allMatch(MultipartFile::isEmpty)) {
+            throw new IllegalArgumentException("At least one image file must be uploaded.");
+        }
 
-		String listingId = listingService.createListing(userId, addListingDto, images);
-		ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
-				.message("Listing created successfully").data(listingId).build();
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		return new ResponseEntity<>(response, HttpStatus.CREATED);
-	}
+        String listingId = listingService.createListing(userId, addListingDto, images);
+        ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
+                .message("Listing created successfully").data(listingId).build();
 
-	@GetMapping("/{listingId}")
-	public ResponseEntity<ListingApiResponse<ListingDetailsResponseDto>> getListingByIdController(
-			@PathVariable("listingId") UUID listingId, @AuthenticationPrincipal UserDetails userDetails) {
-		UUID viewerId = userDetails == null ? null : UUID.fromString(userDetails.getUsername());
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
 
-		boolean isAdmin = userDetails != null
-				&& userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
+    @GetMapping("/{listingId}")
+    public ResponseEntity<ListingApiResponse<ListingDetailsResponseDto>> getListingByIdController(
+            @PathVariable("listingId") UUID listingId, @AuthenticationPrincipal UserDetails userDetails) {
+        UUID viewerId = userDetails == null ? null : UUID.fromString(userDetails.getUsername());
 
-		listingService.checkListingVisible(listingId, viewerId, isAdmin);
+        boolean isAdmin = userDetails != null
+                && userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
 
-		ListingDetailsResponseDto listingDetailsResponseDto = listingService.getListingById(listingId);
-		ListingApiResponse<ListingDetailsResponseDto> response = ListingApiResponse.<ListingDetailsResponseDto>builder()
-				.success(true).message("Listing fetched successfully").data(listingDetailsResponseDto).build();
+        listingService.checkListingVisible(listingId, viewerId, isAdmin);
 
-		return ResponseEntity.ok(response);
-	}
+        ListingDetailsResponseDto listingDetailsResponseDto = listingService.getListingById(listingId);
+        ListingApiResponse<ListingDetailsResponseDto> response = ListingApiResponse.<ListingDetailsResponseDto>builder()
+                .success(true).message("Listing fetched successfully").data(listingDetailsResponseDto).build();
 
-	@Operation(summary = "Publish listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@PostMapping("/{listingId}/publish")
-	public ResponseEntity<ListingApiResponse<String>> publishListing(@AuthenticationPrincipal UserDetails userDetails,
-			@PathVariable UUID listingId) {
+        return ResponseEntity.ok(response);
+    }
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+    @Operation(summary = "Publish listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @PostMapping("/{listingId}/publish")
+    public ResponseEntity<ListingApiResponse<String>> publishListing(@AuthenticationPrincipal UserDetails userDetails,
+                                                                     @PathVariable UUID listingId) {
 
-		String response = listingService.listingPublishService(userId, listingId);
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		ListingApiResponse<String> apiResponse = ListingApiResponse.<String>builder().success(true)
-				.message("Listing published successfully").data(response).build();
+        String response = listingService.listingPublishService(userId, listingId);
 
-		return ResponseEntity.ok(apiResponse);
-	}
+        ListingApiResponse<String> apiResponse = ListingApiResponse.<String>builder().success(true)
+                .message("Listing published successfully").data(response).build();
 
-	@Operation(summary = "Pause listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
-	@PostMapping("/{listingId}/pause")
-	public ResponseEntity<ListingApiResponse<String>> pauseListing(@AuthenticationPrincipal UserDetails userDetails,
-			@PathVariable UUID listingId) {
-		String msg = listingService.pauseListing(UUID.fromString(userDetails.getUsername()), listingId);
-		return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
-	}
+        return ResponseEntity.ok(apiResponse);
+    }
 
-	@Operation(summary = "Resume listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
-	@PostMapping("/{listingId}/resume")
-	public ResponseEntity<ListingApiResponse<String>> resumeListing(@AuthenticationPrincipal UserDetails userDetails,
-			@PathVariable UUID listingId) {
-		String msg = listingService.resumeListing(UUID.fromString(userDetails.getUsername()), listingId);
-		return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
-	}
+    @Operation(summary = "Pause listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAuthority('HOTEL_MANAGER')")
+    @PostMapping("/{listingId}/pause")
+    public ResponseEntity<ListingApiResponse<String>> pauseListing(@AuthenticationPrincipal UserDetails userDetails,
+                                                                   @PathVariable UUID listingId) {
+        String msg = listingService.pauseListing(UUID.fromString(userDetails.getUsername()), listingId);
+        return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
+    }
 
-	@GetMapping("/my-listings")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAuthority('HOTEL_MANAGER')")
-	public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
-			@AuthenticationPrincipal UserDetails userDetails) {
-		UUID managerId = UUID.fromString(userDetails.getUsername());
+    @Operation(summary = "Resume listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAuthority('HOTEL_MANAGER')")
+    @PostMapping("/{listingId}/resume")
+    public ResponseEntity<ListingApiResponse<String>> resumeListing(@AuthenticationPrincipal UserDetails userDetails,
+                                                                    @PathVariable UUID listingId) {
+        String msg = listingService.resumeListing(UUID.fromString(userDetails.getUsername()), listingId);
+        return ResponseEntity.ok(ListingApiResponse.<String>builder().success(true).message(msg).data(null).build());
+    }
 
-		List<ListingDetailsResponseDto> serviceResponse = listingService.getAllListingsByManager(managerId);
+    @GetMapping("/my-listings")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAuthority('HOTEL_MANAGER')")
+    public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        UUID managerId = UUID.fromString(userDetails.getUsername());
 
-		ListingApiResponse<List<ListingDetailsResponseDto>> apiResponse = ListingApiResponse
-				.<List<ListingDetailsResponseDto>>builder().success(true)
-				.message("Returning all listings owned by manager").data(serviceResponse).build();
+        List<ListingDetailsResponseDto> serviceResponse = listingService.getAllListingsByManager(managerId);
 
-		return ResponseEntity.ok(apiResponse);
-	}
+        ListingApiResponse<List<ListingDetailsResponseDto>> apiResponse = ListingApiResponse
+                .<List<ListingDetailsResponseDto>>builder().success(true)
+                .message("Returning all listings owned by manager").data(serviceResponse).build();
 
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAuthority('ADMIN')")
-	@GetMapping("/manager/{managerId}")
-	public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
-			@PathVariable("managerId") UUID userId) {
+        return ResponseEntity.ok(apiResponse);
+    }
 
-		List<ListingDetailsResponseDto> serviceResponse = listingService.getAllListingsByManager(userId);
-		ListingApiResponse<List<ListingDetailsResponseDto>> apiResponse = ListingApiResponse
-				.<List<ListingDetailsResponseDto>>builder().success(true)
-				.message("Returning all listing IDs owned by manager").data(serviceResponse).build();
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    @GetMapping("/manager/{managerId}")
+    public ResponseEntity<ListingApiResponse<List<ListingDetailsResponseDto>>> getAllListingIds(
+            @PathVariable("managerId") UUID userId) {
 
-		return ResponseEntity.ok(apiResponse);
-	}
+        List<ListingDetailsResponseDto> serviceResponse = listingService.getAllListingsByManager(userId);
+        ListingApiResponse<List<ListingDetailsResponseDto>> apiResponse = ListingApiResponse
+                .<List<ListingDetailsResponseDto>>builder().success(true)
+                .message("Returning all listing IDs owned by manager").data(serviceResponse).build();
 
-	@Operation(summary = "Update listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@PutMapping("/{listingId}")
-	public ResponseEntity<ListingApiResponse<String>> updateListing(@AuthenticationPrincipal UserDetails userDetails,
+        return ResponseEntity.ok(apiResponse);
+    }
 
-			@Parameter(description = "Listing ID") @PathVariable UUID listingId,
+    @Operation(summary = "Update listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @PutMapping("/{listingId}")
+    public ResponseEntity<ListingApiResponse<String>> updateListing(@AuthenticationPrincipal UserDetails userDetails,
 
-			@Parameter(description = "Updated listing details") @Valid @RequestBody AddListingDto addListingDto) {
+                                                                    @Parameter(description = "Listing ID") @PathVariable UUID listingId,
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+                                                                    @Parameter(description = "Updated listing details") @Valid @RequestBody AddListingDto addListingDto) {
 
-		String response = listingService.updateListing(userId, listingId, addListingDto);
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		ListingApiResponse<String> apiResponse = ListingApiResponse.<String>builder().success(true)
-				.message("Listing updated successfully").data(response).build();
+        String response = listingService.updateListing(userId, listingId, addListingDto);
 
-		return ResponseEntity.ok(apiResponse);
-	}
+        ListingApiResponse<String> apiResponse = ListingApiResponse.<String>builder().success(true)
+                .message("Listing updated successfully").data(response).build();
 
-	@Operation(summary = "Add images to listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@PostMapping(value = "/{listingId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-	public ResponseEntity<ListingApiResponse<List<ImageDto>>> addListingImages(
-			@AuthenticationPrincipal UserDetails userDetails, @PathVariable UUID listingId,
-			@NotEmpty(message = "At list one image is required") @RequestPart("images") List<MultipartFile> images) {
-		if (images == null || images.isEmpty() || images.stream().allMatch(MultipartFile::isEmpty)) {
-			throw new IllegalArgumentException("At least one image file must be uploaded.");
-		}
+        return ResponseEntity.ok(apiResponse);
+    }
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+    @Operation(summary = "Add images to listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @PostMapping(value = "/{listingId}/images", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ListingApiResponse<List<ImageDto>>> addListingImages(
+            @AuthenticationPrincipal UserDetails userDetails, @PathVariable UUID listingId,
+            @NotEmpty(message = "At list one image is required") @RequestPart("images") List<MultipartFile> images) {
+        if (images == null || images.isEmpty() || images.stream().allMatch(MultipartFile::isEmpty)) {
+            throw new IllegalArgumentException("At least one image file must be uploaded.");
+        }
 
-		List<ImageDto> uploadedImages = listingService.addListingImages(userId, listingId, images);
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		ListingApiResponse<List<ImageDto>> response = ListingApiResponse.<List<ImageDto>>builder().success(true)
-				.message("Images added successfully").data(uploadedImages).build();
+        List<ImageDto> uploadedImages = listingService.addListingImages(userId, listingId, images);
 
-		return ResponseEntity.status(HttpStatus.CREATED).body(response);
-	}
+        ListingApiResponse<List<ImageDto>> response = ListingApiResponse.<List<ImageDto>>builder().success(true)
+                .message("Images added successfully").data(uploadedImages).build();
 
-	@Operation(summary = "Delete listing image")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@DeleteMapping("/{listingId}/images/{imageId}")
-	public ResponseEntity<ListingApiResponse<String>> deleteListingImage(
-			@AuthenticationPrincipal UserDetails userDetails, @PathVariable UUID listingId,
-			@PathVariable UUID imageId) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+    @Operation(summary = "Delete listing image")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @DeleteMapping("/{listingId}/images/{imageId}")
+    public ResponseEntity<ListingApiResponse<String>> deleteListingImage(
+            @AuthenticationPrincipal UserDetails userDetails, @PathVariable UUID listingId,
+            @PathVariable UUID imageId) {
 
-		listingService.deleteListingImage(userId, listingId, imageId);
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
-				.message("Image deleted successfully").data("Image deleted").build();
+        listingService.deleteListingImage(userId, listingId, imageId);
 
-		return ResponseEntity.ok(response);
-	}
+        ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
+                .message("Image deleted successfully").data("Image deleted").build();
 
-	@Operation(summary = "Delete listing")
-	@SecurityRequirement(name = "Bearer Authentication")
-	@PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
-	@DeleteMapping("/{listingId}")
-	public ResponseEntity<ListingApiResponse<String>> deleteListing(@AuthenticationPrincipal UserDetails userDetails,
-			@PathVariable("listingId") UUID listingId) {
+        return ResponseEntity.ok(response);
+    }
 
-		UUID userId = UUID.fromString(userDetails.getUsername());
+    @Operation(summary = "Delete listing")
+    @SecurityRequirement(name = "Bearer Authentication")
+    @PreAuthorize("hasAnyAuthority('HOTEL_MANAGER','ADMIN')")
+    @DeleteMapping("/{listingId}")
+    public ResponseEntity<ListingApiResponse<String>> deleteListing(@AuthenticationPrincipal UserDetails userDetails,
+                                                                    @PathVariable("listingId") UUID listingId) {
 
-		// Admins may delete any listing; managers only their own
-		boolean isAdmin = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
+        UUID userId = UUID.fromString(userDetails.getUsername());
 
-		// Ownership check (for non-admins), cleanup and delete all happen inside the
-		// service
-		listingService.deleteListing(userId, isAdmin, listingId);
+        // Admins may delete any listing; managers only their own
+        boolean isAdmin = userDetails.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ADMIN"));
 
-		ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
-				.message("Listing deleted successfully").data("Listing deleted").build();
+        // Ownership check (for non-admins), cleanup and delete all happen inside the
+        // service
+        listingService.deleteListing(userId, isAdmin, listingId);
 
-		return ResponseEntity.ok(response);
-	}
+        ListingApiResponse<String> response = ListingApiResponse.<String>builder().success(true)
+                .message("Listing deleted successfully").data("Listing deleted").build();
+
+        return ResponseEntity.ok(response);
+    }
 }

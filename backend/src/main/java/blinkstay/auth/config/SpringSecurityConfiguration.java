@@ -3,6 +3,7 @@ package blinkstay.auth.config;
 import blinkstay.auth.filter.JWTFilter;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.web.servlet.FilterRegistrationBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -27,6 +28,9 @@ import java.util.List;
 public class SpringSecurityConfiguration {
     @Autowired
     private JWTFilter jwtFilter;
+
+    @Value("${app.cors.allowed-origins}")
+    private List<String> allowedOrigins;
 
     @Bean
     public SecurityFilterChain configureSecurityFilterChain(HttpSecurity http) throws Exception {
@@ -106,18 +110,7 @@ public class SpringSecurityConfiguration {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("http://localhost:3000", "http://localhost:5173",
-                // VS Code Dev Tunnels
-                "https://*.devtunnels.ms",
-
-                // ngrok
-                "https://*.ngrok-free.app", "https://*.ngrok.io",
-
-                // cloudflared
-                "https://*.trycloudflare.com",
-
-                // Netlify
-                "https://*.netlify.app"));
+        config.setAllowedOriginPatterns(allowedOrigins);
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
 
         config.setAllowedHeaders(List.of("*"));

@@ -1,211 +1,211 @@
 package blinkstay.auth.serviceImpl;
 
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-
+import blinkstay.auth.dtos.ImageUploadResult;
+import blinkstay.auth.service.ImageUploadService;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.Transformation;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
-import com.cloudinary.Cloudinary;
-import com.cloudinary.Transformation;
-import com.cloudinary.utils.ObjectUtils;
-
-import blinkstay.auth.dtos.ImageUploadResult;
-import blinkstay.auth.service.ImageUploadService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
 @Service("authImageUploadService")
 @RequiredArgsConstructor
 @Slf4j
-@SuppressWarnings({ "unchecked", "rawtypes" })
+@SuppressWarnings({"unchecked", "rawtypes"})
 public class ImageUploadServiceImpl implements ImageUploadService {
-	private final Cloudinary cloudinary;
+    private final Cloudinary cloudinary;
 
-	@Override
-	public ImageUploadResult uploadImage(MultipartFile file, String customPublicId) {
-		try {
-			// Validate file type
-			if (file.isEmpty()) {
-				throw new RuntimeException("File is empty");
-			}
+    @Override
+    public ImageUploadResult uploadImage(MultipartFile file, String customPublicId) {
+        try {
+            // Validate file type
+            if (file.isEmpty()) {
+                throw new RuntimeException("File is empty");
+            }
 
-			// Upload to Cloudinary with optional folder structure
-			Map<String, Object> uploadParams = new HashMap<>();
-			uploadParams.put("folder", "blinkstay_user_profiles");
-			uploadParams.put("allowed_formats", new String[] { "jpg", "png", "jpeg", "gif" });
+            // Upload to Cloudinary with optional folder structure
+            Map<String, Object> uploadParams = new HashMap<>();
+            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("allowed_formats", new String[]{"jpg", "png", "jpeg", "gif"});
 
-			// Set custom public_id if provided, otherwise Cloudinary generates one
-			if (customPublicId != null && !customPublicId.isEmpty()) {
-				uploadParams.put("public_id", customPublicId);
-			}
+            // Set custom public_id if provided, otherwise Cloudinary generates one
+            if (customPublicId != null && !customPublicId.isEmpty()) {
+                uploadParams.put("public_id", customPublicId);
+            }
 
-			// Optional: Add image transformations during upload
-			uploadParams.put("transformation",
-					new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
+            // Optional: Add image transformations during upload
+            uploadParams.put("transformation",
+                    new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
 
-			Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
+            Map uploadResult = cloudinary.uploader().upload(file.getBytes(), uploadParams);
 
-			// Type conversion
-			Object bytesObj = uploadResult.get("bytes");
-			Long size = 0L;
-			if (bytesObj instanceof Long) {
-				size = (Long) bytesObj;
-				log.info("Object bytes[] type: Long");
-			} else if (bytesObj instanceof Integer) {
-				size = ((Integer) bytesObj).longValue();
-				log.info("Object bytes[] type: Integer");
-			} else if (bytesObj != null) {
-				size = Long.parseLong(bytesObj.toString());
-				log.info("Object bytes[] type: String");
-			}
+            // Type conversion
+            Object bytesObj = uploadResult.get("bytes");
+            Long size = 0L;
+            if (bytesObj instanceof Long) {
+                size = (Long) bytesObj;
+                log.info("Object bytes[] type: Long");
+            } else if (bytesObj instanceof Integer) {
+                size = ((Integer) bytesObj).longValue();
+                log.info("Object bytes[] type: Integer");
+            } else if (bytesObj != null) {
+                size = Long.parseLong(bytesObj.toString());
+                log.info("Object bytes[] type: String");
+            }
 
-			// Return the secure url
-			return ImageUploadResult.builder().url((String) uploadResult.get("secured_url"))
-					.publicId((String) uploadResult.get("public_id")).size(size)
-					.format((String) uploadResult.get("format")).build();
-		} catch (IOException e) {
-			throw new RuntimeException("Failed to upload image: " + e.getMessage());
-		}
-	}
+            // Return the secure url
+            return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
+                    .publicId((String) uploadResult.get("public_id")).size(size)
+                    .format((String) uploadResult.get("format")).build();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to upload image: " + e.getMessage());
+        }
+    }
 
-	@Override
-	public ImageUploadResult uploadImage(byte[] imageBytes, String publicId) {
-		try {
-			Map<String, Object> uploadParams = new HashMap<>();
+    @Override
+    public ImageUploadResult uploadImage(byte[] imageBytes, String publicId) {
+        try {
+            Map<String, Object> uploadParams = new HashMap<>();
 
-			uploadParams.put("folder", "blinkstay_user_profiles");
-			uploadParams.put("public_id", publicId);
-			Map uploadResult = cloudinary.uploader().upload(imageBytes, uploadParams);
+            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("public_id", publicId);
+            Map uploadResult = cloudinary.uploader().upload(imageBytes, uploadParams);
 
-			Object bytesObj = uploadResult.get("bytes");
-			long size = 0L;
-			if (bytesObj instanceof Long) {
-				size = (Long) bytesObj;
-			} else if (bytesObj instanceof Integer) {
-				size = ((Integer) bytesObj).longValue();
-			} else if (bytesObj != null) {
-				size = Long.parseLong(bytesObj.toString());
-			}
+            Object bytesObj = uploadResult.get("bytes");
+            long size = 0L;
+            if (bytesObj instanceof Long) {
+                size = (Long) bytesObj;
+            } else if (bytesObj instanceof Integer) {
+                size = ((Integer) bytesObj).longValue();
+            } else if (bytesObj != null) {
+                size = Long.parseLong(bytesObj.toString());
+            }
 
-			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-					.publicId((String) uploadResult.get("public_id")).size(size)
-					.format((String) uploadResult.get("format")).build();
-		} catch (IOException e) {
-			throw new RuntimeException("Image upload failed");
-		}
-	}
+            return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
+                    .publicId((String) uploadResult.get("public_id")).size(size)
+                    .format((String) uploadResult.get("format")).build();
+        } catch (IOException e) {
+            throw new RuntimeException("Image upload failed");
+        }
+    }
 
-	// DELETE - by public_id
-	@Override
-	public Map<String, Object> deleteImage(String publicId) {
-		try {
-			if (publicId == null || publicId.isEmpty()) {
-				throw new RuntimeException("Public ID is required for deletion");
-			}
+    // DELETE - by public_id
+    @Override
+    public Map<String, Object> deleteImage(String publicId) {
+        try {
+            if (publicId == null || publicId.isEmpty()) {
+                throw new RuntimeException("Public ID is required for deletion");
+            }
 
-			// Delete from Cloudinary
-			Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+            // Delete from Cloudinary
+            Map result = cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
 
-			// Result contains: "result": "ok" or "not found"
-			return result;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to delete image: " + e.getMessage());
-		}
-	}
+            // Result contains: "result": "ok" or "not found"
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to delete image: " + e.getMessage());
+        }
+    }
 
-	// REPLACE/UPDATE - delete old and upload new (using same public_id)
-	@Override
-	public ImageUploadResult replaceImage(MultipartFile newFile, String oldPublicId) {
-		try {
-			// First, delete the old image
-			if (oldPublicId != null && !oldPublicId.isEmpty()) {
-				deleteImage(oldPublicId);
-			}
+    // REPLACE/UPDATE - delete old and upload new (using same public_id)
+    @Override
+    public ImageUploadResult replaceImage(MultipartFile newFile, String oldPublicId) {
+        try {
+            // First, delete the old image
+            if (oldPublicId != null && !oldPublicId.isEmpty()) {
+                deleteImage(oldPublicId);
+            }
 
-			// Then upload the new image with the SAME public_id
-			// This effectively replaces the image at the same URL
-			return uploadImage(newFile, oldPublicId);
-		} catch (Exception e) {
-			throw new RuntimeException("Failed  to replace image: " + e.getMessage());
-		}
-	}
+            // Then upload the new image with the SAME public_id
+            // This effectively replaces the image at the same URL
+            return uploadImage(newFile, oldPublicId);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed  to replace image: " + e.getMessage());
+        }
+    }
 
-	@Override
-	public ImageUploadResult updateImage(MultipartFile newFile, String publicId) {
-		// Define allowed formats
-		String[] allowedFormats = { "jpg", "jpeg", "png", "gif" };
+    @Override
+    public ImageUploadResult updateImage(MultipartFile newFile, String publicId) {
+        // Define allowed formats
+        String[] allowedFormats = {"jpg", "jpeg", "png", "gif"};
 
-		// Validate file is not empty
-		if (newFile == null || newFile.isEmpty()) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please upload a valid image file.");
-		}
+        // Validate file is not empty
+        if (newFile == null || newFile.isEmpty()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Please upload a valid image file.");
+        }
 
-		// Extract file extension
-		String originalFilename = newFile.getOriginalFilename();
-		String fileExtension = "";
-		if (originalFilename != null && originalFilename.contains(".")) {
-			fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
-		}
+        // Extract file extension
+        String originalFilename = newFile.getOriginalFilename();
+        String fileExtension = "";
+        if (originalFilename != null && originalFilename.contains(".")) {
+            fileExtension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
+        }
 
-		// Check if the format matches the allowed formats
-		boolean isFormatAllowed = false;
-		for (String format : allowedFormats) {
-			if (format.equals(fileExtension)) {
-				isFormatAllowed = true;
-				break;
-			}
-		}
+        // Check if the format matches the allowed formats
+        boolean isFormatAllowed = false;
+        for (String format : allowedFormats) {
+            if (format.equals(fileExtension)) {
+                isFormatAllowed = true;
+                break;
+            }
+        }
 
-		if (!isFormatAllowed) {
-			throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-					"Invalid image format. Allowed formats are: jpg, jpeg, png, gif.");
-		}
+        if (!isFormatAllowed) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Invalid image format. Allowed formats are: jpg, jpeg, png, gif.");
+        }
 
-		try {
-			Map<String, Object> uploadParams = new HashMap<>();
-			uploadParams.put("public_id", publicId);
-			uploadParams.put("overwrite", true);
-			uploadParams.put("folder", "blinkstay_user_profiles");
-			uploadParams.put("allowed_formats", allowedFormats);
-			uploadParams.put("transformation",
-					new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
+        try {
+            Map<String, Object> uploadParams = new HashMap<>();
+            uploadParams.put("public_id", publicId);
+            uploadParams.put("overwrite", true);
+            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("allowed_formats", allowedFormats);
+            uploadParams.put("transformation",
+                    new Transformation<>().width(500).height(500).crop("fill").gravity("face"));
 
-			Map uploadResult = cloudinary.uploader().upload(newFile.getBytes(), uploadParams);
+            Map uploadResult = cloudinary.uploader().upload(newFile.getBytes(), uploadParams);
 
-			Object bytesObj = uploadResult.get("bytes");
-			long size = bytesObj instanceof Number n ? n.longValue() : 0L;
+            Object bytesObj = uploadResult.get("bytes");
+            long size = bytesObj instanceof Number n ? n.longValue() : 0L;
 
-			return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-					.publicId((String) uploadResult.get("public_id")).size(size)
-					.format((String) uploadResult.get("format")).build();
-		} catch (ResponseStatusException rse) {
-			throw rse; // Rethrow ResponseStatusException directly so it isn't wrapped in a
-						// RuntimeException
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to update image: " + e.getMessage(), e);
-		}
-	}
+            return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
+                    .publicId((String) uploadResult.get("public_id")).size(size)
+                    .format((String) uploadResult.get("format")).build();
+        } catch (ResponseStatusException rse) {
+            throw rse; // Rethrow ResponseStatusException directly so it isn't wrapped in a
+            // RuntimeException
+        } catch (Exception e) {
+            log.error("Profile image upload failed", e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Image upload failed. Please try a different image.");
+        }
+    }
 
-	// GET image details by public_id
-	@Override
-	public Map<String, Object> getImageDetails(String publicId) {
-		try {
-			Map result = cloudinary.api().resource(publicId, ObjectUtils.emptyMap());
-			return result;
-		} catch (Exception e) {
-			throw new RuntimeException("Failed to get image details: " + e.getMessage());
-		}
-	}
+    // GET image details by public_id
+    @Override
+    public Map<String, Object> getImageDetails(String publicId) {
+        try {
+            Map result = cloudinary.api().resource(publicId, ObjectUtils.emptyMap());
+            return result;
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to get image details: " + e.getMessage());
+        }
+    }
 
-	// GENERATE transformed URL without re-uploading
-	@Override
-	public String getTransformedUrl(String publicId, int width, int height) {
-		return cloudinary.url()
-				.transformation(new Transformation<>().width(width).height(height).crop("fill").gravity("face"))
-				.generate(publicId);
-	}
+    // GENERATE transformed URL without re-uploading
+    @Override
+    public String getTransformedUrl(String publicId, int width, int height) {
+        return cloudinary.url()
+                .transformation(new Transformation<>().width(width).height(height).crop("fill").gravity("face"))
+                .generate(publicId);
+    }
 }

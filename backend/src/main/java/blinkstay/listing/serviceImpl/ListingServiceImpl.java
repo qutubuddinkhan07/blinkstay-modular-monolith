@@ -366,7 +366,12 @@ public class ListingServiceImpl implements ListingService {
 
     // EVICT SINGLE LISTING CACHE WHEN IMAGE IS DELETED
     @Override
-    @CacheEvict(value = "listingById", key = "#listingId")
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "listingById", key = "#listingId"),
+                    @CacheEvict(value = "publishedListings", allEntries = true)
+            }
+    )
     public void deleteListingImage(UUID userId, UUID listingId, UUID imageId) {
         checkWhetherSameManager(userId, listingId);
 
