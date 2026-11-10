@@ -12,18 +12,18 @@ export default defineConfig({
     allowedHosts: [".ngrok-free.app", ".trycloudflare.com"],
     hmr: { clientPort: 443 },
 
-    // proxy: {
-    //   "/api": {
-    //     target: "http://localhost:8080",
-    //     changeOrigin: true,
-    //   },
-    // },
     proxy: {
       "/api": {
-        target: "https://supreme-chair-guidance-intelligence.trycloudflare.com", // always changing
-
+        target: "http://localhost:8080",
         changeOrigin: true,
       },
     },
+    // proxy: {
+    //   "/api": {
+    //     target: "https://supreme-chair-guidance-intelligence.trycloudflare.com", // always changing
+
+    //     changeOrigin: true,
+    //   },
+    // },
   },
 });
