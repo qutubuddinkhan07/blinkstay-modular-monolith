@@ -164,6 +164,11 @@
       "name": "app.earnings.earn-interval-ms",
       "type": "java.lang.Integer",
       "description": "Description for app.earnings.earn-interval-ms."
+    },
+    {
+      "name": "app.cors.allowed-origins",
+      "type": "java.lang.String",
+      "description": "Description for app.cors.allowed-origins."
     }
   ]
 }
