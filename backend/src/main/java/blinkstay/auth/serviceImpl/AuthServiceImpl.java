@@ -1,10 +1,17 @@
 package blinkstay.auth.serviceImpl;
 
-import java.time.Duration;
-import java.time.LocalDateTime;
-import java.time.ZoneId;
-import java.util.List;
-
+import blinkstay.auth.entities.BlockedToken;
+import blinkstay.auth.repository.UserRepository;
+import blinkstay.auth.service.AuthService;
+import blinkstay.auth.service.BlockedTokenService;
+import blinkstay.auth.util.JWTUtil;
+import blinkstay.common.exception.AccountBlockedException;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CachePut;
 import org.springframework.http.HttpHeaders;
@@ -21,152 +28,144 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import blinkstay.auth.entities.BlockedToken;
-import blinkstay.auth.repository.UserRepository;
-import blinkstay.auth.service.AuthService;
-import blinkstay.auth.service.BlockedTokenService;
-import blinkstay.auth.util.JWTUtil;
-import blinkstay.common.exception.AccountBlockedException;
-import io.jsonwebtoken.JwtException;
-import jakarta.servlet.http.Cookie;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthServiceImpl implements AuthService {
-	@Value("${app.cookie.name}")
-	private String authCookieName;
+    @Value("${app.cookie.name}")
+    private String authCookieName;
 
-	@Value("${app.cookie.max-age}")
-	private int cookieMaxAge;
+    @Value("${app.cookie.max-age}")
+    private int cookieMaxAge;
 
-	@Value("${app.cookie.secure}")
-	private boolean cookieSecure;
+    @Value("${app.cookie.secure}")
+    private boolean cookieSecure;
 
-	@Value("${app.cookie.same-site}")
-	private String cookieSameSite;
+    @Value("${app.cookie.same-site}")
+    private String cookieSameSite;
 
-	private final AuthenticationManager authManager;
+    private final AuthenticationManager authManager;
 
-	private final JWTUtil jwtUtil;
+    private final JWTUtil jwtUtil;
 
-	private final BlockedTokenService blockedTokenService;
+    private final BlockedTokenService blockedTokenService;
 
-	private final UserRepository userRepository;
+    private final UserRepository userRepository;
 
-	private final PasswordEncoder passwordEncoder;
+    private final PasswordEncoder passwordEncoder;
 
-	@Override
-	public void authUsernameAndPasswordService(String username, String password, HttpServletResponse response) {
-		try {
-			UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
-			Authentication authentication = authManager.authenticate(token);
+    @Override
+    public void authUsernameAndPasswordService(String username, String password, HttpServletResponse response) {
+        try {
+            UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
+            Authentication authentication = authManager.authenticate(token);
 
-			// Retrieve the authenticated UserDetails (its username is now
-			// user.getId().toString())
-			UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-			String userIdStr = userDetails.getUsername();
+            // Retrieve the authenticated UserDetails (its username is now
+            // user.getId().toString())
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            String userIdStr = userDetails.getUsername();
 
-			List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
-					.filter(auth -> !auth.startsWith("FACTOR_")).toList();
+            List<String> roles = authentication.getAuthorities().stream().map(GrantedAuthority::getAuthority)
+                    .filter(auth -> !auth.startsWith("FACTOR_")).toList();
 
-			log.info("Login successful for userId {} with roles {}", userIdStr, roles);
+            log.info("Login successful for userId {} with roles {}", userIdStr, roles);
 
-			String jwt = jwtUtil.generateToken(userIdStr, roles);
+            String jwt = jwtUtil.generateToken(userIdStr, roles);
 
-			ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
-					.sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
+            ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
+                    .sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
 
-			response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
-		} catch (DisabledException e) {
-			// Spring checks "disabled" before the password, so only tell someone
-			// who knows the password that the account is blocked
-			userRepository.findByEmail(username.trim())
-					.filter(u -> u.getDeletedAt() == null && passwordEncoder.matches(password, u.getPassword()))
-					.ifPresent(u -> {
-						throw new AccountBlockedException(u.getBlockReason());
-					});
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
-		} catch (AuthenticationException e) {
-			log.warn("Authentication failed for {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
-			throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
-		}
-	}
+            response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
+        } catch (DisabledException e) {
+            // Spring checks "disabled" before the password, so only tell someone
+            // who knows the password that the account is blocked
+            userRepository.findByEmail(username.trim().toLowerCase())
+                    .filter(u -> u.getDeletedAt() == null && passwordEncoder.matches(password, u.getPassword()))
+                    .ifPresent(u -> {
+                        throw new AccountBlockedException(u.getBlockReason());
+                    });
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        } catch (AuthenticationException e) {
+            log.warn("Authentication failed for {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
+        }
+    }
 
-	@Override
-	public String logoutService(HttpServletRequest request, HttpServletResponse response) {
-		String jwt = extractTokenFromCookies(request);
+    @Override
+    public String logoutService(HttpServletRequest request, HttpServletResponse response) {
+        String jwt = extractTokenFromCookies(request);
 
-		if (jwt == null) {
-			clearAuthCookie(response);
-			return "No JWT found";
-		}
+        if (jwt == null) {
+            clearAuthCookie(response);
+            return "No JWT found";
+        }
 
-		LocalDateTime expireAt;
-		try {
-			expireAt = jwtUtil.extractExpiry(jwt).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
-		} catch (JwtException | IllegalArgumentException e) {
-			// expired or invalid: nothing left to revoke, just clear the cookie
-			clearAuthCookie(response);
-			return "Session already expired";
-		}
+        LocalDateTime expireAt;
+        try {
+            expireAt = jwtUtil.extractExpiry(jwt).toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        } catch (JwtException | IllegalArgumentException e) {
+            // expired or invalid: nothing left to revoke, just clear the cookie
+            clearAuthCookie(response);
+            return "Session already expired";
+        }
 
-		if (blockedTokenService.checkIfPresent(jwt)) {
-			clearAuthCookie(response);
-			return "Already logged out";
-		}
+        if (blockedTokenService.checkIfPresent(jwt)) {
+            clearAuthCookie(response);
+            return "Already logged out";
+        }
 
-		BlockedToken token = BlockedToken.builder().token(jwt).blockedAt(LocalDateTime.now()).expiresAt(expireAt)
-				.build();
-		blockedTokenService.blockToken(jwt, token);
+        BlockedToken token = BlockedToken.builder().token(jwt).blockedAt(LocalDateTime.now()).expiresAt(expireAt)
+                .build();
+        blockedTokenService.blockToken(jwt, token);
 
-		clearAuthCookie(response);
-		return "Logout successful";
-	}
+        clearAuthCookie(response);
+        return "Logout successful";
+    }
 
-	// Helper method to update cache on logout
-	@CachePut(value = "blockedTokens", key = "#token")
-	public Boolean cacheBlockedToken(String token) {
-		return true;
-	}
+    // Helper method to update cache on logout
+    @CachePut(value = "blockedTokens", key = "#token")
+    public Boolean cacheBlockedToken(String token) {
+        return true;
+    }
 
-	private String extractTokenFromCookies(HttpServletRequest request) {
-		Cookie[] cookies = request.getCookies();
+    private String extractTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
 
-		if (cookies == null) {
-			return null;
-		}
+        if (cookies == null) {
+            return null;
+        }
 
-		for (Cookie cookie : cookies) {
-			if (authCookieName.equals(cookie.getName())) {
-				return cookie.getValue();
-			}
-		}
+        for (Cookie cookie : cookies) {
+            if (authCookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	private void clearAuthCookie(HttpServletResponse response) {
-		ResponseCookie expiredCookie = ResponseCookie.from(authCookieName, "").httpOnly(true).secure(cookieSecure)
-				.sameSite(cookieSameSite).path("/").maxAge(Duration.ZERO).build();
+    private void clearAuthCookie(HttpServletResponse response) {
+        ResponseCookie expiredCookie = ResponseCookie.from(authCookieName, "").httpOnly(true).secure(cookieSecure)
+                .sameSite(cookieSameSite).path("/").maxAge(Duration.ZERO).build();
 
-		response.addHeader(HttpHeaders.SET_COOKIE, expiredCookie.toString());
-	}
+        response.addHeader(HttpHeaders.SET_COOKIE, expiredCookie.toString());
+    }
 
-	private void writeAuthCookie(String jwt, HttpServletResponse response) {
-		ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
-				.sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
-		response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
-	}
+    private void writeAuthCookie(String jwt, HttpServletResponse response) {
+        ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
+                .sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
+        response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
+    }
 
-	@Override
-	public void reissueSession(UserDetails userDetails, HttpServletResponse response) {
-		List<String> roles = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
-		writeAuthCookie(jwtUtil.generateToken(userDetails.getUsername(), roles), response);
-	}
+    @Override
+    public void reissueSession(UserDetails userDetails, HttpServletResponse response) {
+        List<String> roles = userDetails.getAuthorities().stream().map(GrantedAuthority::getAuthority).toList();
+        writeAuthCookie(jwtUtil.generateToken(userDetails.getUsername(), roles), response);
+    }
 
 }

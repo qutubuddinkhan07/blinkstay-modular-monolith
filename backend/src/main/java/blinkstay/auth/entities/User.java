@@ -45,8 +45,7 @@ public class User {
 	@Id
 	@GeneratedValue
 	@UuidGenerator(style = UuidGenerator.Style.TIME) // Generates time order sequential UUIDs
-	@JdbcTypeCode(SqlTypes.BINARY) // Maps java.util.UUID directly to MySQL BINARY(16)
-	@Column(name = "id", columnDefinition = "BINARY(16)", updatable = false, nullable = false)
+	@Column(name = "id", updatable = false, nullable = false)
 	private UUID id;
 
 	@NotBlank(message = "username cannot be empty")
