@@ -51,6 +51,9 @@ backend/.nb-gradle/
 .DS_Store
 Thumbs.db
 
+# Mail PDFs 
+backend/mail-preview/
+
 # ===============================
 # 🔹 Frontend (React / Vite)
 # ===============================
