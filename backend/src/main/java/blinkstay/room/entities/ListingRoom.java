@@ -3,16 +3,14 @@ package blinkstay.room.entities;
 import blinkstay.room.enums.RoomCategory;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UuidGenerator;
-import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.UUID;
 
 @Entity
 @Table(name = "listing_rooms", indexes = {
-        @Index(name = "idx_listings_id", columnList = "listingId")}, uniqueConstraints = @UniqueConstraint(name = "uk_listing_room_type", columnNames = {
+        @Index(name = "idx_listing_rooms_listing_id", columnList = "listingId")}, uniqueConstraints = @UniqueConstraint(name = "uk_listing_room_type", columnNames = {
         "listing_id", "room_type"}))
 @Getter
 @Setter

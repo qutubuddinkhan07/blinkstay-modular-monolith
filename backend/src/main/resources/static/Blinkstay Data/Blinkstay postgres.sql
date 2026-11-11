@@ -125,6 +125,8 @@ where schemaname = 'public'
                     'listing_images', 'listing_rooms', 'blocked_token')
 order by tablename, indexname;
 
+drop index if exists idx_listings_id;
+
 -- CHECK constraints on a table (Hibernate creates these for enum columns).
 -- Use this to find the real constraint name before dropping it (section 7).
 select conname as constraint_name,
