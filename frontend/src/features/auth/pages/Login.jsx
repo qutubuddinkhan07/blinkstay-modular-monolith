@@ -7,6 +7,7 @@ import { useTheme } from "../../../context/ThemeContext";
 import { useAuth } from "../../../context/AuthContext";
 import { isBlockedError } from "../../../api/errors/isBlockedError";
 import BlockedNotice from "../../../components/common/BlockedNotice";
+import { safeReturnPath } from "../../../utils/authRedirect";
 
 /* ---------- Login ---------- */
 
@@ -52,10 +53,7 @@ const Login = () => {
   };
 
   // Keep the query string too (e.g. the dates picked on a listing)
-  const fromLoc = location.state?.from;
-  const from = fromLoc
-    ? `${fromLoc.pathname}${fromLoc.search ?? ""}`
-    : "/explore";
+  const from = safeReturnPath(location.state?.from);
   const handleSubmit = async (e) => {
     e.preventDefault();
     setBlockedMessage(null); // clear the notice on every new attempt

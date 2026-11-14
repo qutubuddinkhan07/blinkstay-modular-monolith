@@ -15,6 +15,12 @@ import { api } from "../store/api";
 
 const AuthContext = createContext(undefined);
 
+// Written when an account is found to be blocked, read by BlockedPage
+const clearBlockedNotes = () => {
+  sessionStorage.removeItem("blockedMessage");
+  sessionStorage.removeItem("blockedNotice");
+};
+
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -27,6 +33,9 @@ export const AuthProvider = ({ children }) => {
   const dispatch = useDispatch();
   const wasAuthRef = useRef(false);
 
+  // Once the account is known to be blocked, nothing else may redirect or show "session expired"
+  const blockedRef = useRef(false);
+
   // Whenever a logged-in session ends, drop every cached query
   useEffect(() => {
     const isAuth = Boolean(user);
@@ -34,6 +43,7 @@ export const AuthProvider = ({ children }) => {
     wasAuthRef.current = isAuth;
   }, [user, dispatch]);
 
+  // Stable identity: it is used in effect dependency lists elsewhere
   const refreshUser = useCallback(async () => {
     if (isRefreshingRef.current) return;
     isRefreshingRef.current = true;
@@ -45,7 +55,7 @@ export const AuthProvider = ({ children }) => {
     } finally {
       isRefreshingRef.current = false;
     }
-  });
+  }, []);
 
   const clearSession = () => {
     localStorage.removeItem("hasSession");
@@ -58,14 +68,19 @@ export const AuthProvider = ({ children }) => {
   loadingRef.current = loading;
   const expiredNoticeRef = useRef(false);
 
+  // The axios interceptor reports a lost or blocked session through this
   useEffect(() => {
     setAuthFailureHandler(({ type, message }) => {
+      if (blockedRef.current) return; // requests still in flight must not undo the blocked screen
+
       const hadSession =
         Boolean(userRef.current) || localStorage.getItem("hasSession") === "1";
       localStorage.removeItem("hasSession");
 
       if (type === "blocked") {
+        blockedRef.current = true;
         sessionStorage.setItem("blockedMessage", message || "");
+        sessionStorage.setItem("blockedNotice", "1"); // BlockedPage shows the toast after the reload
         setUser(null);
         window.location.replace("/blocked");
         return;
@@ -113,7 +128,13 @@ export const AuthProvider = ({ children }) => {
           if (!ignore) setUser(response.data.data);
         } catch (error) {
           localStorage.removeItem("hasSession");
-          if (error.response?.status === 401) expiredNoticeRef.current = true;
+          // a blocked account gets its own screen (the interceptor redirects), so no "expired" toast
+          if (
+            error.response?.status === 401 &&
+            error.response?.data?.code !== "ACCOUNT_BLOCKED"
+          ) {
+            expiredNoticeRef.current = true;
+          }
           if (!ignore) setUser(null);
         }
       }
@@ -147,6 +168,10 @@ export const AuthProvider = ({ children }) => {
       localStorage.removeItem("hasSession");
       return { success: false, error };
     }
+
+    // a successful login means any earlier block is over: forget its reason
+    clearBlockedNotes();
+    blockedRef.current = false;
 
     notify.success(response.data?.message || "Login successful!");
     return { success: true, error: null };

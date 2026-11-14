@@ -2,6 +2,7 @@ import React from "react";
 import { useAuth } from "../context/AuthContext";
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import Loading from "../components/common/Loading";
+import { safeReturnPath } from "../utils/authRedirect";
 
 const GuestRoute = () => {
   const { isAuthenticated, loading } = useAuth();
@@ -10,7 +11,7 @@ const GuestRoute = () => {
   if (loading) return <Loading />;
 
   if (isAuthenticated) {
-    const to = location.state?.from?.pathname ?? "/explore";
+    const to = safeReturnPath(location.state?.from);
     return <Navigate to={to} replace />;
   }
   return <Outlet />;
