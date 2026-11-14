@@ -1,33 +1,37 @@
 package blinkstay.auth.serviceImpl;
 
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.Cacheable;
-import org.springframework.stereotype.Service;
-
 import blinkstay.auth.entities.BlockedToken;
 import blinkstay.auth.repository.BlockedTokenRepositry;
 import blinkstay.auth.service.BlockedTokenService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
 
 @Service
 public class BlockedTokenServiceImpl implements BlockedTokenService {
-	@Autowired
-	private BlockedTokenRepositry blockedTokenRepo;
+    @Autowired
+    private BlockedTokenRepositry blockedTokenRepo;
 
-	// Cache ONLY blocked tokens (where result == true)
-	// If false, don't cache so future logouts are recognized immediately
-	// Cache all check results (both true and false)
-	@Override
-	@Cacheable(value = "blockedTokens", key = "#token", unless = "!#result")
-	public Boolean checkIfPresent(String token) {
-		return blockedTokenRepo.existsByToken(token);
-	}
+    @Autowired
+    private CacheManager cacheManager;
 
-	// Evict or update the cache key immediately upon logout
-	@Override
-	@CacheEvict(value = "blockedTokens", key = "#token")
-	public void blockToken(String token, BlockedToken blockedToken) {
-		blockedTokenRepo.save(blockedToken);
-	}
+    // Both true and false are cached. Logout writes true directly (below), so a
+    // logged-out token is never answered with a stale false.
+    @Override
+    @Cacheable(value = "blockedTokens", key = "#token")
+    public Boolean checkIfPresent(String token) {
+        return blockedTokenRepo.existsByToken(token);
+    }
+
+    @Override
+    public void blockToken(String token, BlockedToken blockedToken) {
+        blockedTokenRepo.save(blockedToken);
+        Cache cache = cacheManager.getCache("blockedTokens");
+        if (cache != null) {
+            cache.put(token, Boolean.TRUE);
+        }
+    }
 
 }

@@ -5,6 +5,7 @@ import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.security.AuthUser.AuthUser;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,17 +23,36 @@ public class CustomUserDetailsDaoService implements UserDetailsService {
 
     private final UserRepository userRepository;
 
+    /**
+     * Used by login (email) - always reads the database.
+     */
     @Override
     public UserDetails loadUserByUsername(String identifier) throws UsernameNotFoundException {
         String id = identifier == null ? "" : identifier.trim();
 
         User user = findUser(id).orElseThrow(() -> {
-            log.warn("No user found for '{}'", id); // temporary: remove once login works
+            log.warn("No user found login identifier");
             return new UsernameNotFoundException("User not found");
         });
 
-        List<SimpleGrantedAuthority> authorities = user.getRoles().stream()
-                .map(role -> new SimpleGrantedAuthority(role.name())).toList();
+        return toAuthUser(user);
+    }
+
+    /**
+     * Used by the JWT filter on every request. Cached for a short time under
+     * "authUsers". It MUST be evicted whenever a user is blocked, unblocked,
+     * deleted, or has roles or password changed.
+     */
+    @Cacheable(value = "authUsers", key = "#userId")
+    public UserDetails loadAuthSnapshot(String userId) {
+        UUID id = UUID.fromString(userId); // bad value -> IllegalAgumentException -> TOKEN_INVALID
+        User user = userRepository.findById(id).orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        return toAuthUser(user);
+    }
+
+    private AuthUser toAuthUser(User user) {
+        List<SimpleGrantedAuthority> authorities =
+                user.getRoles().stream().map(role -> new SimpleGrantedAuthority(role.name())).toList();
 
         return new AuthUser(user.getId().toString(), user.getPassword(), !Boolean.FALSE.equals(user.getIsActive()),
                 authorities, user.getPasswordChangedAt());

@@ -36,6 +36,9 @@ public class CacheConfig {
         cacheManager.registerCustomCache("publishedListings", Caffeine.newBuilder().maximumSize(100)
                 .expireAfterWrite(5, TimeUnit.MINUTES).recordStats().build());
 
+        cacheManager.registerCustomCache("authUsers", Caffeine.newBuilder().maximumSize(5000).expireAfterWrite(60,
+                TimeUnit.SECONDS).recordStats().build());
+
         return cacheManager;
     }
 }

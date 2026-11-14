@@ -1,19 +1,5 @@
 package blinkstay.auth.filter;
 
-import java.io.IOException;
-import java.time.Instant;
-
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
-import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
-import org.springframework.stereotype.Component;
-import org.springframework.web.filter.OncePerRequestFilter;
-
 import blinkstay.auth.security.AuthUser.AuthUser;
 import blinkstay.auth.service.BlockedTokenService;
 import blinkstay.auth.serviceImpl.CustomUserDetailsDaoService;
@@ -28,136 +14,149 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.time.Instant;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class JWTFilter extends OncePerRequestFilter {
 
-	/**
-	 * Read by the entry point so the frontend can tell WHY the request was
-	 * rejected.
-	 */
-	public static final String AUTH_ERROR_ATTRIBUTE = "blinkstay.auth.error";
+    /**
+     * Read by the entry point so the frontend can tell WHY the request was
+     * rejected.
+     */
+    public static final String AUTH_ERROR_ATTRIBUTE = "blinkstay.auth.error";
 
-	@Value("${app.cookie.name}")
-	private String authCookieName;
+    @Value("${app.cookie.name}")
+    private String authCookieName;
 
-	// These must match how the login code sets the cookie, or the browser won't
-	// overwrite it
-	@Value("${app.cookie.secure:false}")
-	private boolean cookieSecure;
+    // These must match how the login code sets the cookie, or the browser won't
+    // overwrite it
+    @Value("${app.cookie.secure:false}")
+    private boolean cookieSecure;
 
-	@Value("${app.cookie.same-site:Lax}")
-	private String cookieSameSite;
+    @Value("${app.cookie.same-site:Lax}")
+    private String cookieSameSite;
 
-	private final JWTUtil jwtUtil;
+    private final JWTUtil jwtUtil;
 
-	private final CustomUserDetailsDaoService userDetailsService;
+    private final CustomUserDetailsDaoService userDetailsService;
 
-	private final BlockedTokenService blockedTokenService;
+    private final BlockedTokenService blockedTokenService;
 
-	@Override
-	protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
-			throws ServletException, IOException {
+    @Override
+    protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
+            throws ServletException, IOException {
 
-		String jwt = extractTokenFromCookies(request);
-		log.info("Cookie secure: {}", cookieSecure);
+        String jwt = extractTokenFromCookies(request);
+        // log.info("Cookie secure: {}", cookieSecure);
 
-		if (jwt != null && !jwt.isBlank()) {
-			authenticate(jwt, request, response);
-		}
+        if (jwt != null && !jwt.isBlank()) {
+            authenticate(jwt, request, response);
+        }
 
-		// ALWAYS continue, and OUTSIDE any try/catch. Exceptions thrown later
-		// (controller,
-		// services) are no longer mistaken for authentication failures.
-		filterChain.doFilter(request, response);
-	}
+        // ALWAYS continue, and OUTSIDE any try/catch. Exceptions thrown later
+        // (controller,
+        // services) are no longer mistaken for authentication failures.
+        filterChain.doFilter(request, response);
+    }
 
-	private void authenticate(String jwt, HttpServletRequest request, HttpServletResponse response) {
-		try {
-			Claims claims = jwtUtil.extractClaims(jwt); // throws if expired / invalid
-			String userIdStr = claims.getSubject();
+    private void authenticate(String jwt, HttpServletRequest request, HttpServletResponse response) {
+        try {
+            Claims claims = jwtUtil.extractClaims(jwt); // throws if expired / invalid
+            String userIdStr = claims.getSubject();
 
-			if (blockedTokenService.checkIfPresent(jwt)) {
-				reject(request, response, "TOKEN_REVOKED");
-				return;
-			}
+            if (blockedTokenService.checkIfPresent(jwt)) {
+                reject(request, response, "TOKEN_REVOKED");
+                return;
+            }
 
-			if (userIdStr == null || SecurityContextHolder.getContext().getAuthentication() != null) {
-				return;
-			}
+            if (userIdStr == null || SecurityContextHolder.getContext().getAuthentication() != null) {
+                return;
+            }
 
-			UserDetails userDetails = userDetailsService.loadUserByUsername(userIdStr);
+            UserDetails userDetails = userDetailsService.loadAuthSnapshot(userIdStr);
 
-			// A blocked / deactivated account must stop working immediately
-			if (!userDetails.isEnabled()) {
-				reject(request, response, "ACCOUNT_BLOCKED");
-				return;
-			}
+            // A blocked / deactivated account must stop working immediately
+            if (!userDetails.isEnabled()) {
+                reject(request, response, "ACCOUNT_BLOCKED");
+                return;
+            }
 
-			Instant changedAt = userDetails instanceof AuthUser a ? a.getPasswordChangedAt() : null;
-			if (changedAt != null
-					&& (claims.getIssuedAt() == null || claims.getIssuedAt().toInstant().isBefore(changedAt))) {
-				reject(request, response, "PASSWORD_CHANGED");
-				return;
-			}
+            Instant changedAt = userDetails instanceof AuthUser a ? a.getPasswordChangedAt() : null;
+            if (changedAt != null
+                    && (claims.getIssuedAt() == null || claims.getIssuedAt().toInstant().isBefore(changedAt))) {
+                reject(request, response, "PASSWORD_CHANGED");
+                return;
+            }
 
-			UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
-					userDetails.getAuthorities());
-			authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
-			SecurityContextHolder.getContext().setAuthentication(authToken);
+            UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(userDetails, null,
+                    userDetails.getAuthorities());
+            authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
+            SecurityContextHolder.getContext().setAuthentication(authToken);
 
-			log.debug("Authenticated {} with {}", userDetails.getUsername(), userDetails.getAuthorities());
+            log.debug("Authenticated {} with {}", userDetails.getUsername(), userDetails.getAuthorities());
 
-		} catch (ExpiredJwtException e) {
-			reject(request, response, "TOKEN_EXPIRED");
-		} catch (JwtException | IllegalArgumentException e) {
-			reject(request, response, "TOKEN_INVALID");
-		} catch (UsernameNotFoundException e) {
-			reject(request, response, "USER_NOT_FOUND");
-		}
-	}
+        } catch (ExpiredJwtException e) {
+            reject(request, response, "TOKEN_EXPIRED");
+        } catch (JwtException | IllegalArgumentException e) {
+            reject(request, response, "TOKEN_INVALID");
+        } catch (UsernameNotFoundException e) {
+            reject(request, response, "USER_NOT_FOUND");
+        }
+    }
 
-	/**
-	 * Treat the request as logged-out and tell the browser to drop the dead cookie.
-	 */
-	private void reject(HttpServletRequest request, HttpServletResponse response, String code) {
-		log.warn("Rejecting auth cookie on {} {}: {}", request.getMethod(), request.getRequestURI(), code);
-		request.setAttribute(AUTH_ERROR_ATTRIBUTE, code);
-		clearAuthCookie(response);
-	}
+    /**
+     * Treat the request as logged-out and tell the browser to drop the dead cookie.
+     */
+    private void reject(HttpServletRequest request, HttpServletResponse response, String code) {
+        log.warn("Rejecting auth cookie on {} {}: {}", request.getMethod(), request.getRequestURI(), code);
+        request.setAttribute(AUTH_ERROR_ATTRIBUTE, code);
+        clearAuthCookie(response);
+    }
 
-	private void clearAuthCookie(HttpServletResponse response) {
-		ResponseCookie cleared = ResponseCookie.from(authCookieName, "").httpOnly(true).secure(cookieSecure)
-				.sameSite(cookieSameSite).path("/").maxAge(0).build();
+    private void clearAuthCookie(HttpServletResponse response) {
+        ResponseCookie cleared = ResponseCookie.from(authCookieName, "").httpOnly(true).secure(cookieSecure)
+                .sameSite(cookieSameSite).path("/").maxAge(0).build();
 
-		response.addHeader(HttpHeaders.SET_COOKIE, cleared.toString());
-	}
+        response.addHeader(HttpHeaders.SET_COOKIE, cleared.toString());
+    }
 
-	private String extractTokenFromCookies(HttpServletRequest request) {
-		Cookie[] cookies = request.getCookies();
+    private String extractTokenFromCookies(HttpServletRequest request) {
+        Cookie[] cookies = request.getCookies();
 
-		if (cookies == null) {
-			return null;
-		}
+        if (cookies == null) {
+            return null;
+        }
 
-		for (Cookie cookie : cookies) {
-			if (authCookieName.equals(cookie.getName())) {
-				return cookie.getValue();
-			}
-		}
+        for (Cookie cookie : cookies) {
+            if (authCookieName.equals(cookie.getName())) {
+                return cookie.getValue();
+            }
+        }
 
-		return null;
-	}
+        return null;
+    }
 
-	@Override
-	protected boolean shouldNotFilter(HttpServletRequest request) {
-		String path = request.getRequestURI();
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
 
-		return "OPTIONS".equalsIgnoreCase(request.getMethod()) // CORS preflight
-				|| path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
-				|| path.startsWith("/api/v1/auth/forgot-password") || path.startsWith("/api/v1/auth/reset-password")
-				|| path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v5/payments/webhook");
-	}
+        return "OPTIONS".equalsIgnoreCase(request.getMethod()) // CORS preflight
+                || path.startsWith("/api/v1/auth/login") || path.startsWith("/api/v2/user/register-init")
+                || path.startsWith("/api/v1/auth/forgot-password") || path.startsWith("/api/v1/auth/reset-password")
+                || path.startsWith("/api/v2/user/verify-otp") || path.startsWith("/api/v5/payments/webhook");
+    }
 }

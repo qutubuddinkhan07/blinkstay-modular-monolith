@@ -148,7 +148,14 @@ select * from user_roles limit 50;
 select * from blocked_token limit 50;
 
 -- Users with readable ids (no BIN_TO_UUID needed, ids are already uuid)
-select id, username from users order by username;
+select id, username,email, deleted_at, is_active
+from users order by updated_at desc;
+
+-- Updating emails
+update users
+set email = 'qutubuddinkhan8261+blinkstay-goku@gmail.com',
+    updated_at = now()
+where id = 'c0a8010a-a12c-1e8c-81a1-2d04333d0001';
 
 -- Listings
 select * from listings          limit 50;

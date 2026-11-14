@@ -97,7 +97,8 @@ public class UserServiceImpl implements UserService {
     // EVICT CACHE ON SOFT DELETE
     @Override
     @Transactional
-    @Caching(evict = {@CacheEvict(value = "usersById", key = "#userId"),
+    @Caching(evict = {@CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", key = "#userId"),
             @CacheEvict(value = "usersByEmail", allEntries = true),
             @CacheEvict(value = "hotelManagerIds", allEntries = true)})
     public String deleteUserById(UUID userId) {
@@ -256,7 +257,9 @@ public class UserServiceImpl implements UserService {
     // EVICT CACHE ON PROFILE IMAGE UPDATE
     @Override
     @Transactional
-    @Caching(evict = {@CacheEvict(value = "usersById", key = "#userId"),
+    @Caching(evict = {
+            @CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", key = "#userId"),
             @CacheEvict(value = "usersByEmail", allEntries = true)})
     public UserResponseDto updateProfileImage(UUID userId, MultipartFile image) {
         if (image == null || image.isEmpty()) {
@@ -296,7 +299,8 @@ public class UserServiceImpl implements UserService {
     // EVICT CACHE ON IMAGE DELETE
     @Override
     @Transactional
-    @Caching(evict = {@CacheEvict(value = "usersById", key = "#userId"),
+    @Caching(evict = {@CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", key = "#userId"),
             @CacheEvict(value = "usersByEmail", key = "#result.email", condition = "#result != null")})
     public UserResponseDto deleteProfileImage(UUID userId) {
         User user = helperGetUserId(userId); // throws UserNotFoundException
@@ -329,7 +333,8 @@ public class UserServiceImpl implements UserService {
     // EVICT CACHE IN BULK
     @Override
     @Transactional
-    @Caching(evict = {@CacheEvict(value = "usersById", allEntries = true),
+    @Caching(evict = {@CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", allEntries = true),
             @CacheEvict(value = "usersByEmail", allEntries = true)})
     public void deleteMultipleUserImage(List<UUID> userIds) {
         List<User> users = userRepository.findAllById(userIds);
@@ -355,7 +360,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
-    @Caching(evict = {@CacheEvict(value = "usersById", key = "#userId"),
+    @Caching(evict = {@CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", key = "#userId"),
             @CacheEvict(value = "usersByEmail", allEntries = true)})
     public UserResponseDto updateProfile(UUID userId, UpdateProfileDto dto) {
         User user = helperGetUserId(userId);
@@ -378,6 +384,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     @Transactional
+    @CacheEvict(value = "authUsers", allEntries = true)
     public void changePassword(UUID userId, String currentPassword, String newPassword) {
         User user = helperGetUserId(userId);
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
