@@ -69,6 +69,9 @@ public class SpringSecurityConfiguration {
 
                         .requestMatchers(HttpMethod.GET, "/api/v3/listings/{listingId}").permitAll()
 
+                        // Review
+                        .requestMatchers(HttpMethod.GET, "/api/v5/listings/*/reviews").permitAll()
+
                         // Listings authorization
                         .requestMatchers("/api/v3/listings/**").hasAnyAuthority("HOTEL_MANAGER", "ADMIN")
 

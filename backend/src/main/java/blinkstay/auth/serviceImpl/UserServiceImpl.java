@@ -112,7 +112,7 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "The last active admin cannot be deleted");
         }
 
-        if (bookingGuard.guestHashActiveBookings(userId)) {
+        if (bookingGuard.guestHasActiveBookings(userId)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "The account has upcoming bookings. Cancel them first.");
         }

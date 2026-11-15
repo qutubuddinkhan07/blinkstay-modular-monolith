@@ -3,14 +3,15 @@ package blinkstay.listing.repository;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpecificationExecutor<Listing> {
@@ -25,4 +26,13 @@ public interface ListingRepository extends JpaRepository<Listing, UUID>, JpaSpec
                                                               SuspensionSource suspensionSource);
 
     long countByStatus(ListingStatus status);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT l FROM Listing l WHERE l.id = :id")
+    Optional<Listing> findByIdForUpdate(@Param("id") UUID id);
+
+    // bulk update: does not touch updatedAt, so the feed order never changes
+    @Modifying
+    @Query("UPDATE Listing l SET l.averageRating = :avg, l.reviewCount = :count WHERE l.id = :id")
+    int updateRating(@Param("id") UUID id, @Param("avg") BigDecimal avg, @Param("count") int count);
 }

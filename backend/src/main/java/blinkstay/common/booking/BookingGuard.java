@@ -7,14 +7,16 @@ import java.util.UUID;
  * yet checked out.
  */
 public interface BookingGuard {
-	boolean listingHasActiveBookings(UUID listingId);
+    boolean listingHasActiveBookings(UUID listingId);
 
-	boolean roomHasActiveBookings(UUID roomId);
+    boolean roomHasActiveBookings(UUID roomId);
 
-	/** The most rooms of this type booked on any single night from today onward. */
-	int peakRoomsBooked(UUID roomId);
+    /**
+     * The most rooms of this type booked on any single night from today onward.
+     */
+    int peakRoomsBooked(UUID roomId);
 
-	boolean guestHashActiveBookings(UUID userId);
+    boolean guestHasActiveBookings(UUID userId);
 
-	boolean hostHasActiveBookings(UUID hostId);
+    boolean hostHasActiveBookings(UUID hostId);
 }

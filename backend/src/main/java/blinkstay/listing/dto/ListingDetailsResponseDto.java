@@ -41,6 +41,10 @@ public class ListingDetailsResponseDto {
 
     private HostSummary host;
 
+    private Double averageRating;   // null until the first review
+
+    private int reviewCount;
+
     private LocalDateTime createdAt;
 
     private LocalDateTime updatedAt;

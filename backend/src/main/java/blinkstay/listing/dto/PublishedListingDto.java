@@ -1,15 +1,11 @@
 package blinkstay.listing.dto;
 
+import blinkstay.listing.enums.ListingCategory;
+import lombok.*;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-
-import blinkstay.listing.enums.ListingCategory;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Getter
 @Setter
@@ -17,23 +13,27 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class PublishedListingDto {
-	private UUID id;
+    private UUID id;
 
-	private String title;
+    private String title;
 
-	private String location;
+    private String location;
 
-	private String country;
+    private String country;
 
-	private ListingCategory category;
+    private ListingCategory category;
 
-	private List<String> amenities;
+    private List<String> amenities;
 
-	private List<String> imageUrls;
+    private List<String> imageUrls;
 
-	private String address;
+    private String address;
 
-	private BigDecimal latitude;
+    private Double averageRating;    // null until the first review
 
-	private BigDecimal longitude;
+    private int reviewCount;
+
+    private BigDecimal latitude;
+
+    private BigDecimal longitude;
 }

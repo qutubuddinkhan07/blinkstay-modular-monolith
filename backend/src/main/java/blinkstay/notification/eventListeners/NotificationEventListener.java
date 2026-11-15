@@ -178,4 +178,18 @@ public class NotificationEventListener {
             contact(e.hostId()).ifPresent(c -> emails.sendBookingCancelledToHost(c.username(), c.email(), guestName, e));
         }
     }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(ReviewPostedEvent e) {
+        save(e.hostId(), NotificationType.REVIEW_RECEIVED, "New review",
+                e.guestName() + " rated " + e.listingTitle() + " " + e.rating() + "/5", e.reviewId());
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(ReviewRepliedEvent e) {
+        save(e.guestId(), NotificationType.REVIEW_REPLIED, "The host replied to your review", e.listingTitle(),
+                e.reviewId());
+    }
 }

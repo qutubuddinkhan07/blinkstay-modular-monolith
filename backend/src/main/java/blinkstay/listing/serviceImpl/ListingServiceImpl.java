@@ -215,6 +215,9 @@ public class ListingServiceImpl implements ListingService {
 
         response.setRooms(rooms);
         response.setHost(hostDirectory.findHost(listing.getManagerId()).orElse(null));
+
+        response.setAverageRating(listing.getAverageRating() == null ? null : listing.getAverageRating().doubleValue());
+        response.setReviewCount(listing.getReviewCount());
         return response;
     }
 
@@ -250,6 +253,9 @@ public class ListingServiceImpl implements ListingService {
 
             // Map listing details
             ListingDetailsResponseDto response = modelMapper.listingDetailsMapper(listing, geometry, images);
+
+            response.setAverageRating(listing.getAverageRating() == null ? null : listing.getAverageRating().doubleValue());
+            response.setReviewCount(listing.getReviewCount());
 
             return response;
         }).collect(Collectors.toList());
@@ -312,7 +318,11 @@ public class ListingServiceImpl implements ListingService {
 
     // EVICT SINGLE LISTING CACHE WHEN IMAGES CHANGE
     @Override
-    @CacheEvict(value = "listingById", key = "#listingId")
+    @Caching(
+            evict = {
+                    @CacheEvict(value = "listingById", key = "#listingId"),
+                    @CacheEvict(value = "publishedListings", allEntries = true)
+            })
     public List<ImageDto> addListingImages(UUID userId, UUID listingId, List<MultipartFile> files) {
         checkWhetherSameManager(userId, listingId);
 
