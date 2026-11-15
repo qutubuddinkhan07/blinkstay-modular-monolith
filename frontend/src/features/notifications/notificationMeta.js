@@ -3,10 +3,12 @@ import {
   FiBell,
   FiCalendar,
   FiCheckCircle,
+  FiMessageSquare,
   FiInbox,
   FiRefreshCw,
   FiRotateCcw,
   FiSlash,
+  FiStar,
   FiUnlock,
   FiXCircle,
 } from "react-icons/fi";
@@ -24,9 +26,29 @@ const ICONS = {
   PAYMENT_REFUNDED: FiRotateCcw,
   BOOKING_RECEIVED: FiCalendar,
   BOOKING_CANCELLED: FiXCircle,
+  REVIEW_RECEIVED: FiStar,
+  REVIEW_REPLIED: FiMessageSquare,
 };
 
 export const getNotificationIcon = (type) => ICONS[type] ?? FiBell;
+
+const LABELS = {
+  HOST_REQUEST_SUBMITTED: "Host request",
+  HOST_REQUEST_APPROVED: "Host request approved",
+  HOST_REQUEST_REJECTED: "Host request rejected",
+  LISTING_SUSPENDED: "Listing suspended",
+  LISTING_RESTORED: "Listing restored",
+  ACCOUNT_BLOCKED: "Account blocked",
+  ACCOUNT_UNBLOCKED: "Account unblocked",
+  BOOKING_CONFIRMED: "Booking confirmed",
+  PAYMENT_REFUNDED: "Payment refunded",
+  BOOKING_RECEIVED: "New booking",
+  BOOKING_CANCELLED: "Booking cancelled",
+  REVIEW_RECEIVED: "New review",
+  REVIEW_REPLIED: "Host replied",
+};
+
+export const getNotificationLabel = (type) => LABELS[type] ?? "Notification";
 
 // Booking and payment notifications can reach the guest or the host
 const isBookingType = (type = "") =>
@@ -70,6 +92,10 @@ export const getNotificationPath = (n) => {
     case "ACCOUNT_BLOCKED":
     case "ACCOUNT_UNBLOCKED":
       return "/profile";
+    case "REVIEW_RECEIVED":
+      return "/host/reviews"; // to hosts
+    case "REVIEW_REPLIED":
+      return "/bookings?tab=past"; // to guests: the reply shows under their review
     default:
       return "/notifications";
   }

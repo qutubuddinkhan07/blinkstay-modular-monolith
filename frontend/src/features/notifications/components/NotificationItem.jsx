@@ -1,5 +1,9 @@
 import { FiTrash2 } from "react-icons/fi";
-import { getNotificationIcon, timeAgo } from "../notificationMeta";
+import {
+  getNotificationIcon,
+  getNotificationLabel,
+  timeAgo,
+} from "../notificationMeta";
 
 const NotificationItem = ({
   notification: n,
@@ -18,7 +22,10 @@ const NotificationItem = ({
           onDelete ? "pr-12" : "pr-4"
         } ${n.read ? "" : "bg-primary/5"}`}
       >
-        <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-subtext">
+        <span
+          title={getNotificationLabel(n.type)}
+          className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-subtext"
+        >
           <Icon size={16} aria-hidden="true" />
         </span>
 

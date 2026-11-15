@@ -15,6 +15,7 @@ import {
 } from "../bookingService";
 import BookingCancelDialog from "../components/BookingCancelDialog";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import BookingReview from "../../reviews/components/BookingReview";
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
@@ -158,6 +159,9 @@ const BookingRow = ({ booking: b, onCancel }) => {
           </button>
         </div>
       )}
+
+      {/* completed stays can be reviewed */}
+      {status === "COMPLETED" && <BookingReview booking={b} />}
     </li>
   );
 };

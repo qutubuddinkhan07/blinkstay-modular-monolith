@@ -114,6 +114,10 @@ const AdminOverview = Loadable(
   lazy(() => import("../features/admin/pages/AdminOverview")),
 );
 
+const HostReviews = Loadable(
+  lazy(() => import("../features/reviews/pages/HostReviews")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -193,6 +197,7 @@ const route = createBrowserRouter([
                 element: <EditListing />,
               },
               { path: "/host/dashboard", element: <HostDashboard /> },
+              { path: "/host/reviews", element: <HostReviews /> },
             ],
           },
 

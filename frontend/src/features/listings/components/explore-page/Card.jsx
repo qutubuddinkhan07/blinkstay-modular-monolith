@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import ImageCarousel from "../../../../components/common/ImageCarousel";
 import FavoriteButton from "../../../favorites/components/FavoriteButton";
+import { RatingSummary } from "../../../reviews/components/Stars";
 
 // Safely turns a string / object / array into readable text
 const toText = (v) => {
@@ -33,9 +34,14 @@ const Card = ({ listing }) => {
     images,
     title,
     location,
+    averageRating,
+    reviewCount,
   } = listing;
 
   const to = `/listings/${id}`;
+
+  // only lists whose response includes ratings show one (otherwise "New" would be wrong)
+  const hasRating = reviewCount !== undefined;
 
   // Use imageUrls first, then images, then coverImageUrl
   const slides =
@@ -91,7 +97,7 @@ const Card = ({ listing }) => {
       </div>
 
       {/* Body: fixed height, content is clamped instead of growing */}
-      <div className="flex h-36 flex-col gap-1.5 p-4">
+      <div className="flex h-40 flex-col gap-1.5 p-4">
         <h3
           title={title}
           className="line-clamp-2 min-h-[2.73rem] font-display text-base font-medium leading-snug text-text"
@@ -123,6 +129,14 @@ const Card = ({ listing }) => {
 
           <span className="truncate">{place || "Location not listed"}</span>
         </p>
+        
+        {hasRating && (
+          <RatingSummary
+            average={averageRating}
+            count={reviewCount}
+            emptyLabel="New"
+          />
+        )}
 
         {/* Amenities: one row, never wraps */}
         <div className="mt-auto flex flex-nowrap items-center gap-1.5 overflow-hidden">

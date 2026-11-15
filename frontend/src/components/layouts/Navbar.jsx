@@ -25,6 +25,7 @@ import {
   FiLogOut,
   FiMenu,
   FiPlusSquare,
+  FiStar,
   FiTrendingUp,
   FiUser,
   FiUsers,
@@ -95,6 +96,12 @@ const ACCOUNT_SECTIONS = [
         label: "Earnings",
         to: "/host/dashboard",
         icon: FiTrendingUp,
+        roles: ["HOTEL_MANAGER"],
+      },
+      {
+        label: "Reviews",
+        to: "/host/reviews",
+        icon: FiStar,
         roles: ["HOTEL_MANAGER"],
       },
       {

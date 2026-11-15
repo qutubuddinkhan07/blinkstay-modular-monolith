@@ -1,4 +1,4 @@
-import React, { useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Loading from "../../../components/common/Loading";
 import StatusBanner from "../../../components/common/StatusBanner";
@@ -15,6 +15,8 @@ import ListingRooms, {
   useRoomsTonight,
 } from "../components/listing/ListingRooms";
 import { usePageTitle } from "../../../utils/usePageTitle";
+import ListingReviews from "../../reviews/components/ListingReviews";
+import { RatingSummary } from "../../reviews/components/Stars";
 
 // 'room-service' -> 'Room service', 'wifi' -> 'Wifi'
 const prettyAmenity = (a) => {
@@ -25,8 +27,11 @@ const prettyAmenity = (a) => {
 const primaryLink = `inline-block rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`;
 
 const Listing = () => {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { id } = useParams();
+
+  // fresher numbers from the Reviews section (after an admin deletes a review)
+  const [reviewSummary, setReviewSummary] = useState(null);
 
   // After a suspend, a pause or an edit anywhere, the tags refetch this by themselves
   const {
@@ -44,6 +49,7 @@ const Listing = () => {
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    setReviewSummary(null);
   }, [id]);
 
   if (isLoading || (isFetching && !listing)) {
@@ -93,6 +99,11 @@ const Listing = () => {
 
   if (!listing) return null;
 
+  const rating = reviewSummary ?? {
+    averageRating: listing.averageRating,
+    reviewCount: listing.reviewCount,
+  };
+
   return (
     <div className="min-h-screen bg-bg text-text">
       <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
@@ -110,12 +121,49 @@ const Listing = () => {
 
         {/* Title: location, with the favorite button */}
         <div className="mb-6 flex items-start justify-between gap-4">
-          <h1 className="text-2xl font-semibold sm:text-3xl">
-            {listing.title}
-            <span className="font-normal text-subtext">
-              : {listing.location}
-            </span>
-          </h1>
+          <div className="min-w-0">
+            <h1 className="text-2xl font-semibold sm:text-3xl">
+              {listing.title}
+              <span className="font-normal text-subtext">
+                : {listing.location}
+              </span>
+            </h1>
+            
+            <a
+              href="#reviews"
+              className={`mt-2 inline-block rounded ${focusRing}`}
+            >
+              <RatingSummary
+                average={rating.averageRating}
+                count={rating.reviewCount}
+                emptyLabel="No reviews yet"
+                size="md"
+              />
+            </a>
+
+            {/* {listing.status === "PUBLISHED" ? (
+              <a
+                href="#reviews"
+                className={`mt-2 inline-block rounded ${focusRing}`}
+              >
+                <RatingSummary
+                  average={rating.averageRating}
+                  count={rating.reviewCount}
+                  emptyLabel="No reviews yet"
+                  size="md"
+                />
+              </a>
+            ) : (
+              <div className="mt-2">
+                <RatingSummary
+                  average={rating.averageRating}
+                  count={rating.reviewCount}
+                  emptyLabel="No reviews yet"
+                  size="md"
+                />
+              </div>
+            )} */}
+          </div>
 
           {/* only published listings can be favorited (the API answers 404 for the others) */}
           {listing.status === "PUBLISHED" && (
@@ -146,6 +194,15 @@ const Listing = () => {
               loading={listing.status === "PUBLISHED" && tonight.loading}
               className="mt-10"
             />
+
+            {listing.status === "PUBLISHED" && (
+              <ListingReviews
+                listingId={listing.id}
+                canDelete={isAdmin}
+                onSummary={setReviewSummary}
+                className="mt-10"
+              />
+            )}
 
             <section className="mt-10 border-t border-border pt-8">
               <h2 className="mb-5 text-xl font-semibold">

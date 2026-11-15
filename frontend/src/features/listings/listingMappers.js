@@ -48,6 +48,8 @@ export const normalizeListing = (l) => ({
   country: l.country ?? "INDIA",
   location: l.location ?? "",
   amenities: l.amenities ?? [],
+  averageRating: l.averageRating ?? null,
+  reviewCount: l.reviewCount ?? 0,
   images: (l.images ?? []).map(normalizeImage).sort(byDisplayOrder),
   rooms: (l.rooms ?? []).map(normalizeRoom),
   coordinates: getCoordinates(l.geometry),
