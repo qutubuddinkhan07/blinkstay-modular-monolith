@@ -54,6 +54,11 @@ public class Review {
 
     private Instant editedAt;
 
+    // true while the guest's account is blocked: hidden reviews are ignored by lists and averages
+    @Builder.Default
+    @Column(nullable = false, columnDefinition = "boolean default false")
+    private boolean hidden = false;
+
     @CreationTimestamp
     private Instant createdAt;
 }

@@ -94,13 +94,39 @@ public class EmailMessageBuilderUtil {
                 .build();
     }
 
-    public EmailContent accountDeletedMessage(String username) {
-        return template("Your BlinkStay account has been deleted", "We're sorry to see you go.")
+    public EmailContent accountDeletedMessage(String username, boolean host) {
+        EmailTemplate t = template("Your BlinkStay account has been deleted",
+                "Changed your mind? You can get it back within 30 days.")
                 .heading("Your account has been deleted")
                 .greeting(username)
-                .paragraph("Your BlinkStay account has been deleted as requested. Any listings you owned have been taken offline.")
-                .paragraph("Thank you for being part of BlinkStay. You're always welcome back.")
+                .paragraph("Your BlinkStay account has been deleted as requested.");
+        if (host) {
+            t.paragraph("Your listings have been taken offline, but they are not deleted. We keep them for 30 days, "
+                    + "so if your account is restored they come back exactly as they were.");
+        }
+        return t.callout(Tone.INFO, "Changed your mind?",
+                        "Contact our support team within 30 days and we will restore your account "
+                                + "with all your details intact.")
+                .paragraph("After 30 days your profile photo, reviews and saved stays"
+                        + (host ? ", and your listings," : "") + " are removed for good.")
                 .note("If you didn't delete your account, contact support immediately.")
+                .build();
+    }
+
+    public EmailContent accountRestoredMessage(String username, boolean dataPurged) {
+        EmailTemplate t = template("Your BlinkStay account has been restored", "Welcome back. You can log in again.")
+                .heading("Welcome back")
+                .greeting(username)
+                .callout(Tone.SUCCESS, null, "Your BlinkStay account has been restored and you can log in again.");
+        if (dataPurged) {
+            t.paragraph("Because the account was deleted more than 30 days ago, your profile photo, reviews, "
+                    + "saved stays and any listings were already removed and could not be brought back.");
+        } else {
+            t.paragraph("Your profile, reviews and saved stays are back. If you are a host, "
+                    + "your listings are back to their previous status.");
+        }
+        return t.button("Log in to BlinkStay", LOGIN)
+                .note("If you didn't ask for this, contact support.")
                 .build();
     }
 

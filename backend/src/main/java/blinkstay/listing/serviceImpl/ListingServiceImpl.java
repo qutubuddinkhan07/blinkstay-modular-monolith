@@ -5,6 +5,7 @@ import blinkstay.common.directory.HostDirectory;
 import blinkstay.common.events.ListingRestoredEvent;
 import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.common.review.ReviewCleanup;
 import blinkstay.listing.constants.ImagePublicIds;
 import blinkstay.listing.dto.*;
 import blinkstay.listing.entities.Listing;
@@ -73,6 +74,8 @@ public class ListingServiceImpl implements ListingService {
     private final BookingGuard bookingGuard;
 
     private final HostDirectory hostDirectory;
+
+    private final ReviewCleanup reviewCleanup;
 
     /**
      * Helper method to clean up orphan Cloudinary uploads
@@ -494,6 +497,7 @@ public class ListingServiceImpl implements ListingService {
         listingImageRepo.deleteAll(images);
         listingGeometryRepo.findByListingId(listingId).ifPresent(listingGeometryRepo::delete);
         favoriteRepo.deleteAllForListing(listingId);
+        reviewCleanup.deleteForListing(listingId);
         listingRepo.delete(listing);
 
         // 5. Delete the Cloudinary files only AFTER the commit succeeds
@@ -603,6 +607,13 @@ public class ListingServiceImpl implements ListingService {
         if (listing.getStatus() == ListingStatus.SUSPENDED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing is already suspended");
         }
+
+        // guests who already paid must never land on a hidden listing: cancel their bookings first
+        if (bookingGuard.listingHasActiveBookings(listingId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This listing has upcoming bookings and cannot be suspended. Cancel them first.");
+        }
+
         listing.setStatusBeforeSuspension(listing.getStatus());
         listing.setStatus(ListingStatus.SUSPENDED);
         listing.setSuspensionSource(SuspensionSource.ADMIN);
@@ -627,9 +638,15 @@ public class ListingServiceImpl implements ListingService {
         if (listing.getStatus() != ListingStatus.SUSPENDED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing is not suspended");
         }
+        
         if (listing.getSuspensionSource() == SuspensionSource.OWNER_BLOCKED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This listing was suspended because its owner is blocked. Unblock the owner instead.");
+        }
+
+        if (listing.getSuspensionSource() == SuspensionSource.OWNER_DELETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This listing is offline because its owner deleted their account. Restore the owner instead.");
         }
 
         ListingStatus restore = listing.getStatusBeforeSuspension() != null ? listing.getStatusBeforeSuspension()

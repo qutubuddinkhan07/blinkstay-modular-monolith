@@ -30,6 +30,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.Instant;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -174,7 +175,7 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(readOnly = true)
     public ReviewPage listForListing(UUID listingId, int page, int size) {
-        Page<Review> result = reviewRepo.findByListingId(listingId, pageable(page, size));
+        Page<Review> result = reviewRepo.findByListingIdAndHiddenFalse(listingId, pageable(page, size));
         RatingSummary summary = reviewRepo.summary(listingId);
         long count = summary.getTotal() == null ? 0 : summary.getTotal();
         Double avg = count == 0 || summary.getAverage() == null ? null : round(summary.getAverage());
@@ -184,8 +185,37 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(readOnly = true)
     public ReviewPage listForHost(UUID hostId, int page, int size) {
-        Page<Review> result = reviewRepo.findByHostId(hostId, pageable(page, size));
+        Page<Review> result = reviewRepo.findByHostIdAndHiddenFalse(hostId, pageable(page, size));
         return toPage(result, null, result.getTotalElements());
+    }
+
+    @Override
+    @Transactional
+    public void setGuestReviewsHidden(UUID guestId, boolean hidden) {
+        List<UUID> listingIds = reviewRepo.listingIdsByGuest(guestId);
+        if (listingIds.isEmpty()) {
+            return;
+        }
+        lockAll(listingIds);
+        reviewRepo.setHiddenForGuest(guestId, hidden);
+        listingIds.forEach(this::refreshRating);
+    }
+
+    @Override
+    @Transactional
+    public void deleteGuestReviews(UUID guestId) {
+        List<UUID> listingIds = reviewRepo.listingIdsByGuest(guestId);
+        if (listingIds.isEmpty()) {
+            return;
+        }
+        lockAll(listingIds);
+        reviewRepo.deleteAllForGuest(guestId);
+        listingIds.forEach(this::refreshRating);
+    }
+
+    // the ids come sorted from the query, so the lock order is always the same
+    private void lockAll(List<UUID> listingIds) {
+        listingIds.forEach(listingRatings::lockForReview);
     }
 
     // ---- helpers ----

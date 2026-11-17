@@ -126,7 +126,7 @@ public class UserServiceImpl implements UserService {
         user.setDeletedAt(LocalDateTime.now());
         userRepository.save(user);
 
-        publisher.publishEvent(new UserDeletedEvent(userId));
+        publisher.publishEvent(new UserDeletedEvent(userId, user.getRoles().contains(UserRole.HOTEL_MANAGER)));
         return "User deleted";
     }
 
@@ -145,9 +145,7 @@ public class UserServiceImpl implements UserService {
     public String initiateUserRegistration(AddUserDto addUserDto, MultipartFile profileImg) throws IOException {
         String email = normalizeEmail(addUserDto.getEmail());
 
-        if (userRepository.findByEmail(email).isPresent()) {
-            throw new UserAlreadyExistsException("User with the same email already exists!");
-        }
+        ensureEmailIsFree(email);
 
         TempUserRegistrationData exisiting = otpHolder.get(email);
         if (exisiting != null && exisiting.getExpiryTime().minusMinutes(OTP_VALID_MINUTES)
@@ -158,10 +156,13 @@ public class UserServiceImpl implements UserService {
 
         String otp = String.valueOf(random.nextInt(100000, 1000000));
 
+        boolean hasImage = profileImg != null && !profileImg.isEmpty();
+
         TempUserRegistrationData tempData = TempUserRegistrationData.builder().otp(otp)
                 .expiryTime(LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES)).userDto(addUserDto)
-                .imageBytes(profileImg.getBytes()).originalFilename(profileImg.getOriginalFilename())
-                .contentType(profileImg.getContentType()).build();
+                .imageBytes(hasImage ? profileImg.getBytes() : null)
+                .originalFilename(hasImage ? profileImg.getOriginalFilename() : null)
+                .contentType(hasImage ? profileImg.getContentType() : null).build();
 
         otpHolder.put(email, tempData);
 
@@ -198,10 +199,12 @@ public class UserServiceImpl implements UserService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid OTP");
         }
 
-        // the email may have been taken since the code was requested
-        if (userRepository.findByEmail(key).isPresent()) {
+        // the email may have been taken (or the account deleted) since the code was requested
+        try {
+            ensureEmailIsFree(key);
+        } catch (RuntimeException e) {
             otpHolder.remove(key);
-            throw new UserAlreadyExistsException("User with the same email already exits!");
+            throw e;
         }
 
         AddUserDto dto = tempData.getUserDto();
@@ -229,7 +232,7 @@ public class UserServiceImpl implements UserService {
                 }
             }
             otpHolder.remove(key);
-            throw new UserAlreadyExistsException("User with the same email already exits!");
+            throw new UserAlreadyExistsException("User with the same email already exists!");
         }
 
         otpHolder.remove(key);
@@ -408,6 +411,20 @@ public class UserServiceImpl implements UserService {
         if (user.getRoles().contains(UserRole.HOTEL_MANAGER)) {
             publisher.publishEvent(new HostDetailsChangedEvent(user.getId()));
         }
+    }
+
+    /**
+     * The email must not belong to any account, deleted ones included: a deleted
+     * account keeps its email so it can be restored, never re-registered.
+     */
+    private void ensureEmailIsFree(String email) {
+        userRepository.findByEmail(email).ifPresent(u -> {
+            if (u.getDeletedAt() != null) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT,
+                        "This email belongs to a deleted account. Contact support to restore it.");
+            }
+            throw new UserAlreadyExistsException("User with the same email already exists!");
+        });
     }
 
 }

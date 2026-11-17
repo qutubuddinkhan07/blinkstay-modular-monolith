@@ -2,6 +2,7 @@ package blinkstay.auth.serviceImpl;
 
 import blinkstay.auth.entities.BlockedToken;
 import blinkstay.auth.repository.UserRepository;
+import blinkstay.auth.scheduler.DeletedAccountPurgeJob;
 import blinkstay.auth.service.AuthService;
 import blinkstay.auth.service.BlockedTokenService;
 import blinkstay.auth.util.JWTUtil;
@@ -13,7 +14,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.cache.annotation.CachePut;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -31,7 +31,9 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 @Service
 @RequiredArgsConstructor
@@ -59,14 +61,18 @@ public class AuthServiceImpl implements AuthService {
 
     private final PasswordEncoder passwordEncoder;
 
+    private static final DateTimeFormatter RESTORE_DAY = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.CANADA.ENGLISH);
+
     @Override
     public void authUsernameAndPasswordService(String username, String password, HttpServletResponse response) {
-        try {
-            UsernamePasswordAuthenticationToken token = new UsernamePasswordAuthenticationToken(username, password);
-            Authentication authentication = authManager.authenticate(token);
+        // emails are stored lowercase, so "Naruto@Gmail.com" must still log in
+        String email = username == null ? "" : username.trim().toLowerCase();
 
-            // Retrieve the authenticated UserDetails (its username is now
-            // user.getId().toString())
+        try {
+            Authentication authentication = authManager
+                    .authenticate(new UsernamePasswordAuthenticationToken(email, password));
+
+            // the principal's username is the user id (see CustomUserDetailsDaoService)
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             String userIdStr = userDetails.getUsername();
 
@@ -75,25 +81,31 @@ public class AuthServiceImpl implements AuthService {
 
             log.info("Login successful for userId {} with roles {}", userIdStr, roles);
 
-            String jwt = jwtUtil.generateToken(userIdStr, roles);
-
-            ResponseCookie authCookie = ResponseCookie.from(authCookieName, jwt).httpOnly(true).secure(cookieSecure)
-                    .sameSite(cookieSameSite).path("/").maxAge(Duration.ofSeconds(cookieMaxAge)).build();
-
-            response.addHeader(HttpHeaders.SET_COOKIE, authCookie.toString());
+            writeAuthCookie(jwtUtil.generateToken(userIdStr, roles), response);
         } catch (DisabledException e) {
-            // Spring checks "disabled" before the password, so only tell someone
-            // who knows the password that the account is blocked
-            userRepository.findByEmail(username.trim().toLowerCase())
-                    .filter(u -> u.getDeletedAt() == null && passwordEncoder.matches(password, u.getPassword()))
+            // Spring checks "disabled" BEFORE the password, so only someone who knows the
+            // password learns why the account cannot log in
+            userRepository.findByEmail(email).filter(u -> passwordEncoder.matches(password, u.getPassword()))
                     .ifPresent(u -> {
+                        if (u.getDeletedAt() != null) {
+                            throw new ResponseStatusException(HttpStatus.FORBIDDEN, deletedAccountMessage(u.getDeletedAt()));
+                        }
                         throw new AccountBlockedException(u.getBlockReason());
                     });
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         } catch (AuthenticationException e) {
-            log.warn("Authentication failed for {}: {} - {}", username, e.getClass().getSimpleName(), e.getMessage());
+            log.warn("Authentication failed for {}: {} - {}", email, e.getClass().getSimpleName(), e.getMessage());
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials");
         }
+    }
+
+    private String deletedAccountMessage(LocalDateTime deletedAt) {
+        LocalDateTime lastDay = deletedAt.plusDays(DeletedAccountPurgeJob.RETENTION_DAYS);
+        if (LocalDateTime.now().isBefore(lastDay)) {
+            return "This account was deleted. Contact support before " + RESTORE_DAY.format(lastDay)
+                    + " to restore it with all your details intact.";
+        }
+        return "This account was deleted. Contact support if you want it restored.";
     }
 
     @Override
@@ -125,12 +137,6 @@ public class AuthServiceImpl implements AuthService {
 
         clearAuthCookie(response);
         return "Logout successful";
-    }
-
-    // Helper method to update cache on logout
-    @CachePut(value = "blockedTokens", key = "#token")
-    public Boolean cacheBlockedToken(String token) {
-        return true;
     }
 
     private String extractTokenFromCookies(HttpServletRequest request) {

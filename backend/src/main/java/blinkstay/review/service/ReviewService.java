@@ -27,4 +27,14 @@ public interface ReviewService {
     ReviewPage listForListing(UUID listingId, int page, int size);
 
     ReviewPage listForHost(UUID hostId, int page, int size);
+
+    /**
+     * Called when a guest is blocked (hidden = true) or unblocked (hidden = false).
+     */
+    void setGuestReviewsHidden(UUID guestId, boolean hidden);
+
+    /**
+     * Called when a guest account is deleted.
+     */
+    void deleteGuestReviews(UUID guestId);
 }

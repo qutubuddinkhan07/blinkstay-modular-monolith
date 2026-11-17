@@ -151,11 +151,19 @@ select * from blocked_token limit 50;
 select id, username,email, deleted_at, is_active
 from users order by updated_at desc;
 
--- Updating emails
+select * from users
+where id = 'c0a8010a-a126-1bdb-81a1-26fbfd9f0002';
+
 update users
-set email = 'qutubuddinkhan8261+blinkstay-goku@gmail.com',
-    updated_at = now()
-where id = 'c0a8010a-a12c-1e8c-81a1-2d04333d0001';
+set deleted_at = null,
+    updated_at = current_timestamp
+where id = 'c0a8010a-a126-1bdb-81a1-26fbfd9f0002';
+
+-- Updating emails
+--update users
+--set email = 'qutubuddinkhan8261+blinkstay-goku@gmail.com',
+--    updated_at = now()
+--where id = 'c0a8010a-a12c-1e8c-81a1-2d04333d0001';
 
 -- Listings
 select * from listings          limit 50;

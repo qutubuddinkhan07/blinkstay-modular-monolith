@@ -55,8 +55,13 @@ public class NotificationServiceImpl implements NotificationService {
     }
 
     @Override
-    public void sendAccountDeleted(String username, String receiverId) {
-        publish(receiverId, messages.accountDeletedMessage(username));
+    public void sendAccountDeleted(String username, String receiverId, boolean host) {
+        publish(receiverId, messages.accountDeletedMessage(username, host));
+    }
+
+    @Override
+    public void sendAccountRestored(String username, String receiverId, boolean dataPurged) {
+        publish(receiverId, messages.accountRestoredMessage(username, dataPurged));
     }
 
     /* ---------------- moderation ---------------- */

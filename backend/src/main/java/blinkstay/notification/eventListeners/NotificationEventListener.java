@@ -35,7 +35,7 @@ public class NotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void on(UserDeletedEvent e) {
         // email only: a deleted account can never open the app
-        contact(e.userId()).ifPresent(c -> emails.sendAccountDeleted(c.username(), c.email()));
+        contact(e.userId()).ifPresent(c -> emails.sendAccountDeleted(c.username(), c.email(), e.host()));
     }
 
     @Async
@@ -191,5 +191,17 @@ public class NotificationEventListener {
     public void on(ReviewRepliedEvent e) {
         save(e.guestId(), NotificationType.REVIEW_REPLIED, "The host replied to your review", e.listingTitle(),
                 e.reviewId());
+    }
+
+    @Async
+    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
+    public void on(UserRestoredEvent e) {
+        if (e.stillBlocked()) {
+            return; // they still cannot log in
+        }
+        save(e.userId(), NotificationType.ACCOUNT_RESTORED, "Your account was restored",
+                e.dataPurged() ? "Welcome back. Some data older than 30 days could not be restored."
+                        : "Welcome back to Blinkstay.", null);
+        contact(e.userId()).ifPresent(c -> emails.sendAccountRestored(c.username(), c.email(), e.dataPurged()));
     }
 }

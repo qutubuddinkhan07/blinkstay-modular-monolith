@@ -13,7 +13,9 @@ public interface NotificationService {
 
     void sendPasswordChanged(String username, String receiverId, String subject);
 
-    void sendAccountDeleted(String username, String receiverId);
+    void sendAccountDeleted(String username, String receiverId, boolean host);
+
+    void sendAccountRestored(String username, String receiverId, boolean dataPurged);
 
     /*
      * Event email - blocked, unblocked, host request submitted (to admins), host

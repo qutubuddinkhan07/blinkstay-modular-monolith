@@ -7,8 +7,10 @@ import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
 import blinkstay.auth.repository.UserSpecifications;
 import blinkstay.auth.service.AdminUserService;
+import blinkstay.common.booking.BookingGuard;
 import blinkstay.common.dto.PageResult;
 import blinkstay.common.events.UserBlockedEvent;
+import blinkstay.common.events.UserRestoredEvent;
 import blinkstay.common.events.UserUnblockedEvent;
 import blinkstay.common.exception.UserNotFoundException;
 import lombok.RequiredArgsConstructor;
@@ -35,16 +37,46 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final ModelMapper modelMapper;
     private final ApplicationEventPublisher publisher;
+    private final BookingGuard bookingGuard;
+
+    @Override
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "authUsers", allEntries = true),
+            @CacheEvict(value = "usersById", key = "#targetId"),
+            @CacheEvict(value = "usersByEmail", allEntries = true),
+            @CacheEvict(value = "hotelManagerIds", allEntries = true)})
+    public void restoreUser(UUID targetId) {
+        // row lock: the nightly purge cannot run on this user at the same moment
+        User user = userRepository.findByIdForUpdate(targetId)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        if (user.getDeletedAt() == null) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "User is not deleted");
+        }
+
+        boolean stillBlocked = user.getBlockedAt() != null;
+        boolean dataPurged = user.getPurgedAt() != null;
+
+        user.setDeletedAt(null);
+        user.setPurgedAt(null); // if they delete again later, the 30-day clock starts over
+        user.setIsActive(!stillBlocked);
+        userRepository.save(user);
+
+        publisher.publishEvent(new UserRestoredEvent(targetId, stillBlocked, dataPurged));
+        log.info("User {} restored{}", targetId, stillBlocked ? " (still blocked)" : "");
+    }
 
     @Override
     @Transactional(readOnly = true)
-    public PageResult<AdminUserDto> searchUsers(String q, Boolean blocked, UserRole role, int page, int size) {
+    public PageResult<AdminUserDto> searchUsers(String q, Boolean blocked, boolean deleted, UserRole role, int page,
+                                                int size) {
         String term = (q == null || q.isBlank()) ? null : q.trim();
-        Boolean active = blocked == null ? null : !blocked;
+        // deleted list: most recently deleted first
         Pageable pageable = PageRequest.of(Math.max(page, 0), Math.min(Math.max(size, 1), 50),
-                Sort.by(Sort.Direction.DESC, "createdAt"));
+                Sort.by(Sort.Direction.DESC, deleted ? "deletedAt" : "createdAt"));
 
-        Page<User> result = userRepository.findAll(UserSpecifications.adminSearch(term, active, role), pageable);
+        Page<User> result = userRepository.findAll(UserSpecifications.adminSearch(term, blocked, deleted, role), pageable);
         return new PageResult<>(result.getContent().stream().map(modelMapper::userToAdminUserDto).toList(),
                 result.getNumber(), result.getSize(), result.getTotalElements(), result.getTotalPages());
     }
@@ -67,6 +99,12 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
         if (!Boolean.TRUE.equals(user.getIsActive())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "User is already blocked");
+        }
+
+        // blocking suspends all of a host's listings, so it must not strand paid guests
+        if (bookingGuard.hostHasActiveBookings(targetId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "This host has upcoming guest bookings on their listings. Cancel them before blocking.");
         }
 
         user.setIsActive(false);

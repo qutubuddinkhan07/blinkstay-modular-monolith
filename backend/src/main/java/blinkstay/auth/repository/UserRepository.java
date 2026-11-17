@@ -2,8 +2,10 @@ package blinkstay.auth.repository;
 
 import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,4 +36,12 @@ public interface UserRepository extends JpaRepository<User, UUID>, JpaSpecificat
 
     @Query("SELECT COUNT(u) FROM User u WHERE u.createdAt >= :from AND u.createdAt < :to")
     long countCreatedBetween(@Param("from") LocalDateTime from, @Param("to") LocalDateTime to);
+
+    // locks the row: a restore and the purge job can never overwrite each other
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findByIdForUpdate(@Param("id") UUID id);
+
+    @Query("SELECT u.id FROM User u WHERE u.deletedAt IS NOT NULL AND u.deletedAt < :cutoff AND u.purgedAt IS NULL")
+    List<UUID> findIdsToPurge(@Param("cutoff") LocalDateTime cutoff);
 }
