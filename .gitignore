@@ -92,3 +92,5 @@ frontend/coverage/
 # ===============================
 .idea
 HELP.md
+
+backend/env.prod.yaml

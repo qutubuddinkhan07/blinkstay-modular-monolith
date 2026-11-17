@@ -1,0 +1,8 @@
+.env
+.env.*
+env.prod.yaml
+target/
+db/
+docs/
+*.dump
+.idea/
