@@ -28,8 +28,16 @@ public class MailServiceImpl implements MailService {
 
     private final ObjectProvider<JavaMailSender> mailSenderProvider;
 
+    private final ZohoMailApiClient zohoApi;
+
     @Value("${app.mail.enabled:false}")
     private boolean enabled;
+
+    /**
+     * smtp (default) or zoho-api (for hosts that block mail ports, e.g. Render's free plan).
+     */
+    @Value("${app.mail.transport:smtp}")
+    private String transport;
 
     /**
      * The SMTP login. Used as the From address when app.mail.from is empty.
@@ -64,6 +72,26 @@ public class MailServiceImpl implements MailService {
             return true;
         }
 
+        String from = (fromAddress == null || fromAddress.isBlank()) ? smtpUsername : fromAddress.trim();
+
+        if ("zoho-api".equalsIgnoreCase(transport)) {
+            return sendWithZohoApi(from, receiverId, cleanSubject, text, html);
+        }
+        return sendWithSmtp(from, receiverId, cleanSubject, text, html);
+    }
+
+    private boolean sendWithZohoApi(String from, String to, String subject, String text, String html) {
+        boolean isHtml = html != null && !html.isBlank();
+        try {
+            zohoApi.send(from, to, subject, isHtml ? html : (text == null ? "" : text), isHtml);
+            return true;
+        } catch (RuntimeException e) {
+            log.error("Failed to send email to {} through the Zoho API: {}", to, e.getMessage());
+            return false;
+        }
+    }
+
+    private boolean sendWithSmtp(String from, String to, String subject, String text, String html) {
         JavaMailSender sender = mailSenderProvider.getIfAvailable();
         if (sender == null) {
             log.error("app.mail.enabled=true but no mail server is configured (spring.mail.host)");
@@ -74,13 +102,12 @@ public class MailServiceImpl implements MailService {
             MimeMessage mimeMessage = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(mimeMessage, true, "UTF-8");
 
-            String from = (fromAddress == null || fromAddress.isBlank()) ? smtpUsername : fromAddress.trim();
             helper.setFrom(from, fromName); // shows as "BlinkStay <you@domain>" in the inbox
-            helper.setTo(receiverId);
+            helper.setTo(to);
             if (supportEmail != null && !supportEmail.isBlank()) {
                 helper.setReplyTo(supportEmail.trim()); // replies go to a real inbox, not the sender account
             }
-            helper.setSubject(cleanSubject);
+            helper.setSubject(subject);
 
             if (html != null && !html.isBlank()) {
                 helper.setText(text == null ? "" : text, html); // text + HTML parts: better for spam filters
@@ -91,7 +118,7 @@ public class MailServiceImpl implements MailService {
             sender.send(mimeMessage);
             return true;
         } catch (MessagingException | MailException | UnsupportedEncodingException e) {
-            log.error("Failed to send email to {}: {}", receiverId, e.getMessage());
+            log.error("Failed to send email to {}: {}", to, e.getMessage());
             return false;
         }
     }
