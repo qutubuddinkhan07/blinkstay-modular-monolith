@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
       proxy: {
         "/api": {
           // 2. Uses your Cloudflare tunnel from .env, or falls back to localhost
-          target: env.VITE_API_CLOUDFLARED_TUNNEL || "http://localhost:8090",
+          target: env.VITE_API_TUNNEL_LINK || "http://localhost:8090",
           changeOrigin: true,
           // 3. Required for HTTPS Cloudflare tunnels to prevent SSL rejection errors
           secure: false,

@@ -74,6 +74,20 @@ frontend/yarn-debug.log*
 frontend/yarn-error.log*
 
 # ===============================
+# 🔹 Data and secrets
+# ===============================
+
+# Data dumps (users' emails and password hashes): never commit
+backend/db/*.dump
+
+# Keep example env files (variable names only, no values)
+!.env.example
+!frontend/.env.example
+
+# Frontend test coverage
+frontend/coverage/
+
+# ===============================
 # 🔹 Common
 # ===============================
 .idea
