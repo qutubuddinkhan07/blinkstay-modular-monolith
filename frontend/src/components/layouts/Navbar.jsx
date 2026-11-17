@@ -93,6 +93,12 @@ const ACCOUNT_SECTIONS = [
         roles: ["HOTEL_MANAGER"],
       },
       {
+        label: "Calendar",
+        to: "/manager/calendar",
+        icon: FiCalendar,
+        roles: ["HOTEL_MANAGER"],
+      },
+      {
         label: "Earnings",
         to: "/host/dashboard",
         icon: FiTrendingUp,

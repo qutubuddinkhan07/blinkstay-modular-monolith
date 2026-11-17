@@ -35,3 +35,9 @@ export const getEarningsLedger = ({ status, from, to, page = 0, size = 10 }) =>
       params: clean({ status, from, to, page, size }),
     })
     .then(unwrap);
+
+// month: "YYYY-MM". data: { listingId, month, today, rooms[], bookings[] }
+export const getHostCalendar = (listingId, month) =>
+  axiosInstance
+    .get(`/v5/host/calendar/${listingId}`, { params: { month } })
+    .then(unwrap);

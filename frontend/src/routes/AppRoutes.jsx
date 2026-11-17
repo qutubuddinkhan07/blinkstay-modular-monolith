@@ -118,6 +118,10 @@ const HostReviews = Loadable(
   lazy(() => import("../features/reviews/pages/HostReviews")),
 );
 
+const HostCalendar = Loadable(
+  lazy(() => import("../features/host/pages/HostCalendar")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -178,6 +182,7 @@ const route = createBrowserRouter([
                 path: "/bookings/:id",
                 element: <BookingPage />,
               },
+              { path: "/manager/calendar", element: <HostCalendar /> },
             ],
           },
 
