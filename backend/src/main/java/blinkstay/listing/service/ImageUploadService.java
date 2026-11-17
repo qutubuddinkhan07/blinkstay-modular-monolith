@@ -1,21 +1,15 @@
 package blinkstay.listing.service;
 
-import java.util.Map;
-
+import blinkstay.listing.dto.ImageUploadResult;
 import org.springframework.web.multipart.MultipartFile;
 
-import blinkstay.listing.dto.ImageUploadResult;
+import java.util.Map;
 
+/**
+ * Only what the listing module really uses: upload a listing photo, delete one.
+ */
 public interface ImageUploadService {
-	ImageUploadResult uploadImage(MultipartFile file, String customPublicId);
+    ImageUploadResult uploadImage(MultipartFile file, String customPublicId);
 
-	ImageUploadResult uploadImage(byte[] imageBytes, String publicId);
-
-	Map<String, Object> deleteImage(String publicId);
-
-	ImageUploadResult replaceImage(MultipartFile newFile, String oldPublicId);
-
-	ImageUploadResult updateImage(MultipartFile newFile, String publicId);
-
-	Map<String, Object> getImageDetails(String pulicId);
+    Map<String, Object> deleteImage(String publicId);
 }

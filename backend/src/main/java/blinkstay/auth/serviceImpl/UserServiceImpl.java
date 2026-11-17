@@ -158,8 +158,13 @@ public class UserServiceImpl implements UserService {
 
         boolean hasImage = profileImg != null && !profileImg.isEmpty();
 
+        // never keep the plain password in memory while waiting for the OTP
+        addUserDto.setPassword(passwordEncoder.encode(addUserDto.getPassword()));
+
         TempUserRegistrationData tempData = TempUserRegistrationData.builder().otp(otp)
-                .expiryTime(LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES)).userDto(addUserDto)
+                .expiryTime(LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES))
+                .username(addUserDto.getUsername())
+                .passwordHash(passwordEncoder.encode(addUserDto.getPassword())) // never keep the plain password
                 .imageBytes(hasImage ? profileImg.getBytes() : null)
                 .originalFilename(hasImage ? profileImg.getOriginalFilename() : null)
                 .contentType(hasImage ? profileImg.getContentType() : null).build();
@@ -207,9 +212,8 @@ public class UserServiceImpl implements UserService {
             throw e;
         }
 
-        AddUserDto dto = tempData.getUserDto();
-        User user = User.builder().username(dto.getUsername()).email(key)
-                .password(passwordEncoder.encode(dto.getPassword())).roles(new HashSet<>(Set.of(UserRole.USER)))
+        User user = User.builder().username(tempData.getUsername()).email(key)
+                .password(tempData.getPasswordHash()).roles(new HashSet<>(Set.of(UserRole.USER)))
                 .build();
 
         if (tempData.getImageBytes() != null) {

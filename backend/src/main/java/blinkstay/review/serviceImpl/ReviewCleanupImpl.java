@@ -1,5 +1,6 @@
-package blinkstay.common.review;
+package blinkstay.review.serviceImpl;
 
+import blinkstay.common.review.ReviewCleanup;
 import blinkstay.review.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;

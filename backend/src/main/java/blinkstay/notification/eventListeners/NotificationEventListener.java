@@ -49,7 +49,7 @@ public class NotificationEventListener {
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT, fallbackExecution = true)
     public void on(UserUnblockedEvent e) {
         save(e.userId(), NotificationType.ACCOUNT_UNBLOCKED, "Your account was unblocked",
-                "You can user Blinkstay again. Listings taken offline by the block were restored", null);
+                "You can use BlinkStay again. Listings taken offline by the block were restored.", null);
         contact(e.userId()).ifPresent(c -> emails.sendAccountUnblocked(c.username(), c.email()));
     }
 

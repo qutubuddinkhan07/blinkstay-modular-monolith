@@ -44,17 +44,17 @@ public class UserDumping implements CommandLineRunner {
         String hotelManagerImgUrl = "https://res.cloudinary.com/dps1vvchb/image/upload/v1790018318/Hinata_Hyuga_sax96p.jpg";
         String normalUserprofileImgUrl = "https://res.cloudinary.com/dps1vvchb/image/upload/v1790018318/boruto_cofygy.jpg";
 
-        userRepo.save(User.builder().username("Naruto").email("qutubuddinkhan8261@gmail.com").password(password)
+        userRepo.save(User.builder().username("Naruto").email("qutubuddinkhan8261+blinkstay-naruto@gmail.com").password(password)
                 .roles(adminRole).profileImgUrl(adminImgUrl).createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now()).build());
-        userRepo.save(User.builder().username("Hinata").email("hinata123@example.com").password(password)
+        userRepo.save(User.builder().username("Hinata").email("qutubuddinkhan8261+blinkstay-hinata@gmail.com").password(password)
                 .roles(hotelManagerRole).profileImgUrl(hotelManagerImgUrl).createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now()).build());
-        userRepo.save(User.builder().username("Boruto").email("boruto123@example.com").password(password)
+        userRepo.save(User.builder().username("Boruto").email("qutubuddinkhan8261+blinkstay-boruto@gmail.com").password(password)
                 .roles(normalRole).profileImgUrl(normalUserprofileImgUrl).createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now()).build());
 
-        log.info("Dev users created: naruto123@example.com (admin), hinata123@example.com (host), "
-                + "boruto123@example.com (user). Password is set in UserDumping.");
+        log.info("Dev users created: qutubuddinkhan8261+blinkstay-naruto@gmail.com (admin), qutubuddinkhan8261+blinkstay-hinata@gmail.com (host), "
+                + "qutubuddinkhan8261+blinkstay-boruto@gmail.com (user). Password is set in UserDumping.");
     }
 }
