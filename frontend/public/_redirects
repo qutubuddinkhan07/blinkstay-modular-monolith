@@ -1,0 +1,2 @@
+/api/*  https://blinkstay-api-xxxxx.a.run.app/api/:splat  200!
+/*      /index.html  200
