@@ -12,7 +12,8 @@ WORKDIR /app
 RUN useradd -r -u 1001 spring
 COPY --from=build /app/target/*.jar app.jar
 USER spring
-# use 75% of the container memory for the heap; SerialGC suits 1 CPU and small memory
-ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=75 -XX:+UseSerialGC"
+
+# fit Spring Boot into a small free instance (about 512 MB)
+ENV JAVA_TOOL_OPTIONS="-XX:MaxRAMPercentage=70 -XX:+UseSerialGC -XX:MaxMetaspaceSize=160m -XX:ReservedCodeCacheSize=48m -Xss512k"
 EXPOSE 8080
 ENTRYPOINT ["java", "--enable-native-access=ALL-UNNAMED", "-jar", "/app/app.jar"]
