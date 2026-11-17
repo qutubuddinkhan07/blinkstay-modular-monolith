@@ -22,6 +22,7 @@ import java.util.Map;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class ImageUploadServiceImpl implements ImageUploadService {
     private final Cloudinary cloudinary;
+    private final blinkstay.common.cloudinary.CloudinaryFolders folders;
 
     @Override
     public ImageUploadResult uploadImage(MultipartFile file, String customPublicId) {
@@ -33,7 +34,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
 
             // Upload to Cloudinary with optional folder structure
             Map<String, Object> uploadParams = new HashMap<>();
-            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("folder", folders.userProfiles());
             uploadParams.put("allowed_formats", new String[]{"jpg", "png", "jpeg", "gif"});
 
             // Set custom public_id if provided, otherwise Cloudinary generates one
@@ -75,7 +76,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         try {
             Map<String, Object> uploadParams = new HashMap<>();
 
-            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("folder", folders.userProfiles());
             uploadParams.put("public_id", publicId);
             Map uploadResult = cloudinary.uploader().upload(imageBytes, uploadParams);
 
@@ -167,7 +168,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             Map<String, Object> uploadParams = new HashMap<>();
             uploadParams.put("public_id", publicId);
             uploadParams.put("overwrite", true);
-            uploadParams.put("folder", "blinkstay_user_profiles");
+            uploadParams.put("folder", folders.userProfiles());
             uploadParams.put("allowed_formats", allowedFormats);
             uploadParams.put("transformation",
                     new Transformation<>().width(500).height(500).crop("fill").gravity("face"));

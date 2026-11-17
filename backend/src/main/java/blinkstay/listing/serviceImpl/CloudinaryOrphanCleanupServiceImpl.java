@@ -1,90 +1,127 @@
 package blinkstay.listing.serviceImpl;
 
+import blinkstay.common.cloudinary.CloudinaryFolders;
+import blinkstay.listing.repository.ListingRepository;
+import blinkstay.listing.service.CloudinaryOrphanCleanupService;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import org.springframework.stereotype.Service;
-
-import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
-
-import blinkstay.listing.repository.ListingRepository;
-import blinkstay.listing.service.CloudinaryOrphanCleanupService;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-
+/**
+ * Deletes listing images whose listing no longer exists, with safety rails:
+ * only this environment's folder, only files older than min-age-hours, a dry run by
+ * default, and a hard stop when "too many" orphans suggest the wrong database.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class CloudinaryOrphanCleanupServiceImpl implements CloudinaryOrphanCleanupService {
+    private static final Pattern UUID_PATTERN = Pattern
+            .compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
 
-	private final Cloudinary cloudinary;
-	private final ListingRepository listingRepository;
+    private final Cloudinary cloudinary;
+    private final ListingRepository listingRepository;
+    private final CloudinaryFolders folders;
 
-	// Pattern to match standard UUID v4 format (8-4-4-4-12 hex characters)
-	private static final Pattern UUID_PATTERN = Pattern
-			.compile("[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}");
+    @Value("${listing.cloudinary-orphan-cleanup.dry-run:true}")
+    private boolean dryRun;
 
-	/**
-	 * Finds and deletes orphan images from Cloudinary folders whose listing IDs no
-	 * longer exist in the database.
-	 */
-	@Override
-	@SuppressWarnings("unchecked")
-	public void cleanupOrphanListingImages() {
-		log.info("Starting Cloudinary orphan image cleanup...");
+    @Value("${listing.cloudinary-orphan-cleanup.min-age-hours:24}")
+    private long minAgeHours;
 
-		try {
-			// 1. Fetch all resources inside the 'blinkstay_listings' folder
-			Map<String, Object> response = cloudinary.api().resources(
-					ObjectUtils.asMap("type", "upload", "prefix", "blinkstay_listings/", "max_results", 500));
+    @Value("${listing.cloudinary-orphan-cleanup.max-deletes:20}")
+    private int maxDeletes;
 
-			List<Map<String, Object>> resources = (List<Map<String, Object>>) response.get("resources");
+    @Override
+    @SuppressWarnings("unchecked")
+    public void cleanupOrphanListingImages() {
+        String prefix = folders.listings() + "/";
+        Instant cutoff = Instant.now().minus(Duration.ofHours(minAgeHours));
+        List<String> orphans = new ArrayList<>();
+        int scanned = 0;
 
-			if (resources == null || resources.isEmpty()) {
-				log.info("No images found in Cloudinary under 'blinkstay_listings/'.");
-				return;
-			}
+        try {
+            String cursor = null;
+            do {
+                Map<String, Object> params = ObjectUtils.asMap("type", "upload", "prefix", prefix,
+                        "max_results", 500);
+                if (cursor != null) {
+                    params.put("next_cursor", cursor);
+                }
+                Map<String, Object> res = cloudinary.api().resources(params);
+                List<Map<String, Object>> resources = (List<Map<String, Object>>) res.get("resources");
+                if (resources != null) {
+                    for (Map<String, Object> r : resources) {
+                        scanned++;
+                        String publicId = (String) r.get("public_id");
+                        if (isOrphan(publicId, r.get("created_at"), cutoff)) {
+                            orphans.add(publicId);
+                        }
+                    }
+                }
+                cursor = (String) res.get("next_cursor");
+            } while (cursor != null);
+        } catch (Exception e) {
+            log.error("Cloudinary orphan scan failed for '{}'", prefix, e);
+            return;
+        }
 
-			for (Map<String, Object> resource : resources) {
-				String publicId = (String) resource.get("public_id");
+        if (orphans.isEmpty()) {
+            log.info("Orphan cleanup: scanned {} images in '{}', none orphaned", scanned, prefix);
+            return;
+        }
+        if (orphans.size() > maxDeletes) {
+            log.warn("SAFETY STOP: {} orphan images found in '{}' (limit {}). Nothing deleted. "
+                            + "Check that the app is connected to the right database.", orphans.size(), prefix,
+                    maxDeletes);
+            return;
+        }
+        if (dryRun) {
+            log.warn("DRY RUN: would delete {} orphan images in '{}': {}", orphans.size(), prefix, orphans);
+            return;
+        }
+        for (String publicId : orphans) {
+            try {
+                cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
+                log.warn("Deleted orphan image {}", publicId);
+            } catch (Exception e) {
+                log.error("Could not delete orphan image {}", publicId, e);
+            }
+        }
+    }
 
-				if (publicId != null) {
-					Matcher matcher = UUID_PATTERN.matcher(publicId);
-
-					// Safely extract the UUID from the publicId regardless of folder prefix or
-					// prefix string
-					if (matcher.find()) {
-						try {
-							String listingIdStr = matcher.group();
-							UUID listingId = UUID.fromString(listingIdStr);
-
-							// 2. Check if the listing exists in the database
-							boolean exists = listingRepository.existsById(listingId);
-
-							if (!exists) {
-								log.warn("Orphan image detected! Listing ID {} does not exist. Deleting image {}",
-										listingId, publicId);
-
-								// 3. Delete orphan image from Cloudinary
-								cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
-							}
-						} catch (IllegalArgumentException e) {
-							log.warn("Could not parse UUID from publicId: {}", publicId);
-						}
-					} else {
-						log.debug("No UUID found in publicId: {}", publicId);
-					}
-				}
-			}
-
-			log.info("Cloudinary orphan cleanup completed successfully.");
-
-		} catch (Exception e) {
-			log.error("Failed to execute Cloudinary orphan cleanup", e);
-		}
-	}
+    private boolean isOrphan(String publicId, Object createdAt, Instant cutoff) {
+        if (publicId == null || createdAt == null) {
+            return false;
+        }
+        try {
+            if (Instant.parse(createdAt.toString()).isAfter(cutoff)) {
+                return false; // too new: an upload may still be in progress
+            }
+        } catch (DateTimeParseException e) {
+            return false;
+        }
+        Matcher m = UUID_PATTERN.matcher(publicId);
+        if (!m.find()) {
+            return false;
+        }
+        try {
+            return !listingRepository.existsById(UUID.fromString(m.group()));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
 }

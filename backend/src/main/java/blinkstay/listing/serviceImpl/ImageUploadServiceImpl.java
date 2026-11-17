@@ -21,8 +21,8 @@ import java.util.Map;
 @SuppressWarnings({"unchecked", "rawtypes"})
 public class ImageUploadServiceImpl implements ImageUploadService {
     private final Cloudinary cloudinary;
-
     private final ModelMapper modelMapper;
+    private final blinkstay.common.cloudinary.CloudinaryFolders folders;
 
     @Override
     public ImageUploadResult uploadImage(MultipartFile file, String customPublicId) {
@@ -31,7 +31,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         }
         try {
             Map<String, Object> uploadParams = new HashMap<>();
-            uploadParams.put("folder", "blinkstay_listings");
+            uploadParams.put("folder", folders.listings());
             uploadParams.put("allowed_formats", new String[]{"jpg", "png", "jpeg", "gif", "avif"});
 
             if (customPublicId != null && !customPublicId.isEmpty()) {

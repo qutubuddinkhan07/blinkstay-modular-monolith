@@ -1,83 +1,66 @@
 package blinkstay.auth.runners;
 
-import java.util.Map;
-
-import org.springframework.beans.factory.annotation.Value;
+import blinkstay.auth.repository.UserRepository;
+import blinkstay.common.cloudinary.CloudinaryFolders;
+import com.cloudinary.Cloudinary;
+import com.cloudinary.utils.ObjectUtils;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Profile;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
-import com.cloudinary.Cloudinary;
-import com.cloudinary.utils.ObjectUtils;
-
-import blinkstay.auth.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Map;
 
 /**
- * On startup: if there are NO users in the database, delete everything in the
- * Cloudinary profile-pictures folder. If any user exists, nothing is touched.
- * Runs before UserDumping (@Order(1)), so the seeded users are created
- * afterwards.
+ * DEV ONLY: if the database has NO users, empty this environment's profile-picture
+ * folder (dev/blinkstay_user_profiles). It can never run in production, and it can
+ * never see another environment's folder.
  */
 @Component
 @RequiredArgsConstructor
 @Slf4j
+@Profile("dev")
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @ConditionalOnProperty(name = "auth.cloudinary-cleanup.enabled", havingValue = "true", matchIfMissing = false)
 public class UserCloudinaryCleanup implements CommandLineRunner {
-	private final UserRepository userRepo;
+    private final UserRepository userRepo;
+    private final Cloudinary cloudinary;
+    private final CloudinaryFolders folders;
 
-	private final Cloudinary cloudinary;
+    @Override
+    public void run(String... args) {
+        String folder = folders.userProfiles();
+        if (userRepo.count() > 0) {
+            log.info("Users exist: Cloudinary folder '{}' left untouched", folder);
+            return;
+        }
+        log.warn("No users in the database: deleting all images in Cloudinary folder '{}'", folder);
+        try {
+            log.warn("Cloudinary folder '{}' cleaned: {} images deleted", folder, deleteAllInFolder(folder));
+        } catch (Exception e) {
+            log.error("Failed to clean Cloudinary folder '{}'", folder, e); // never block startup
+        }
+    }
 
-	@Value("${auth.cloudinary-cleanup.folder:blinkstay_user_profiles}")
-	private String folder;
-
-	@Override
-	public void run(String... args) throws Exception {
-		if (userRepo.count() > 0) {
-			log.info("Users exist: Cloudinary folder '{}' left untouched", folder);
-			return;
-		}
-
-		log.warn("No users in the database: deleting all images in Cloudinary folder '{}'");
-
-		try {
-			int deleted = deleteAllInFolder(folder);
-			log.warn("Cloudinary folder '{}' cleaned: {} images deleted", folder, deleted);
-		} catch (Exception e) {
-			// Never block the application startup because of a cleanup failure
-			log.error("Failed to clean Cloudinary folder '{}'", folder, e);
-		}
-	}
-
-	@SuppressWarnings("unchecked")
-	private int deleteAllInFolder(String folder) throws Exception {
-		String prefix = folder.endsWith("/") ? folder : folder + "/";
-		int deleted = 0;
-		int rounds = 0;
-		boolean more;
-
-		do {
-			Map<String, Object> res = cloudinary.api().deleteResourcesByPrefix(prefix,
-					ObjectUtils.asMap("resource_type", "image", "type", "upload"));
-
-			deleted += countDeleted(res);
-			more = Boolean.TRUE.equals(res.get("partial"));
-			rounds++;
-		} while (more && rounds < 100);
-
-		return deleted;
-	}
-
-	private int countDeleted(Map<String, Object> response) {
-		Object deleted = response.get("deleted");
-		if (!(deleted instanceof Map<?, ?> map)) {
-			return 0;
-		}
-
-		return (int) map.values().stream().filter("deleted"::equals).count();
-	}
+    @SuppressWarnings("unchecked")
+    private int deleteAllInFolder(String folder) throws Exception {
+        String prefix = folder + "/";
+        int deleted = 0;
+        int rounds = 0;
+        boolean more;
+        do {
+            Map<String, Object> res = cloudinary.api().deleteResourcesByPrefix(prefix,
+                    ObjectUtils.asMap("resource_type", "image", "type", "upload"));
+            if (res.get("deleted") instanceof Map<?, ?> map) {
+                deleted += (int) map.values().stream().filter("deleted"::equals).count();
+            }
+            more = Boolean.TRUE.equals(res.get("partial"));
+            rounds++;
+        } while (more && rounds < 100);
+        return deleted;
+    }
 }
