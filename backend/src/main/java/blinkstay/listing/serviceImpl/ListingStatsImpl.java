@@ -1,7 +1,8 @@
-package blinkstay.listing.repository;
+package blinkstay.listing.serviceImpl;
 
 import blinkstay.common.stats.ListingStats;
 import blinkstay.listing.enums.ListingStatus;
+import blinkstay.listing.repository.ListingRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
