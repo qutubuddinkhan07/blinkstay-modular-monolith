@@ -31,10 +31,10 @@ public class CacheConfig {
                 .expireAfterWrite(60, TimeUnit.MINUTES).recordStats().build());
 
         cacheManager.registerCustomCache("listingById", Caffeine.newBuilder().maximumSize(500)
-                .expireAfterWrite(10, TimeUnit.MINUTES).recordStats().build());
-
+                .expireAfterWrite(30, TimeUnit.MINUTES).recordStats().build());
+        
         cacheManager.registerCustomCache("publishedListings", Caffeine.newBuilder().maximumSize(100)
-                .expireAfterWrite(5, TimeUnit.MINUTES).recordStats().build());
+                .expireAfterWrite(15, TimeUnit.MINUTES).recordStats().build());
 
         cacheManager.registerCustomCache("authUsers", Caffeine.newBuilder().maximumSize(5000).expireAfterWrite(60,
                 TimeUnit.SECONDS).recordStats().build());
