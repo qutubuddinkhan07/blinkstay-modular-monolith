@@ -1,2 +1,3 @@
-/api/*  https://blinkstay-api-xxxxx.a.run.app/api/:splat  200!
+/api/*  /api/*  https://blinkstay-api.onrender.com/api/:splat  200!
+/*      /index.html  200  200!
 /*      /index.html  200
