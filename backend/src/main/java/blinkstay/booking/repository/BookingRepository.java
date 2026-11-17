@@ -73,4 +73,13 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
     @Query("select b.status, count(b) from Booking b where b.createdAt >= :from and b.createdAt < :to" +
             " group by b.status")
     List<Object[]> countByStatusBetween(@Param("from") Instant from, @Param("to") Instant to);
+
+    // calendar: everything that occupies a room in [from, to): confirmed, completed, or an unexpired hold
+    @Query("select b from Booking b where b.listingId = :listingId and b.checkIn < :to and b.checkOut > :from and ("
+            + "b.status = blinkstay.booking.enums.BookingStatus.CONFIRMED or "
+            + "b.status = blinkstay.booking.enums.BookingStatus.COMPLETED or "
+            + "(b.status = blinkstay.booking.enums.BookingStatus.PENDING_PAYMENT and b.holdExpiresAt > :now)) "
+            + "order by b.checkIn")
+    List<Booking> findForCalendar(@Param("listingId") UUID listingId, @Param("from") LocalDate from,
+                                  @Param("to") LocalDate to, @Param("now") Instant now);
 }
