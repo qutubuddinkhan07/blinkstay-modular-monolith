@@ -1,6 +1,6 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { useNavigate, Link, useLocation } from "react-router-dom";
-import { FiEye, FiEyeOff, FiMoon, FiSun } from "react-icons/fi";
+import { FiEye, FiEyeOff, FiMoon, FiPlay, FiSun } from "react-icons/fi";
 import { handleApiError } from "../../../api/errors/handleApiError";
 import Logo from "../../../components/common/Logo";
 import { useTheme } from "../../../context/ThemeContext";
@@ -8,6 +8,13 @@ import { useAuth } from "../../../context/AuthContext";
 import { isBlockedError } from "../../../api/errors/isBlockedError";
 import BlockedNotice from "../../../components/common/BlockedNotice";
 import { safeReturnPath } from "../../../utils/authRedirect";
+
+// Public demo account (a plain guest). Set both in .env to show the button.
+const DEMO = {
+  email: import.meta.env.VITE_DEMO_EMAIL ?? "",
+  password: import.meta.env.VITE_DEMO_PASSWORD ?? "",
+};
+const HAS_DEMO = Boolean(DEMO.email && DEMO.password);
 
 /* ---------- Login ---------- */
 
@@ -24,6 +31,7 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [blockedMessage, setBlockedMessage] = useState(null);
+  const submitRef = useRef(null);
 
   const validateForm = () => {
     const newErrors = {};
@@ -50,6 +58,14 @@ const Login = () => {
         [name]: "",
       }));
     }
+  };
+
+  // Fills the form only; the visitor still presses Log in
+  const fillDemo = () => {
+    setFormData({ email: DEMO.email, password: DEMO.password });
+    setErrors({});
+    setBlockedMessage(null);
+    submitRef.current?.focus(); // Enter now logs in
   };
 
   // Keep the query string too (e.g. the dates picked on a listing)
@@ -201,6 +217,7 @@ const Login = () => {
           )}
 
           <button
+            ref={submitRef}
             type="submit"
             disabled={isLoading}
             className="w-full cursor-pointer py-3 rounded-full text-sm font-semibold transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-primary! hover:bg-primary-hover! text-on-primary"
@@ -208,6 +225,26 @@ const Login = () => {
             {isLoading ? "Logging in…" : "Log in"}
           </button>
         </form>
+
+        {HAS_DEMO && (
+          <div className="mt-5 rounded-xl border border-dashed border-primary/40 bg-primary/5 p-4 font-body">
+            <p className="text-sm font-semibold text-text">
+              Just looking around?
+            </p>
+            <p className="mt-0.5 text-xs text-subtext">
+              Fill the form with a demo guest account, then press Log in.
+            </p>
+            <button
+              type="button"
+              onClick={fillDemo}
+              disabled={isLoading}
+              className="mt-3 inline-flex w-full cursor-pointer items-center justify-center gap-2 rounded-full border border-primary/50 bg-surface py-2.5 text-sm font-semibold text-primary transition-colors hover:bg-primary/10 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              <FiPlay className="h-4 w-4" aria-hidden="true" />
+              Use demo account
+            </button>
+          </div>
+        )}
 
         <p className="text-center text-sm mt-6 font-body text-subtext">
           Don't have an account?{" "}
@@ -218,10 +255,6 @@ const Login = () => {
             Sign up
           </Link>
         </p>
-
-        <div className="mt-8 pt-5 text-center text-xs font-body border-t border-border text-subtext">
-          Test credentials: boruto123@example.com / password-123456789
-        </div>
       </div>
     </div>
   );
