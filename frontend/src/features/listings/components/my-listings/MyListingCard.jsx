@@ -3,6 +3,7 @@ import { focusRing } from "../create-listing/formStyles";
 import StatusBadge from "../../../../components/common/StatusBadge";
 import StatusBanner from "../../../../components/common/StatusBanner";
 import ZoomImage from "../../../../components/common/ZoomImage";
+import { suspensionSourceLabel } from "../../listingMappers";
 import ImageCarousel from "../../../../components/common/ImageCarousel";
 import ListingAdminControls from "../listing/ListingAdminControls";
 
@@ -50,13 +51,6 @@ const MyListingCard = ({
   const isAdminView = variant === "admin";
   const action = STATUS_ACTION[l.status];
 
-  const formatSuspensionSource = (source) => {
-    if (!source) return "";
-
-    const lower = source.toLowerCase();
-    return lower.charAt(0).toUpperCase() + lower.slice(1);
-  };
-
   // Formatted location string using the helper
   const displayLocation = formatLocation(l.location, l.country);
 
@@ -85,7 +79,7 @@ const MyListingCard = ({
 
             {l.status === "SUSPENDED" && l.suspensionSource && (
               <span className="text-xs font-medium text-danger/80">
-                Suspended by {formatSuspensionSource(l.suspensionSource)}
+                {suspensionSourceLabel(l.suspensionSource)}
               </span>
             )}
           </div>

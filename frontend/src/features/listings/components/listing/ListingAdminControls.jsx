@@ -13,6 +13,24 @@ import { focusRing } from "../create-listing/formStyles";
 
 const btn = `cursor-pointer rounded-lg px-4 py-2 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 
+// Listings suspended because of their owner: fixed on the users page, not here
+const OWNER_CAUSE = {
+  OWNER_BLOCKED: {
+    to: "/admin/users",
+    short: "Owner blocked: unblock",
+    text: "Suspended because its owner is blocked.",
+    linkText: "Unblock the owner",
+    action: "Go to users",
+  },
+  OWNER_DELETED: {
+    to: "/admin/users?view=deleted",
+    short: "Owner deleted: restore",
+    text: "Suspended because its owner deleted their account.",
+    linkText: "Restore the owner",
+    action: "Go to deleted users",
+  },
+};
+
 // Renders nothing unless the viewer is an admin
 const ListingAdminControls = ({ listing, className = "", compact = false }) => {
   const { isAdmin } = useAuth();
@@ -27,9 +45,7 @@ const ListingAdminControls = ({ listing, className = "", compact = false }) => {
   if (!isAdmin) return null;
 
   const suspended = listing.status === "SUSPENDED";
-  // only works if your DTO exposes suspensionSource; the 409 handling covers it otherwise
-  const ownerBlocked =
-    suspended && listing.suspensionSource === "OWNER_BLOCKED";
+  const ownerCause = suspended ? OWNER_CAUSE[listing.suspensionSource] : null;
 
   const handleSuspend = async (reason) => {
     try {
@@ -37,7 +53,11 @@ const ListingAdminControls = ({ listing, className = "", compact = false }) => {
       notify.success(res?.message || "Listing suspended.");
       setDialog(null);
     } catch (err) {
-      notify.error(err?.message ?? "Couldn't suspend the listing.");
+      // e.g. 409 "This listing has upcoming bookings and cannot be suspended. Cancel them first."
+      notify.error(err?.message ?? "Couldn't suspend the listing.", {
+        duration: err?.status === 409 ? 8000 : undefined,
+      });
+      if (err?.status === 409) setDialog(null); // retrying won't help until the bookings are cancelled
     }
   };
 
@@ -51,13 +71,17 @@ const ListingAdminControls = ({ listing, className = "", compact = false }) => {
       const message = err?.message ?? "Couldn't restore the listing.";
 
       if (err?.status === 409) {
-        // suspended because the owner is blocked: unblock the owner instead
+        // the owner is blocked or deleted: fix the owner instead.
+        // If the listing data doesn't say which yet, the server's words do.
+        const cause =
+          OWNER_CAUSE[listing.suspensionSource] ??
+          (/deleted/i.test(message)
+            ? OWNER_CAUSE.OWNER_DELETED
+            : OWNER_CAUSE.OWNER_BLOCKED);
+
         notify.error(message, {
           duration: 8000,
-          action: {
-            label: "Go to users",
-            onClick: () => navigate("/admin/users"),
-          },
+          action: { label: cause.action, onClick: () => navigate(cause.to) },
         });
       } else {
         notify.error(message);
@@ -65,24 +89,24 @@ const ListingAdminControls = ({ listing, className = "", compact = false }) => {
     }
   };
 
-  const control = ownerBlocked ? (
+  const control = ownerCause ? (
     compact ? (
       <Link
-        to="/admin/users"
+        to={ownerCause.to}
         className={`${btn} border border-border bg-bg text-text hover:bg-border/60`}
       >
-        Owner blocked: unblock
+        {ownerCause.short}
       </Link>
     ) : (
       <p className="text-sm text-subtext">
-        Suspended because its owner is blocked.{" "}
+        {ownerCause.text}{" "}
         <Link
-          to="/admin/users"
+          to={ownerCause.to}
           className="font-semibold text-primary underline"
         >
-          Unblock the owner
+          {ownerCause.linkText}
         </Link>{" "}
-        to restore it.
+        to bring it back.
       </p>
     )
   ) : suspended ? (
@@ -108,7 +132,7 @@ const ListingAdminControls = ({ listing, className = "", compact = false }) => {
       <ReasonDialog
         open={dialog === "suspend"}
         title="Suspend this listing?"
-        description={`"${listing.title}" will be hidden from guests. The owner will see your reason.`}
+        description={`"${listing.title}" will be hidden from guests. The owner will see your reason. A listing with upcoming bookings can't be suspended until they are cancelled.`}
         confirmLabel="Suspend listing"
         busyLabel="Suspending…"
         busy={busy}

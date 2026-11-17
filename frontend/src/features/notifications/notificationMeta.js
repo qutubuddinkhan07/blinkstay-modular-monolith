@@ -11,6 +11,7 @@ import {
   FiStar,
   FiUnlock,
   FiXCircle,
+  FiUserCheck,
 } from "react-icons/fi";
 import { getBooking } from "../bookings/bookingService";
 
@@ -28,6 +29,7 @@ const ICONS = {
   BOOKING_CANCELLED: FiXCircle,
   REVIEW_RECEIVED: FiStar,
   REVIEW_REPLIED: FiMessageSquare,
+  ACCOUNT_RESTORED: FiUserCheck,
 };
 
 export const getNotificationIcon = (type) => ICONS[type] ?? FiBell;
@@ -46,6 +48,7 @@ const LABELS = {
   BOOKING_CANCELLED: "Booking cancelled",
   REVIEW_RECEIVED: "New review",
   REVIEW_REPLIED: "Host replied",
+  ACCOUNT_RESTORED: "Account restored",
 };
 
 export const getNotificationLabel = (type) => LABELS[type] ?? "Notification";
@@ -96,6 +99,8 @@ export const getNotificationPath = (n) => {
       return "/host/reviews"; // to hosts
     case "REVIEW_REPLIED":
       return "/bookings?tab=past"; // to guests: the reply shows under their review
+    case "ACCOUNT_RESTORED":
+      return null; // informational: clicking only marks it read
     default:
       return "/notifications";
   }
@@ -113,7 +118,7 @@ export const openNotification = async (
     ? await resolveBookingPath(n, { isManager })
     : getNotificationPath(n);
 
-  navigate(path);
+  if (path) navigate(path);
 };
 
 const UNITS = [

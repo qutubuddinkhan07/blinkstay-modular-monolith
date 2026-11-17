@@ -6,19 +6,23 @@ import UserAvatar from "./UserAvatar";
 
 const smallBtn = `cursor-pointer rounded-lg border border-border bg-bg px-3 py-2 text-sm font-semibold text-text transition-colors hover:bg-border/60 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
 const dangerBtn = `cursor-pointer rounded-lg border border-danger/50 bg-bg px-3 py-2 text-sm font-semibold text-danger transition-colors hover:bg-danger/10 disabled:cursor-not-allowed disabled:opacity-50 ${focusRing}`;
+const primaryBtn = `cursor-pointer rounded-lg bg-primary px-3 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`;
 
+const DATE_OPTS = { year: "numeric", month: "short", day: "numeric" };
+
+// Timestamps ("...Z") in local time; a plain "YYYY-MM-DD" without a timezone shift
 const formatDate = (value) => {
-  const d = new Date(value);
+  if (!value) return null;
+  const plain = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  const d = plain
+    ? new Date(Number(plain[1]), Number(plain[2]) - 1, Number(plain[3]))
+    : new Date(value);
   return Number.isNaN(d.getTime())
     ? null
-    : d.toLocaleDateString(undefined, {
-        year: "numeric",
-        month: "short",
-        day: "numeric",
-      });
+    : d.toLocaleDateString(undefined, DATE_OPTS);
 };
 
-const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
+const UserRow = ({ user, currentUserId, onBlock, onUnblock, onRestore }) => {
   const isSelf = String(user.id) === String(currentUserId);
   const isAdminRow = user.primaryRole === "ADMIN";
   const isHost = user.roles.includes("HOTEL_MANAGER"); // admins hold this role too, so they get "View listings"
@@ -32,8 +36,10 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
       ? "Admin accounts can't be blocked"
       : null;
 
-  const joined = user.createdAt ? formatDate(user.createdAt) : null;
-  const blockedOn = user.blockedAt ? formatDate(user.blockedAt) : null;
+  const joined = formatDate(user.createdAt);
+  const blockedOn = formatDate(user.blockedAt);
+  const deletedOn = formatDate(user.deletedAt);
+  const purgeOn = formatDate(user.purgeDueAt);
 
   return (
     <li className="rounded-2xl border border-border bg-surface p-4 transition-colors duration-300">
@@ -69,6 +75,11 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
             </span>
           )}
 
+          {user.deleted && (
+            <span className="rounded-full border border-border bg-muted px-2.5 py-0.5 text-xs font-semibold text-text">
+              Deleted
+            </span>
+          )}
           {user.blocked && (
             <span className="rounded-full border border-danger/40 bg-danger/10 px-2.5 py-0.5 text-xs font-semibold text-danger">
               Blocked
@@ -90,7 +101,16 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
             </Link>
           )}
 
-          {user.blocked ? (
+          {user.deleted ? (
+            // a deleted account is restored first; blocking it makes no sense
+            <button
+              type="button"
+              onClick={() => onRestore(user)}
+              className={primaryBtn}
+            >
+              Restore
+            </button>
+          ) : user.blocked ? (
             !isAdminRow &&
             !isSelf && (
               <button
@@ -115,6 +135,21 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
         </div>
       </div>
 
+      {user.deleted && (
+        <div className="mt-4 rounded-xl border border-border bg-muted p-3 text-sm">
+          <p className="font-semibold text-text">
+            Deleted{deletedOn ? ` on ${deletedOn}` : ""}
+          </p>
+          <p className="mt-1 text-subtext">
+            {user.dataPurged
+              ? "Data already removed"
+              : purgeOn
+                ? `Data removed on ${purgeOn}`
+                : "Data removal date not set"}
+          </p>
+        </div>
+      )}
+
       {user.blocked && (
         <div className="mt-4 rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm">
           <p className="font-semibold text-text">
@@ -134,7 +169,13 @@ const UserRow = ({ user, currentUserId, onBlock, onUnblock }) => {
   );
 };
 
-const UsersTable = ({ users, currentUserId, onBlock, onUnblock }) => (
+const UsersTable = ({
+  users,
+  currentUserId,
+  onBlock,
+  onUnblock,
+  onRestore,
+}) => (
   <ul className="space-y-3">
     {users.map((u) => (
       <UserRow
@@ -143,6 +184,7 @@ const UsersTable = ({ users, currentUserId, onBlock, onUnblock }) => (
         currentUserId={currentUserId}
         onBlock={onBlock}
         onUnblock={onUnblock}
+        onRestore={onRestore}
       />
     ))}
   </ul>

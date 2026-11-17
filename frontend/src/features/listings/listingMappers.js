@@ -75,3 +75,13 @@ export const toFormData = (l) => ({
 
 // Kept so existing imports still work: normalizeListing now carries every status field.
 export const toListingRow = normalizeListing;
+
+// Why a listing is suspended, in words. Shared by admin and host views.
+const SUSPENSION_SOURCE_LABELS = {
+  ADMIN: "Suspended by an admin",
+  OWNER_BLOCKED: "Owner account blocked",
+  OWNER_DELETED: "Owner account deleted",
+};
+
+export const suspensionSourceLabel = (source) =>
+  source ? (SUSPENSION_SOURCE_LABELS[source] ?? labelOf(source)) : "";
