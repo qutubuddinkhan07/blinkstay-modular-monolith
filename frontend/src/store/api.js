@@ -1,5 +1,23 @@
 import { createApi, retry } from "@reduxjs/toolkit/query/react";
+import axiosInstance from "../api/axiosInstance";
+import { handleApiError } from "../api/errors/handleApiError";
 import { toListingRow } from "../features/listings/listingMappers";
+
+const axiosBaseQuery =
+  () =>
+  async ({ url, method = "get", data, params }) => {
+    try {
+      const res = await axiosInstance({ url, method, data, params });
+      return { data: res.data };
+    } catch (err) {
+      return {
+        error: {
+          status: err.response?.status ?? null, // null = no response (server asleep or offline)
+          message: handleApiError(err),
+        },
+      };
+    }
+  };
 
 // Render's free plan sleeps; while it starts, requests fail with no response or 502/503/504.
 // Retry reads only (never mutations), waiting longer each time: about 3 minutes in total.
