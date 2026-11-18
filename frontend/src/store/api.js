@@ -1,23 +1,23 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
-import axiosInstance from "../api/axiosInstance";
-import { handleApiError } from "../api/errors/handleApiError";
+import { createApi, retry } from "@reduxjs/toolkit/query/react";
 import { toListingRow } from "../features/listings/listingMappers";
 
-const axiosBaseQuery =
-  () =>
-  async ({ url, method = "get", data, params }) => {
-    try {
-      const res = await axiosInstance({ url, method, data, params });
-      return { data: res.data };
-    } catch (err) {
-      return {
-        error: {
-          status: err.response?.status ?? null,
-          message: handleApiError(err),
-        },
-      };
-    }
-  };
+// Render's free plan sleeps; while it starts, requests fail with no response or 502/503/504.
+// Retry reads only (never mutations), waiting longer each time: about 3 minutes in total.
+const WAKE_STATUSES = [null, 502, 503, 504];
+const MAX_WAKE_RETRIES = 10;
+
+const baseQueryWithWake = retry(axiosBaseQuery(), {
+  maxRetries: MAX_WAKE_RETRIES,
+  retryCondition: (error, _args, { attempt, baseQueryApi }) =>
+    baseQueryApi.type === "query" &&
+    WAKE_STATUSES.includes(error?.status) &&
+    attempt <= MAX_WAKE_RETRIES,
+  // 2s, 4s, 8s, then every 20s
+  backoff: (attempt) =>
+    new Promise((resolve) =>
+      setTimeout(resolve, Math.min(2000 * 2 ** (attempt - 1), 20000)),
+    ),
+});
 
 // leaves out empty values so the URL stays clean (?category= is dropped)
 const clean = (params) =>
@@ -37,7 +37,7 @@ const listingChangedTags = (id) => [
 
 export const api = createApi({
   reducerPath: "api",
-  baseQuery: axiosBaseQuery(),
+  baseQuery: baseQueryWithWake,
   // "Listing": the public lists (Explore). "MyListing": the host's own list.
   tagTypes: ["Listing", "MyListing", "ListingDetail", "ManagerListings"],
   endpoints: (builder) => {

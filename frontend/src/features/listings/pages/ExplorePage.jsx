@@ -8,9 +8,26 @@ import Pagination from "../components/explore-page/pagination/Pagination";
 import ExploreCategories from "../components/explore-page/ExploreCategories";
 
 const PAGE_SIZE = 12;
+const SLOW_AFTER_MS = 6000; // after this long, say the server may be starting
 
 const focusRing =
   "focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-primary";
+
+// true once `active` has stayed true for `ms`
+const useSlowFlag = (active, ms) => {
+  const [slow, setSlow] = useState(false);
+
+  useEffect(() => {
+    if (!active) {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), ms);
+    return () => clearTimeout(t);
+  }, [active, ms]);
+
+  return slow;
+};
 
 const ExplorePage = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -24,16 +41,21 @@ const ExplorePage = () => {
   const [searchInput, setSearchInput] = useState(location || name);
 
   // The query re-runs by itself whenever these values change, and results are cached per combination
-  const { data, isLoading, isFetching, isError, error, refetch } =
-    useGetListingsQuery({
-      page,
-      size: PAGE_SIZE,
-      sortBy: "createdAt",
-      direction: "desc",
-      location,
-      name,
-      category,
-    });
+  const { data, isFetching, isError, error, refetch } = useGetListingsQuery({
+    page,
+    size: PAGE_SIZE,
+    sortBy: "createdAt",
+    direction: "desc",
+    location,
+    name,
+    category,
+  });
+
+  // isLoading is only true for the very first load, so a retry after an error
+  // would show nothing. These cover the first load, retries and slow wake-ups.
+  const showSkeleton = isFetching && !data;
+  const showError = isError && !isFetching;
+  const slowStart = useSlowFlag(showSkeleton, SLOW_AFTER_MS);
 
   // Debounce search input to update URL params
   useEffect(() => {
@@ -94,10 +116,10 @@ const ExplorePage = () => {
   const listings = data?.content ?? [];
   const hasActiveFilters = location || name || category;
 
-  if (isError) {
+  if (showError) {
     return (
       <div className="flex min-h-[calc(100vh-72px)] items-center justify-center bg-bg px-4 text-text">
-        <div className="max-w-md text-center">
+        <div role="alert" className="max-w-md text-center">
           <h2 className="font-display text-2xl font-semibold">
             Listings are unavailable
           </h2>
@@ -105,7 +127,7 @@ const ExplorePage = () => {
           <button
             type="button"
             onClick={refetch}
-            className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
+            className={`mt-5 cursor-pointer rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`}
           >
             Try again
           </button>
@@ -151,21 +173,33 @@ const ExplorePage = () => {
           )}
         </div>
 
-        {/* Listings Grid: skeletons only on the very first load; later the old results stay, dimmed */}
+        {/* The backend sleeps on the free plan; the first request wakes it */}
+        {slowStart && (
+          <p
+            role="status"
+            className="mb-6 rounded-xl border border-border bg-muted px-4 py-3 text-sm text-subtext"
+          >
+            Starting the server. On the free plan this can take a minute or two
+            after a quiet period. Listings will appear by themselves.
+          </p>
+        )}
+
+        {/* Skeletons while there is nothing to show yet; later the old results stay, dimmed */}
         <div
           aria-busy={isFetching}
           className={`grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 ${
-            isFetching && !isLoading ? "opacity-60 transition-opacity" : ""
+            isFetching && data ? "opacity-60 transition-opacity" : ""
           }`}
         >
-          {isLoading
+          {showSkeleton
             ? Array.from({ length: PAGE_SIZE }, (_, i) => (
                 <SkeletonCard key={i} />
               ))
             : listings.map((item) => <Card key={item.id} listing={item} />)}
         </div>
 
-        {!isFetching && listings.length === 0 && (
+        {/* Only after a request actually came back with nothing */}
+        {!isFetching && data && listings.length === 0 && (
           <div className="py-16 text-center">
             <h3 className="text-lg font-medium">No listings found</h3>
             <p className="mt-1 text-sm text-subtext">
@@ -174,18 +208,20 @@ const ExplorePage = () => {
             <button
               type="button"
               onClick={handleClearFilters}
-              className={`mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-hover ${focusRing}`}
+              className={`mt-4 inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-on-primary transition-colors hover:bg-primary-hover ${focusRing}`}
             >
               Clear filters
             </button>
           </div>
         )}
 
-        <Pagination
-          page={page}
-          totalPages={data?.totalPages || 1}
-          onChange={handlePageChange}
-        />
+        {data && listings.length > 0 && (
+          <Pagination
+            page={page}
+            totalPages={data.totalPages || 1}
+            onChange={handlePageChange}
+          />
+        )}
       </div>
     </div>
   );

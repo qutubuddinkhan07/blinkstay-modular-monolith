@@ -122,6 +122,19 @@ const HostCalendar = Loadable(
   lazy(() => import("../features/host/pages/HostCalendar")),
 );
 
+const HelpCenter = Loadable(
+  lazy(() => import("../features/support/pages/HelpCenter")),
+);
+const ContactPage = Loadable(
+  lazy(() => import("../features/support/pages/ContactPage")),
+);
+const CareersPage = Loadable(
+  lazy(() => import("../features/support/pages/CareersPage")),
+);
+const LegalPage = Loadable(
+  lazy(() => import("../features/support/pages/LegalPage")),
+);
+
 const route = createBrowserRouter([
   {
     path: "/",
@@ -151,6 +164,10 @@ const route = createBrowserRouter([
             path: "/about",
             element: <About />,
           },
+          { path: "/help", element: <HelpCenter /> },
+          { path: "/contact", element: <ContactPage /> },
+          { path: "/careers", element: <CareersPage /> },
+          { path: "/legal", element: <LegalPage /> },
 
           //? -----------------------------------------------------------
           //? PROTECTED ROUTES (Requires active BLINKSTAY_TOKEN cookie)
