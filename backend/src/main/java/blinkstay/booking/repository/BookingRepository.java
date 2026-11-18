@@ -82,4 +82,9 @@ public interface BookingRepository extends JpaRepository<Booking, UUID>, JpaSpec
             + "order by b.checkIn")
     List<Booking> findForCalendar(@Param("listingId") UUID listingId, @Param("from") LocalDate from,
                                   @Param("to") LocalDate to, @Param("now") Instant now);
+
+    // seed: give a seeded booking a realistic creation date
+    @Modifying(flushAutomatically = true)
+    @Query("update Booking b set b.createdAt = :at, b.updatedAt = :at where b.id = :id")
+    int backdate(@Param("id") UUID id, @Param("at") Instant at);
 }

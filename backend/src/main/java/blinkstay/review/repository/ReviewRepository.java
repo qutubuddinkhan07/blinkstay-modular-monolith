@@ -8,6 +8,8 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -40,6 +42,14 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
     @Modifying(flushAutomatically = true, clearAutomatically = true)
     @Query("DELETE FROM Review r WHERE r.listingId = :listingId")
     int deleteAllForListing(@Param("listingId") UUID listingId);
+
+    // seed: skip when the demo guests already have reviews
+    boolean existsByGuestIdIn(Collection<UUID> guestIds);
+
+    // seed: give a seeded review a realistic date
+    @Modifying(flushAutomatically = true)
+    @Query("UPDATE Review r SET r.createdAt = :at WHERE r.id = :id")
+    int backdate(@Param("id") UUID id, @Param("at") Instant at);
 
     interface RatingSummary {
         Double getAverage();

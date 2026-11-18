@@ -1,0 +1,101 @@
+{
+  "guests": [
+    {
+      "username": "Aarav Sharma",
+      "email": "aarav.sharma@example.com"
+    },
+    {
+      "username": "Meera Iyer",
+      "email": "meera.iyer@example.com"
+    },
+    {
+      "username": "Rohan Kapoor",
+      "email": "rohan.kapoor@example.com"
+    },
+    {
+      "username": "Ananya Reddy",
+      "email": "ananya.reddy@example.com"
+    },
+    {
+      "username": "Vikram Nair",
+      "email": "vikram.nair@example.com"
+    },
+    {
+      "username": "Priya Menon",
+      "email": "priya.menon@example.com"
+    },
+    {
+      "username": "Arjun Desai",
+      "email": "arjun.desai@example.com"
+    },
+    {
+      "username": "Sneha Kulkarni",
+      "email": "sneha.kulkarni@example.com"
+    },
+    {
+      "username": "Daniel Brooks",
+      "email": "daniel.brooks@example.com"
+    },
+    {
+      "username": "Sofia Martins",
+      "email": "sofia.martins@example.com"
+    },
+    {
+      "username": "Kabir Malhotra",
+      "email": "kabir.malhotra@example.com"
+    },
+    {
+      "username": "Emma Fischer",
+      "email": "emma.fischer@example.com"
+    }
+  ],
+  "comments": {
+    "5": [
+      "Absolutely loved our stay. The place was spotless and looked even better than the photos.",
+      "One of the best stays we've had. Check-in was smooth and the host was quick to reply to every question.",
+      "Beautiful property, very comfortable beds and a really peaceful atmosphere. Would book again in a heartbeat.",
+      "Everything was exactly as described. Clean, cosy and in a great location.",
+      "Perfect for a weekend getaway. We came back relaxed and already planning our next visit.",
+      "The host went out of their way to make us feel welcome. Lovely little touches everywhere.",
+      "Great value for money. Spacious room, fast Wi-Fi and a very quiet night's sleep.",
+      "Stunning views and a super comfortable room. The photos honestly don't do it justice.",
+      "We travelled with family and everyone loved it. Plenty of space and very well maintained.",
+      "Wonderful experience from start to finish. Highly recommended!",
+      "Clean, modern and thoughtfully set up. The host's local tips were spot on.",
+      "Exceeded our expectations. Very responsive host and a lovely, calm place to stay.",
+      "Checked in late at night and everything was ready for us. Smooth and stress-free.",
+      "Fantastic stay. Comfortable, well equipped and in a great spot for exploring."
+    ],
+    "4": [
+      "Really nice stay overall. The room was clean and comfortable; parking was a little tricky.",
+      "Good location and a friendly host. The bathroom could use a small update but everything worked fine.",
+      "Lovely place and great value. It can get a bit noisy in the evenings, but nothing that ruined the trip.",
+      "Comfortable stay and easy check-in. The Wi-Fi was slow at times, otherwise very happy.",
+      "Nice and clean, just as pictured. Would have liked a few more kitchen essentials.",
+      "Great views and a cosy room. A bit far from the main market, so plan your travel.",
+      "Pleasant stay and helpful host. The hot water took a while in the mornings.",
+      "Very good overall. The room was slightly smaller than expected but well kept.",
+      "We enjoyed our time here. Good amenities and a calm neighbourhood.",
+      "Solid choice for the price. Clean, comfortable and the host responded quickly."
+    ],
+    "3": [
+      "Decent stay. The location is great, but the room needed a bit more cleaning when we arrived.",
+      "It was okay for a short trip. Check-in took longer than expected, though the host sorted it out.",
+      "Average experience. Comfortable enough, but a few things in the photos looked newer than in person.",
+      "Fine for one night. The bed was comfortable but the room was warmer than we'd like.",
+      "Good spot, but street noise kept us up a bit. The host was polite and helpful."
+    ]
+  },
+  "replies": [
+    "Thank you so much, {guest}! It was a pleasure hosting you. Hope to welcome you back soon.",
+    "Thanks for the lovely review, {guest}. We're so glad you enjoyed your stay!",
+    "Thank you, {guest}! Your kind words mean a lot to our team. See you next time.",
+    "Hi {guest}, thanks for staying with us and for the helpful feedback. We've passed it on to the team.",
+    "Thank you for your honest review, {guest}. We're already working on the points you mentioned.",
+    "So happy to hear you had a great time, {guest}! You're welcome back anytime.",
+    "Thanks, {guest}! We really appreciate you taking the time to share your experience.",
+    "Hi {guest}, sorry about the inconvenience, and thank you for letting us know. We've fixed it for future guests.",
+    "Thank you for choosing us, {guest}. Wishing you many more happy travels!",
+    "Glad the place felt like home, {guest}. Thanks for being such wonderful guests!"
+  ]
+}
