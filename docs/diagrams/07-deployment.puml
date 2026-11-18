@@ -1,0 +1,40 @@
+@startuml 07-deployment
+!include _style.iuml
+title How BlinkStay runs live (free plans)
+left to right direction
+
+actor "User's browser" as B
+cloud "Netlify\nblinkstay.netlify.app" as N {
+  [React build\n(static files, CDN)] as FE
+  [_redirects\n/api/* -> backend (proxy 200)\n/* -> index.html] as PX
+}
+cloud "Render (Singapore)\nDocker, 512 MB" as R {
+  node "Spring Boot backend\nprofile prod" as BE
+}
+database "Aiven PostgreSQL\n(Bangalore)" as DB
+cloud "Cloudinary\n(prod/ folders)" as CL
+cloud "Mapbox" as MB
+cloud "Zoho Mail REST API\n(OAuth refresh token)" as ZO
+cloud "Razorpay\n(or mock mode)" as RZ
+cloud "UptimeRobot\n(ping every 5 min)" as UR
+
+B --> FE : pages
+B --> PX : /api/* with cookies
+PX --> BE : same-origin for the browser,\nso the cookie stays SameSite=Lax
+BE --> DB : JDBC over SSL,\nHikari pool max 5
+BE --> CL : image upload / delete
+B --> MB : map tiles (token limited\nto the Netlify domain)
+BE --> MB : geocoding
+BE --> ZO : emails over HTTPS\n(SMTP ports are blocked)
+B --> RZ : checkout popup
+RZ --> BE : signed webhook
+BE --> RZ : orders, refunds, reconcile
+UR --> BE : keeps it awake
+
+note bottom of R
+  Secrets live only in Render environment variables
+  (and backend/.env locally, git-ignored).
+  Region chosen next to the database: every query
+  pays the round trip.
+end note
+@enduml

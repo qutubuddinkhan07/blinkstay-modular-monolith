@@ -1,0 +1,38 @@
+@startuml 21-review-sequence
+!include _style.iuml
+title Writing a review and keeping the listing rating correct
+autonumber
+
+actor Guest
+participant "ReviewController" as RC
+participant "ReviewServiceImpl\n@Transactional" as RS
+participant "ReviewableBookings\n(booking implements)" as RB
+participant "ListingRatings\n(listing implements)" as LR
+database "reviews" as RDB
+database "listings" as LDB
+participant "Event bus" as BUS
+
+Guest -> RC : POST /api/v5/bookings/{bookingId}/review\n{ rating 1..5, comment? (max 1000) }
+RC -> RS : create(guestId, bookingId, request)
+activate RS
+RS -> RB : find(bookingId)
+RB --> RS : ids, title, completed\n(404 missing, 403 not your booking,\n409 not COMPLETED)
+RS -> LR : lockForReview(listingId)\n(MANDATORY)
+LR -> LDB : SELECT listing ... FOR UPDATE
+note right of LDB
+  A second review of the same
+  listing waits here, so the
+  average is never computed
+  from stale rows.
+end note
+RS -> RDB : exists for this booking? (409)\n(unique key uk_review_booking backs it up)
+RS -> RDB : insert review
+RS -> RDB : avg(rating), count(*) of visible reviews
+RS -> LR : updateRating(listingId, avg, count)
+LR -> LDB : bulk UPDATE average_rating, review_count\n(updatedAt untouched)
+RS -> BUS : ReviewPostedEvent
+RS -> RS : clear listingById, publishedListings\nafter commit
+deactivate RS
+RC --> Guest : 201 review
+BUS -> BUS : after commit: host gets\nbell REVIEW_RECEIVED
+@enduml

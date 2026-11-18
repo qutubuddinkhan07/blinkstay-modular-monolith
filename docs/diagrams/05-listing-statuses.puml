@@ -1,25 +1,40 @@
-' Diagram 5: Listing statuses
 @startuml 05-listing-statuses
-skinparam shadowing false
+!include _style.iuml
+title Listing statuses
 
-[*] --> DRAFT : create listing
-DRAFT --> PUBLISHED : owner publish\n(needs a room)
-PUBLISHED --> PAUSED : owner pause
-PAUSED --> PUBLISHED : owner resume\n(needs a room)
+[*] --> DRAFT : host creates listing
+DRAFT --> PUBLISHED : host publishes\n(needs at least one room)
+PUBLISHED --> PAUSED : host pauses
+PAUSED --> PUBLISHED : host resumes\n(needs a room)
 PUBLISHED --> DRAFT : last room deleted
 
-DRAFT --> SUSPENDED : admin suspend OR\nowner blocked
-PUBLISHED --> SUSPENDED : admin suspend OR\nowner blocked
-PAUSED --> SUSPENDED : admin suspend OR\nowner blocked
+state SUSPENDED #FDECEC
 
-SUSPENDED --> DRAFT : restore (was DRAFT)
-SUSPENDED --> PUBLISHED : restore (was PUBLISHED)
-SUSPENDED --> PAUSED : restore (was PAUSED)
+DRAFT --> SUSPENDED
+PUBLISHED --> SUSPENDED
+PAUSED --> SUSPENDED : admin suspends (source ADMIN)\nowner blocked (OWNER_BLOCKED)\nowner deleted account (OWNER_DELETED)
+
+SUSPENDED --> DRAFT
+SUSPENDED --> PUBLISHED
+SUSPENDED --> PAUSED : restore to statusBeforeSuspension\n(DRAFT if it has no rooms any more)
+
+DRAFT --> [*] : host deletes\n(no active bookings)
 
 note right of SUSPENDED
-  Stores statusBeforeSuspension and a source:
-  ADMIN -> only an admin "unsuspend" restores it
-  OWNER_BLOCKED -> only unblocking the owner restores it
+  Who may lift it depends on the source:
+  ADMIN          -> admin "unsuspend" only
+  OWNER_BLOCKED  -> unblocking the owner only
+  OWNER_DELETED  -> admin restoring the account
+                    (purged after 30 days)
   The owner can never publish, pause or resume it.
+  Suspending, blocking the owner or deleting is
+  refused (409) while the listing has active bookings.
+  The host may delete a listing (any status) when it
+  has no active bookings.
+end note
+note left of PUBLISHED
+  Only PUBLISHED listings are visible.
+  GET /api/v3/listings/{id} answers 404
+  to everyone except the owner and admins.
 end note
 @enduml

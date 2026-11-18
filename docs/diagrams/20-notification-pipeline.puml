@@ -1,0 +1,45 @@
+@startuml 20-notification-pipeline
+!include _style.iuml
+title Notification module: two entry points, one email pipeline
+skinparam componentStyle rectangle
+left to right direction
+
+package "Other modules" {
+  [Domain events\nUserBlocked / Unblocked / Deleted / Restored,\nHostRequestSubmitted / Reviewed,\nListingSuspend / ListingRestored,\nBookingConfirmed, BookingCancelled,\nPaymentRefunded, ReviewPosted / Replied] as EV
+  [Direct commands from auth\nregistration OTP, welcome,\nreset OTP, password changed] as CMD
+}
+
+package "notification" #FCE8E6 {
+  [NotificationEventListener\n@TransactionalEventListener(AFTER_COMMIT,\nfallbackExecution = true) + @Async] as NEL
+  [InAppNotificationService\n(each save in its own transaction,\n90-day cleanup)] as INAPP
+  [NotificationService\n(one method per email)] as NS
+  [EmailMessageBuilderUtil\n+ EmailTemplate] as BUILD
+  [SimpleMessageEvent\n(recipient, subject, body)] as SME
+  [EmailEventListeners\nafter commit + @Async] as EEL
+  [MailServiceImpl\n(never throws)] as MAIL
+  [ZohoMailApiClient\n(OAuth, token cached 1 h)] as ZOHO
+  [NotificationController\n/api/v2/notifications] as NC
+  database "notifications" as TBL
+}
+[UserDirectory\n(common, auth implements)\nnames and emails] as UD
+
+EV --> NEL
+NEL --> UD
+NEL --> INAPP : bell row first\n(try / catch)
+NEL --> NS
+CMD --> NS
+INAPP --> TBL
+NC --> INAPP
+NS --> BUILD
+NS --> SME : publish
+SME --> EEL
+EEL --> MAIL
+MAIL --> ZOHO : app.mail.transport=zoho-api\n(production)
+MAIL ..> MAIL : app.mail.enabled=false:\nprint to console\napp.mail.transport=smtp: SMTP (local)
+
+note bottom of NEL
+  After the commit: nothing is announced for a rolled-back action.
+  Background thread: the request never waits for email.
+  A failed email is logged, never retried (known limit).
+end note
+@enduml

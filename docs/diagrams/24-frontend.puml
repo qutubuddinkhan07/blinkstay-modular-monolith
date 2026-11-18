@@ -1,0 +1,77 @@
+@startuml 24-frontend
+!include _style.iuml
+title Frontend structure (React, Vite)
+skinparam componentStyle rectangle
+left to right direction
+
+[main.jsx] as MAIN
+[App.jsx\nproviders + router] as APP
+package "context" {
+  [AuthContext\ncurrent user, roles] as AUTHC
+  [FavoriteContext] as FAVC
+  [ThemeContext] as THC
+}
+package "store (Redux Toolkit)" {
+  [store.js] as STORE
+  [api.js\nRTK Query: listings,\nnotifications] as RTK
+}
+package "routes" {
+  [AppRoutes.jsx] as ROUTES
+  [ProtectedRoute\nallowedRoles] as PR
+  [GuestRoute\n(logged-out only)] as GR
+}
+package "api" {
+  [axiosInstance\nbaseURL VITE_API_BASE_URL,\nwithCredentials] as AX
+  [axiosInterceptors\nadds X-XSRF-TOKEN,\nhandles 401 / 403] as INT
+  [errors/\nhandleApiError, isBlockedError] as ERR
+}
+package "features" {
+  [auth\nLogin, Signup + OtpDialog,\nForgotPassword, BlockedPage] as F_AUTH
+  [home, about, support] as F_PUB
+  [listings\nExplore, Listing, Create,\nEdit, MyListings, rooms] as F_LIST
+  [bookings\nBookingPage (pay), MyBookings,\nBookingsPage (host/admin)] as F_BOOK
+  [favorites] as F_FAV
+  [reviews\nListingReviews, BookingReview,\nHostReviews] as F_REV
+  [host\nBecomeHost, BusinessProfile,\nHostDashboard, HostCalendar] as F_HOST
+  [admin\nOverview, Users, HostRequests,\nPayments, ManagerListings] as F_ADMIN
+  [notifications\nbell, menu, page] as F_NOTI
+  [user\nProfilePage and forms] as F_USER
+}
+package "components" {
+  [layouts\nLayout, Navbar, Footer] as LAYOUT
+  [common\nStatusBadge, StatusBanner,\nConfirmDialogBox, ReasonDialog,\nImageCarousel, ZoomImage, ...] as COMMON
+}
+[utils\nformat, notify (Sonner),\nroles, cloudinary, hooks] as UTILS
+
+MAIN --> APP
+APP --> AUTHC
+APP --> FAVC
+APP --> THC
+APP --> STORE
+APP --> ROUTES
+ROUTES --> PR
+ROUTES --> GR
+ROUTES --> LAYOUT
+PR --> AUTHC
+LAYOUT --> F_NOTI
+ROUTES --> F_AUTH
+ROUTES --> F_PUB
+ROUTES --> F_LIST
+ROUTES --> F_BOOK
+ROUTES --> F_FAV
+ROUTES --> F_REV
+ROUTES --> F_HOST
+ROUTES --> F_ADMIN
+ROUTES --> F_USER
+F_LIST --> RTK
+F_NOTI --> RTK
+RTK --> AX
+F_BOOK --> AX : bookingService
+F_ADMIN --> AX : adminService
+F_HOST --> AX : hostService,\ndashboardService
+AX --> INT
+INT --> ERR
+F_LIST --> COMMON
+F_BOOK --> COMMON
+F_ADMIN --> COMMON
+@enduml

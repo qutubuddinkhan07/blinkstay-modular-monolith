@@ -1,0 +1,27 @@
+@startuml 13-booking-statuses
+!include _style.iuml
+title Booking statuses
+
+[*] --> PENDING_PAYMENT : guest books\n(rooms held 15 min)
+PENDING_PAYMENT --> CONFIRMED : payment succeeded
+PENDING_PAYMENT --> EXPIRED : hold ran out\n(timer relabels every minute)
+EXPIRED --> CONFIRMED : late payment and\nrooms still free ("revive")
+PENDING_PAYMENT --> CANCELLED : guest or admin cancels\n(no money moves)
+CONFIRMED --> CANCELLED : guest, host or admin cancels\n(refund by policy)
+CONFIRMED --> COMPLETED : check-out before today\n(hotel time zone, hourly timer)
+CANCELLED --> [*]
+EXPIRED --> [*]
+COMPLETED --> [*] : guest may review
+
+note right of PENDING_PAYMENT
+  Counts against availability only while
+  holdExpiresAt > now. Queries ignore an
+  expired hold at once, before the timer runs.
+  A guest may hold at most 2 unpaid bookings.
+end note
+note right of CONFIRMED
+  Counts against availability.
+  Price, listing title, location and
+  cover image are snapshotted.
+end note
+@enduml

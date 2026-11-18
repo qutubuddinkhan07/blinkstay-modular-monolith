@@ -1,0 +1,39 @@
+@startuml 02b-event-bus
+!include _style.iuml
+title Who publishes which event, and who listens
+skinparam componentStyle rectangle
+left to right direction
+
+package "publishers" {
+  component "auth" as A #E8F0FE
+  component "listing" as L1 #E6F4EA
+  component "booking" as B1 #F3E8FF
+  component "payment" as P1 #F3E8FF
+  component "review" as R1 #FDECEC
+}
+
+queue "Spring event bus\n(in process)" as BUS
+
+package "same transaction (@EventListener)\nif it throws, the action rolls back" as SYNC {
+  component "listing\nUserLifecycleListener" as L2 #E6F4EA
+  component "review\nReviewAccountListener" as R2 #FDECEC
+}
+package "after commit, background thread\n(@TransactionalEventListener + @Async)\ncan never undo the action" as ASYNC {
+  component "notification\nNotificationEventListener" as N2 #FCE8E6
+  component "earnings\nEarningsEventListener" as E2 #FDECEC
+  component "payment\nRefundRequestListener" as P2 #F3E8FF
+}
+
+A --> BUS : UserBlocked, UserUnblocked,\nUserDeleted, UserRestored,\nDeletedAccountPurged,\nHotelManagerRequestSubmitted / Reviewed,\nHostDetailsChanged
+L1 --> BUS : ListingSuspend,\nListingRestored
+B1 --> BUS : BookingConfirmed,\nBookingCancelled
+P1 --> BUS : PaymentRefunded,\nRefundRequested (internal)
+R1 --> BUS : ReviewPosted,\nReviewReplied
+
+BUS --> L2 : user events: suspend / restore\nlistings, clear listing cache
+BUS --> R2 : user events: hide / show /\ndelete reviews, fix ratings
+BUS --> N2 : almost every event:\nbell row + email
+BUS --> E2 : BookingConfirmed -> new entry,\nrefunds -> REVERSED
+BUS --> P2 : RefundRequested -> send refund
+
+@enduml

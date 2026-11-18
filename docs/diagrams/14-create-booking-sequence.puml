@@ -1,0 +1,40 @@
+@startuml 14-create-booking-sequence
+!include _style.iuml
+title Creating a booking without selling the last room twice
+autonumber
+
+actor Guest
+participant "BookingController" as BC
+participant "BookingServiceImpl\n@Transactional" as BS
+participant "BookingRules" as BR
+participant "RoomService" as RS
+participant "ListingService" as LS
+database "Database" as DB
+
+Guest -> BC : POST /api/v5/bookings\n{ listingId, roomId, checkIn, checkOut, rooms, guests }
+BC -> BS : create(guestId, request)
+activate BS
+BS -> BR : validateStay\n(dates, max 30 nights, rooms, guests)
+BS -> RS : lockRoom(roomId)\n(propagation MANDATORY)
+RS -> DB : SELECT room ... FOR UPDATE
+note right of DB
+  A second booking for the same
+  room type waits here until
+  this transaction ends.
+end note
+RS --> BS : price, totalRooms, maxGuests
+BS -> LS : getBookingInfo(listingId)
+LS --> BS : published? hostId, title,\nlocation, cover image
+BS -> BS : not own listing, guests fit,\nfewer than 2 unpaid holds
+BS -> DB : active bookings overlapping these nights\n(CONFIRMED + unexpired PENDING_PAYMENT)
+BS -> BS : free = totalRooms - busiest night
+alt not enough rooms
+  BS --> Guest : 409 "Sold out" / "Only N left"
+else enough
+  BS -> DB : insert PENDING_PAYMENT,\nholdExpiresAt = now + 15 min,\nprice and listing snapshot
+  BS --> BC : booking
+  deactivate BS
+  note over BS, DB : COMMIT releases the room lock
+  BC --> Guest : 201 { booking, holdExpiresAt }
+end
+@enduml

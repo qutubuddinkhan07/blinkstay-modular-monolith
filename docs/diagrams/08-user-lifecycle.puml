@@ -1,0 +1,38 @@
+@startuml 08-user-lifecycle
+!include _style.iuml
+title Account lifecycle
+
+[*] --> Registering : register-init\n(OTP emailed, nothing in DB yet)
+Registering --> Active : verify-otp\n(user row created, welcome email)
+Registering --> [*] : OTP expired or\n5 wrong codes
+
+state Active {
+  [*] --> Guest
+  Guest --> HostPending : submit host request
+  HostPending --> Guest : rejected or cancelled
+  HostPending --> Host : admin approves\n(+HOTEL_MANAGER role,\nHotelManagerProfile row)
+}
+
+Active --> Blocked : admin blocks\n(listings SUSPENDED,\nreviews hidden)
+Blocked --> Active : admin unblocks\n(listings and reviews restored)
+Active --> Deleted : user deletes account\n(no active bookings,\nnot the last admin)
+Deleted --> Active : admin restores\n(within 30 days: everything back)
+Deleted --> Purged : nightly job after 30 days\n(photo, reviews, host listings removed)
+Purged --> Active : admin restores\n(row kept; data already gone)
+
+note right of Blocked
+  isActive = false, blockReason, blockedAt.
+  The next request gets 401 ACCOUNT_BLOCKED.
+end note
+note right of Deleted
+  Soft delete: isActive = false, deletedAt set.
+  The email stays taken (cannot re-register).
+  A restore of a previously blocked user keeps
+  the block.
+end note
+note right of Purged
+  purgedAt set once. The users row is kept
+  forever: bookings, payments and earnings
+  point at its id.
+end note
+@enduml

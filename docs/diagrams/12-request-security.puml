@@ -1,0 +1,57 @@
+@startuml 12-request-security
+!include _style.iuml
+title What happens to every API request before a controller runs
+
+start
+:Request arrives;
+if (OPTIONS preflight?) then (yes)
+  :CORS answers;
+  stop
+endif
+:CORS check (allowed origins, credentials);
+if (POST / PUT / PATCH / DELETE\nand not on the CSRF ignore list?) then (yes)
+  if (X-XSRF-TOKEN header matches\nXSRF-TOKEN cookie?) then (no)
+    #FDECEC:403 { code: CSRF_INVALID }\n(frontend retries once);
+    stop
+  endif
+endif
+partition "JWTFilter (once per request)" {
+  if (path on the skip list?\nlogin, register, OTP, reset, webhook) then (yes)
+  elseif (BLINKSTAY_TOKEN cookie present?) then (no)
+    :anonymous;
+  elseif (signature and 24 h expiry ok?) then (no)
+    :reason TOKEN_EXPIRED / TOKEN_INVALID;
+    :clear cookie, anonymous;
+  elseif (token on the logged-out list?\n(blockedTokens cache, blocked_token table)) then (yes)
+    :reason TOKEN_REVOKED;
+    :clear cookie, anonymous;
+  elseif (auth snapshot found?\n(authUsers cache, 60 s)) then (no)
+    :reason USER_NOT_FOUND;
+    :clear cookie, anonymous;
+  elseif (enabled = isActive and not deleted?) then (no)
+    :reason ACCOUNT_BLOCKED;
+    :clear cookie, anonymous;
+  elseif (token issued before passwordChangedAt?) then (yes)
+    :reason PASSWORD_CHANGED;
+    :clear cookie, anonymous;
+  else
+    #E6F4EA:Authentication with roles\nfrom the snapshot;
+  endif
+}
+partition "URL rules (first match wins)" {
+  if (public URL?) then (yes)
+    #E6F4EA:controller runs;
+    stop
+  elseif (logged in?) then (no)
+    #FDECEC:401 { code: saved reason\nor UNAUTHENTICATED };
+    stop
+  elseif (role allowed?\n(hasAuthority USER / HOTEL_MANAGER / ADMIN)) then (no)
+    #FDECEC:403 { code: FORBIDDEN };
+    stop
+  endif
+}
+:@PreAuthorize on the controller;
+:service checks ownership\n(not yours -> 404);
+#E6F4EA:controller runs;
+stop
+@enduml

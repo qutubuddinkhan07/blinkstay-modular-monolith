@@ -1,0 +1,23 @@
+' Shared look for every BlinkStay diagram. Each .puml includes this file.
+skinparam shadowing false
+skinparam defaultFontName "Segoe UI, Helvetica, Arial"
+skinparam defaultFontSize 13
+skinparam roundCorner 8
+skinparam ArrowColor #4A5568
+skinparam BorderColor #4A5568
+skinparam BackgroundColor #FFFFFF
+skinparam NoteBackgroundColor #FFF8E1
+skinparam NoteBorderColor #C9A227
+skinparam ParticipantBackgroundColor #F1F5F9
+skinparam ActorBackgroundColor #F1F5F9
+skinparam DatabaseBackgroundColor #E2E8F0
+skinparam SequenceGroupBackgroundColor #F8FAFC
+skinparam SequenceLifeLineBorderColor #94A3B8
+skinparam StateBackgroundColor #F1F5F9
+skinparam UsecaseBackgroundColor #F1F5F9
+skinparam PackageBackgroundColor #FAFAFA
+skinparam ComponentBackgroundColor #F1F5F9
+skinparam ClassBackgroundColor #F8FAFC
+skinparam ActivityBackgroundColor #F1F5F9
+skinparam ActivityDiamondBackgroundColor #FFF8E1
+skinparam TitleFontSize 16

@@ -1,0 +1,22 @@
+@startuml 23-earnings-ledger
+!include _style.iuml
+title Earnings ledger: one entry per confirmed booking
+
+[*] --> PENDING : BookingConfirmedEvent\n(after commit, own transaction,\nskipped if the booking already has an entry)
+PENDING --> EARNED : EarningsTimers\n(rule: see EarningsTimers)
+PENDING --> REVERSED : booking fully refunded\n(amounts become 0)
+EARNED --> [*]
+REVERSED --> [*]
+
+note right of PENDING
+  base       = gross - refunded
+  commission = base x 10 % (config), half-up
+  hostAmount = base - commission
+  soldOn     = confirm day (hotel time zone)
+end note
+note bottom of REVERSED
+  The platform absorbs the provider fee on a refund;
+  the host earns nothing for that booking.
+  No payouts to hosts yet: the ledger records what is owed.
+end note
+@enduml

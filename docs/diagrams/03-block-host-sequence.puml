@@ -1,46 +1,60 @@
-' Diagram 3: Blocking a host (sequence)
 @startuml 03-block-host-sequence
+!include _style.iuml
+title Admin blocks a host: one transaction for the user, listings and reviews
 autonumber
+
 actor Admin
 participant "AdminUserController" as C
-
-box "auth module" #E8F0FE
+box "auth" #E8F0FE
   participant "AdminUserServiceImpl\n@Transactional" as S
-  database "users table" as UDB
+  database "users" as UDB
 end box
-
+participant "BookingGuard\n(common, booking implements)" as BG
 participant "Spring event bus" as BUS
-
-box "listing module" #E6F4EA
-  participant "UserLifecycleListener" as L
+box "listing" #E6F4EA
+  participant "UserLifecycleListener\n@EventListener" as L
   participant "ListingModerationService" as M
-  database "listings table" as LDB
+  database "listings" as LDB
+end box
+box "review" #FDECEC
+  participant "ReviewAccountListener\n@EventListener" as RL
+end box
+box "notification" #FCE8E6
+  participant "NotificationEventListener\nafter commit, @Async" as NL
 end box
 
-participant "Caffeine caches" as CA
-
-Admin -> C : POST /api/v2/admin/users/{id}/block {reason}
-C -> S : blockUser(adminId, id, reason)
+Admin -> C : POST /api/v2/admin/users/{id}/block\n{ reason }  + X-XSRF-TOKEN
+C -> S : blockUser(adminId, userId, reason)
 activate S
-S -> UDB : isActive=false, blockReason, blockedAt
-S -> BUS : publishEvent(UserBlockedEvent)
+S -> S : not self, not an admin,\nnot already blocked (409)
+S -> BG : hostHasActiveBookings(userId)?
+BG --> S : no (yes = 409, cancel bookings first)
+S -> UDB : isActive = false, blockReason, blockedAt
+S -> S : clear authUsers / user caches after commit
+S -> BUS : publishEvent(UserBlockedEvent(userId, reason))
 activate BUS
-BUS -> L : on(UserBlockedEvent)\nsame thread, same transaction
+BUS -> L : same thread, same transaction
 activate L
-L -> M : suspendAllByManager(userId, reason)
-M -> LDB : each listing -> SUSPENDED\nsave statusBeforeSuspension\nsource = OWNER_BLOCKED
-M --> L : done
+L -> M : suspendAllByManager(userId)
+M -> LDB : each listing -> SUSPENDED,\nkeep statusBeforeSuspension,\nsource = OWNER_BLOCKED
 deactivate L
-BUS --> S : return
+BUS -> RL : same thread, same transaction
+activate RL
+RL -> RL : hide the user's reviews,\nrecalculate those listings' ratings
+deactivate RL
+BUS --> S
 deactivate BUS
-S --> C : ok
+S --> C
 deactivate S
 
-note over S, LDB
-  COMMIT: the user row and all listings are saved together.
-  If anything above throws, BOTH roll back.
-end note
+== COMMIT: user, listings and reviews change together or not at all ==
 
-M -> CA : after commit: clear listingById,\npublishedListings
+BUS -> NL : after commit, background thread
+NL -> NL : bell row ACCOUNT_BLOCKED\n+ email with the reason
 C --> Admin : 200 "User blocked"
+
+note over M
+  After commit: listingById and
+  publishedListings caches are cleared.
+end note
 @enduml

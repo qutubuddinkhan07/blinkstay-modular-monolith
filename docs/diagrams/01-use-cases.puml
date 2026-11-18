@@ -1,38 +1,102 @@
 @startuml 01-use-cases
+!include _style.iuml
+title BlinkStay: use cases by role
 left to right direction
-skinparam shadowing false
 
-actor "Guest" as G
-actor "User" as U
-actor "Hotel Manager" as H
+actor "Visitor\n(not logged in)" as V
+actor "Guest\n(USER)" as G
+actor "Host\n(HOTEL_MANAGER)" as H
 actor "Admin" as A
-U --|> G
-H --|> U
-A --|> U
+actor "Razorpay" as RZ <<system>>
+actor "Timers" as T <<system>>
+
+G -|> V
+H -|> G
+A -|> G
 
 rectangle "BlinkStay" {
-  usecase "Browse published listings" as UC1 #LightGreen
-  usecase "View listing details" as UC2 #LightGreen
-  usecase "Register (OTP), login, logout" as UC3 #LightGreen
-  usecase "Edit profile, photo, password,\ndelete account" as UC4 #LightGreen
-  usecase "Create / edit listing and rooms" as UC5 #LightGreen
-  usecase "Publish / pause / resume listing" as UC6 #LightGreen
-  usecase "Block / unblock user\n(suspends or restores their listings)" as UC7 #LightGreen
-  usecase "Suspend / unsuspend a listing" as UC8 #LightGreen
-  usecase "Apply to become a host" as UC9 #Khaki
-  usecase "Approve / reject host request" as UC10 #Khaki
-  usecase "Receive notifications" as UC11 #Khaki
+  package "Discover" {
+    usecase "Browse and filter\npublished listings" as D1
+    usecase "View listing details,\nmap, rooms and reviews" as D2
+    usecase "Check availability\nand price for dates" as D3
+  }
+  package "Account" {
+    usecase "Sign up with email OTP" as C1
+    usecase "Log in / log out" as C2
+    usecase "Reset forgotten password" as C3
+    usecase "Edit profile, photo,\nchange password" as C4
+    usecase "Delete own account\n(30-day restore window)" as C5
+    usecase "Save favorites" as C6
+    usecase "Read and clear\nnotifications (bell)" as C7
+    usecase "Apply to become a host" as C8
+  }
+  package "Book and pay" {
+    usecase "Book rooms\n(15-minute hold)" as B1
+    usecase "Pay (Razorpay or mock)" as B2
+    usecase "See my bookings" as B3
+    usecase "Cancel with refund policy" as B4
+    usecase "Review a completed stay" as B5
+  }
+  package "Host" {
+    usecase "Create and edit listings,\nphotos and rooms" as H1
+    usecase "Publish / pause / resume" as H2
+    usecase "See and cancel reservations" as H3
+    usecase "Monthly room calendar" as H4
+    usecase "Earnings dashboard" as H5
+    usecase "Reply to reviews" as H6
+    usecase "Edit business profile" as H7
+  }
+  package "Admin" {
+    usecase "Approve / reject\nhost requests" as A1
+    usecase "Block, unblock and\nrestore users" as A2
+    usecase "Suspend / unsuspend listings" as A3
+    usecase "Search and cancel any booking" as A4
+    usecase "Payments needing attention:\nretry refund, resolve" as A5
+    usecase "Platform overview dashboard" as A6
+    usecase "Delete any review" as A7
+  }
+  package "Automatic" {
+    usecase "Payment webhook\n(source of truth)" as S1
+    usecase "Expire holds, complete stays" as S2
+    usecase "Send refunds with retries,\nreconcile missed payments" as S3
+    usecase "Purge accounts deleted\nmore than 30 days ago" as S4
+  }
 }
 
-G --> UC1
-G --> UC2
-G --> UC3
-U --> UC4
-U --> UC9
-U --> UC11
-H --> UC5
-H --> UC6
-A --> UC7
-A --> UC8
-A --> UC10
+V --> D1
+V --> D2
+V --> D3
+V --> C1
+V --> C2
+V --> C3
+G --> C4
+G --> C5
+G --> C6
+G --> C7
+G --> C8
+G --> B1
+G --> B2
+G --> B3
+G --> B4
+G --> B5
+H --> H1
+H --> H2
+H --> H3
+H --> H4
+H --> H5
+H --> H6
+H --> H7
+A --> A1
+A --> A2
+A --> A3
+A --> A4
+A --> A5
+A --> A6
+A --> A7
+RZ --> S1
+T --> S2
+T --> S3
+T --> S4
+
+B1 .> B2 : <<precedes>>
 @enduml

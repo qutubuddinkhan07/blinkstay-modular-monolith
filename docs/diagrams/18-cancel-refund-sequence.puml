@@ -1,0 +1,48 @@
+@startuml 18-cancel-refund-sequence
+!include _style.iuml
+title Guest cancels a paid booking: refund recorded in the transaction, sent after it
+autonumber
+
+actor Guest
+participant "BookingController" as C
+participant "BookingCancellationServiceImpl\n@Transactional" as S
+participant "CancellationPolicy" as CP
+participant "PaymentRefunds\n(payment implements)" as PR
+database "payments" as PDB
+database "bookings" as BDB
+participant "Event bus" as BUS
+participant "RefundRequestListener\n-> RefundProcessor" as RP
+participant "PaymentGateway" as GW
+
+Guest -> C : GET /api/v5/bookings/{id}/cancellation-preview
+C --> Guest : refundAmount, freeCancellationUntil, message
+Guest -> C : POST /api/v5/bookings/{id}/cancel { reason? }
+C -> S : cancelByGuest(guestId, bookingId, reason)
+activate S
+S -> BDB : read paymentId (plain value)
+S -> PR : lockPayment(paymentId)
+PR -> PDB : SELECT ... FOR UPDATE
+S -> BDB : SELECT booking ... FOR UPDATE
+S -> S : owner? status allowed?\npayment id unchanged since it was read? (else 409)
+S -> CP : guestRefund(booking, now)
+CP --> S : total (before 48 h mark) or 0
+alt refund > 0
+  S -> PR : refundInFull(paymentId, reason)
+  PR -> PDB : REFUND_PENDING, attempts 0,\nnextRefundAt now
+  PR -> BUS : RefundRequestedEvent
+end
+S -> BDB : CANCELLED, cancelledAt, cancelledBy,\nreason, refundAmount
+S -> BUS : BookingCancelledEvent
+deactivate S
+== COMMIT: booking and payment change together ==
+C --> Guest : 200 at once (no wait for Razorpay)
+BUS -> RP : after commit, another thread
+RP -> GW : refund(providerPaymentId, amount)
+GW --> RP : refund id
+RP -> PDB : REFUNDED, refundedAt
+note over BUS
+  BookingCancelledEvent -> notification (guest and host
+  emails per the recipient table) and earnings
+  (entry REVERSED on a full refund).
+end note
+@enduml

@@ -1,0 +1,58 @@
+@startuml 16-payment-sequence
+!include _style.iuml
+title Paying for a booking: three entry points, one processor
+autonumber
+
+actor Guest
+participant "PaymentController" as PC
+participant "PaymentServiceImpl" as PS
+participant "BookingPayments\n(booking implements)" as BP
+participant "PaymentGateway\nRazorpay or Mock" as GW
+participant "Razorpay" as RZ
+participant "RazorpayPaymentController\n+ RazorpayCheckoutService" as VC
+participant "RazorpayWebhookController" as WC
+participant "PaymentReconciler\n(every 2 min)" as REC
+participant "PaymentEventProcessor" as PEP
+database "payments,\npayment_events" as DB
+
+== 1. Start (no DB transaction open during the provider call) ==
+Guest -> PC : POST /api/v5/bookings/{id}/pay
+PC -> PS : startPayment(guestId, bookingId)
+PS -> BP : getPayableBooking
+BP --> PS : reference, amount, currency, holdExpiresAt\n(409 if paid, expired or cancelled)
+PS -> DB : open CREATED payment for this booking?
+alt reuse it
+else none
+  PS -> GW : createOrder(reference, amount, currency)
+  GW -> RZ : create order (paise)
+  PS -> DB : insert payment CREATED
+end
+PS --> Guest : orderId, amount, currency, publicKey, mock
+
+== 2a. Browser path (fast) ==
+Guest -> RZ : checkout popup (card never touches our server)
+RZ --> Guest : paymentId + signature
+Guest -> VC : POST /api/v5/payments/razorpay/{orderId}/verify
+VC -> VC : payment belongs to this guest?\nHMAC(orderId|paymentId, keySecret) ok? (else 400)
+VC -> PEP : PAYMENT_SUCCEEDED, eventId verify_{paymentId},\nour stored amount
+
+== 2b. Server path (source of truth) ==
+RZ -> WC : POST /api/v5/payments/webhook/razorpay\nraw body + X-Razorpay-Signature
+WC -> WC : HMAC of raw bytes (else 401, nothing parsed)
+WC -> PEP : payment.captured -> SUCCEEDED\npayment.failed -> FAILED\n(other events: 200 ignored)
+
+== 2c. Safety net ==
+REC -> GW : CREATED payments 5 to 120 min old:\nfindCapturedPayment(orderId)
+REC -> PEP : captured -> eventId reconcile_{paymentId}
+
+== 3. One set of rules ==
+PEP -> DB : lock payment row,\nskip an eventId already stored
+PEP -> BP : confirmPayment(bookingId, paymentId, amount, currency)
+BP --> PEP : CONFIRMED / ALREADY_CONFIRMED /\nDUPLICATE / UNAVAILABLE / MISMATCH
+PEP -> DB : update payment status\n(and REFUND_PENDING for DUPLICATE / UNAVAILABLE)
+note over PEP
+  BookingConfirmedEvent goes out after commit:
+  bell + email for guest and host,
+  and an earnings ledger entry.
+end note
+@enduml

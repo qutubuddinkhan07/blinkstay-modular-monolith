@@ -1,0 +1,30 @@
+@startuml 17-confirm-payment-decision
+!include _style.iuml
+title What BookingPayments.confirmPayment decides (booking row is locked)
+
+start
+:payment succeeded event;
+if (amount and currency equal the booking total?) then (no)
+  #FDECEC:MISMATCH\npayment FAILED + reviewReason,\nbooking untouched, admin list;
+  stop
+endif
+switch (booking status?)
+case (CONFIRMED or COMPLETED)
+  if (same payment that confirmed it?) then (yes)
+    :ALREADY_CONFIRMED\nnothing to do;
+  else (no)
+    #FFF8E1:DUPLICATE\nsecond payment -> REFUND_PENDING;
+  endif
+case (CANCELLED)
+  #FFF8E1:UNAVAILABLE\npayment -> REFUND_PENDING;
+case (PENDING_PAYMENT or EXPIRED)
+  if (hold still valid?) then (yes)
+    #E6F4EA:CONFIRMED\npublish BookingConfirmedEvent;
+  elseif (listing published and rooms still free?\n(takes the room lock)) then (yes)
+    #E6F4EA:CONFIRMED ("revived")\npublish BookingConfirmedEvent;
+  else (no)
+    #FFF8E1:UNAVAILABLE\npayment -> REFUND_PENDING;
+  endif
+endswitch
+stop
+@enduml

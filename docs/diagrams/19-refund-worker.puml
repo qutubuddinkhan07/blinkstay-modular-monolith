@@ -1,0 +1,42 @@
+@startuml 19-refund-worker
+!include _style.iuml
+title RefundProcessor.attempt: claim, call, record (not @Transactional itself)
+
+start
+:triggered by RefundRequestedEvent (after commit)\nor RefundTimers every 30 s (20 per run);
+partition "TX 1: claim" {
+  :lock payment row;
+  if (still REFUND_PENDING and nextRefundAt <= now?) then (no)
+    :nothing to do;
+    stop
+  endif
+  if (payment's provider == active gateway?) then (no)
+    #FDECEC:store error "made with X,\nactive provider is Y";
+    stop
+  endif
+  :attempts + 1\nnextRefundAt = now + 5 min (lease);
+}
+:commit (no lock held from here);
+:gateway lists existing refunds of the payment;
+if (matching refund already exists?) then (yes)
+  :reuse it (no double refund);
+else (no)
+  :create refund at the provider;
+endif
+if (call succeeded?) then (yes)
+  partition "TX 2: success" {
+    #E6F4EA:REFUNDED, refundedAt, clear error;
+    :if refundNotify: PaymentRefundedEvent\n(guest email);
+  }
+else (no)
+  partition "TX 3: failure" {
+    :store short provider error;
+    if (attempts == 5?) then (yes)
+      #FDECEC:REFUND_FAILED\n(admin list: retry or resolve);
+    else (no)
+      :back-off: 1 min, 5 min, 15 min, 1 h;
+    endif
+  }
+endif
+stop
+@enduml

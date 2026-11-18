@@ -1,18 +1,32 @@
-' Diagram 4: What a blocked user sees next (no event involved)
 @startuml 04-blocked-user-next-request
-actor "Blocked host" as H
-participant JWTFilter as F
-participant CustomUserDetailsDaoService as UD
-database "users table" as DB
+!include _style.iuml
+title What a blocked user's next request sees (no event involved)
+autonumber
 
-H -> F : any request with the cookie
-F -> UD : loadUserByUsername(userId)
-UD -> DB : select user
-UD --> F : UserDetails (disabled = !isActive)
-F -> F : isEnabled() is false
-F --> H : 401 {code: ACCOUNT_BLOCKED}\n+ cookie cleared
-note right of F
-  The user is re-read on every request,
-  so blocking takes effect immediately.
+actor "Blocked user" as U
+participant "JWTFilter" as F
+participant "BlockedTokenService\n(cache blockedTokens)" as BT
+participant "CustomUserDetailsDaoService\n(cache authUsers, 60 s)" as UD
+database "users" as DB
+participant "Security entry point" as EP
+
+U -> F : any request with BLINKSTAY_TOKEN cookie
+F -> F : verify signature and expiry
+F -> BT : token logged out?
+BT --> F : no
+F -> UD : loadAuthSnapshot(userId)
+UD -> DB : on cache miss only
+note right of UD
+  Blocking cleared authUsers,
+  so this is a fresh read.
+end note
+UD --> F : enabled = isActive && deletedAt == null\n-> false
+F -> F : save reason ACCOUNT_BLOCKED,\nclear the cookie,\ncontinue as anonymous
+F -> EP : protected URL needs a login
+EP --> U : 401 { code: "ACCOUNT_BLOCKED" }
+note over U
+  The frontend clears its state and
+  shows the "account blocked" page.
+  Public pages still work.
 end note
 @enduml

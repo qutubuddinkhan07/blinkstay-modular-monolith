@@ -1,0 +1,60 @@
+@startuml 02-modules
+!include _style.iuml
+title Modules and the small contracts between them (all contracts live in common)
+skinparam componentStyle rectangle
+top to bottom direction
+
+component "auth" as AUTH #E8F0FE
+component "listing" as LIST #E6F4EA
+component "room" as ROOM #E6F4EA
+component "booking" as BOOK #F3E8FF
+component "payment" as PAY #F3E8FF
+component "review" as REV #FDECEC
+component "earnings" as EARN #FDECEC
+component "notification" as NOTI #FCE8E6
+
+interface "UserDirectory\nHostDirectory" as IDIR
+interface "BookingGuard" as IBG
+interface "BookingPayments" as IBP
+interface "PaymentRefunds" as IPR
+interface "ListingRatings" as ILR
+interface "ReviewableBookings" as IRB
+interface "Booking-, Listing-, Payment-,\nUserStats (implemented by\nbooking, listing, payment, auth)" as IST
+
+AUTH -up- IDIR
+BOOK -up- IBG
+BOOK -- IBP
+PAY -- IPR
+LIST -- ILR
+BOOK -- IRB
+
+NOTI ..> IDIR : names, emails
+BOOK ..> IDIR : guest names in lists
+LIST ..> IBG : refuse delete / suspend\nwith active bookings
+ROOM ..> IBG
+AUTH ..> IBG : refuse block / delete\nwith active bookings
+PAY ..> IBP : getPayableBooking,\nconfirmPayment
+BOOK ..> IPR : lockPayment,\nrefundInFull
+REV ..> ILR : lockForReview,\nupdateRating
+REV ..> IRB : find(bookingId)
+EARN ..> IST : admin overview
+
+BOOK --> LIST : ListingService\n.getBookingInfo
+BOOK --> ROOM : RoomService\n.lockRoom
+LIST --> ROOM : rooms of a listing
+ROOM -[#C0392B,dashed]-> LIST : ownership check\n(known cycle)
+AUTH --> NOTI : commands: OTP,\nwelcome, password changed
+
+note as N
+  Rules
+  1. A module never touches another module's
+     repositories or entities.
+  2. It calls a small interface (lollipop = implemented by
+     that module, dotted arrow = used by), a service
+     interface, or reacts to an event (see 02b-event-bus).
+  3. common depends on nothing. seed (startup tool) uses
+     auth, listing, room and the seed contracts; nothing
+     depends on seed.
+  4. payment and booking never import each other.
+end note
+@enduml

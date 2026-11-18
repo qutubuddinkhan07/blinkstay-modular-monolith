@@ -1,0 +1,27 @@
+@startuml 15-payment-statuses
+!include _style.iuml
+title Payment statuses
+
+[*] --> CREATED : order created at the provider\n(an open order is reused)
+CREATED --> SUCCEEDED : confirmed by verify,\nwebhook or reconcile
+CREATED --> FAILED : payment failed event
+FAILED --> SUCCEEDED : later attempt on the\nsame order succeeds
+FAILED --> FAILED : amount mismatch\n(reviewReason set)
+SUCCEEDED --> REFUND_PENDING : booking cancelled with refund,\npaid twice, or booking could not be kept
+REFUND_PENDING --> REFUNDED : provider accepted the refund
+REFUND_PENDING --> REFUND_PENDING : attempt failed,\nretry after back-off
+REFUND_PENDING --> REFUND_FAILED : 5 attempts failed
+REFUND_FAILED --> REFUND_PENDING : admin presses retry
+REFUNDED --> [*]
+
+note right of REFUND_FAILED
+  Shown in the admin list
+  "payments needing attention".
+end note
+note left of SUCCEEDED
+  Once SUCCEEDED or in a refund state,
+  late payment events are ignored.
+  A guest cancel inside the no-refund
+  window leaves it SUCCEEDED.
+end note
+@enduml

@@ -1,0 +1,143 @@
+@startuml 22-data-model
+!include _style.iuml
+title Tables by module (main columns). Cross-module links are plain UUID columns, not JPA relations
+hide methods
+hide circle
+skinparam linetype ortho
+
+package "auth" #E8F0FE {
+  class users {
+    id : UUID
+    {field} username, email (unique, lower case)
+    password : BCrypt hash
+    roles -> user_roles
+    isActive, blockReason, blockedAt
+    deletedAt, purgedAt
+    passwordChangedAt
+    profileImgUrl, imagePublicId
+    phone, bio, createdAt, updatedAt
+  }
+  class hotel_manager_requests {
+    id, userId
+    businessName, phone, address, description
+    status : PENDING | APPROVED | REJECTED | CANCELLED
+    reviewedBy, reviewedAt, rejectionReason
+    {field} (one PENDING per user)
+  }
+  class hotel_manager_profiles {
+    userId
+    business name, address,
+    description, website, approvedAt
+  }
+  class blocked_token {
+    token, blockedAt, expiresAt
+  }
+}
+
+package "listing" #E6F4EA {
+  class listings {
+    id, managerId
+    title, description, location, country
+    category : ListingCategory
+    status : DRAFT | PUBLISHED | PAUSED | SUSPENDED
+    statusBeforeSuspension, suspensionSource
+    suspensionReason, suspendedAt
+    amenities -> listing_amenities
+    averageRating, reviewCount
+  }
+  class listing_geometry {
+    address, latitude, longitude
+  }
+  class listing_images {
+    imageUrl, publicId, displayOrder
+  }
+  class favorites {
+    {field} userId, listingId (unique pair)
+  }
+}
+
+package "room" #E6F4EA {
+  class listing_rooms {
+    id, listingId
+    roomType : RoomCategory
+    price, totalRooms, maxGuests
+  }
+}
+
+package "booking" #F3E8FF {
+  class bookings {
+    {field} id, reference (BS-...)
+    guestId, hostId, listingId, roomId
+    {field} checkIn, checkOut (exclusive), nights
+    roomsBooked, guests
+    status, holdExpiresAt, confirmedAt
+    snapshot: price, title, location, image
+    totalAmount, currency, paymentId
+    cancelledAt, cancelledBy, cancellationReason
+    refundAmount
+  }
+}
+
+package "payment" #F3E8FF {
+  class payments {
+    id, bookingId, bookingReference
+    provider : MOCK | RAZORPAY
+    providerOrderId, providerPaymentId
+    amount, currency, status, paidAt
+    refundReason, refundAttempts, nextRefundAt
+    refundError, refundNotify, refundedAt
+    reviewReason
+  }
+  class payment_events {
+    {field} provider, providerEventId (unique pair)
+    type, paymentId, receivedAt
+  }
+}
+
+package "review" #FDECEC {
+  class reviews {
+    {field} id, bookingId (unique)
+    listingId, guestId, hostId
+    rating 1..5, comment, editedAt
+    hostReply, hostRepliedAt
+    hidden
+  }
+}
+
+package "earnings" #FDECEC {
+  class earnings_entries {
+    {field} bookingId (one entry each)
+    hostId, listingId
+    gross, refunded
+    commissionPercent, commission, hostAmount
+    status : PENDING | EARNED | REVERSED
+    soldOn
+  }
+}
+
+package "notification" #FCE8E6 {
+  class notifications {
+    id, userId
+    type, title, message, referenceId
+    read, readAt, createdAt
+  }
+}
+
+users "1" -- "0..*" hotel_manager_requests
+users "1" -- "0..1" hotel_manager_profiles
+listings "1" *-- "1" listing_geometry
+listings "1" *-- "0..*" listing_images
+listings "1" .. "0..*" listing_rooms : listingId
+users "1" .. "0..*" listings : managerId
+users "1" .. "0..*" favorites
+listings "1" .. "0..*" favorites
+listing_rooms "1" .. "0..*" bookings : roomId
+users "1" .. "0..*" bookings : guestId
+bookings "1" .. "0..*" payments : bookingId
+payments "1" .. "0..*" payment_events
+bookings "1" .. "0..1" reviews : bookingId
+bookings "1" .. "0..1" earnings_entries : bookingId
+users "1" .. "0..*" notifications : userId
+
+note "Solid lines: JPA relations inside one module.\nDotted lines: a UUID column pointing into another module.\nColumn names here are descriptive; check the entity\nclasses for the exact field names." as N1
+@enduml
