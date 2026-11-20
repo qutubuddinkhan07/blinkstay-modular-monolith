@@ -44,7 +44,7 @@ public class BookingRulesTest {
         void validStay_returnsNumberOfNights() {
             int nights = rules.validateStay(today.plusDays(10), today.plusDays(12), 1, 2);
 
-            assertThat(nights).isEqualTo(1);
+            assertThat(nights).isEqualTo(2);
         }
 
         @Test
@@ -96,7 +96,7 @@ public class BookingRulesTest {
 
         @Test
         void checkInExactly365DaysAhead_isAllowed() {
-            int nights = rules.validateStay(today.plusDays(365), today.plusDays(365), 1, 1);
+            int nights = rules.validateStay(today.plusDays(365), today.plusDays(366), 1, 1);
 
             assertThat(nights).isEqualTo(1);
         }
@@ -134,7 +134,7 @@ public class BookingRulesTest {
         void overlappingBookings_busiestNightCountSBoth() {
             int peak = BookingRules.peakUsage(List.of(a, b), d10, d10.plusDays(3));
 
-            assertThat(peak).isEqualTo(1);
+            assertThat(peak).isEqualTo(3);
         }
 
         @Test
@@ -154,7 +154,7 @@ public class BookingRulesTest {
 
         @Test
         void noBookings_usesNoRooms() {
-            int peak = BookingRules.peakUsage(List.of(a, b), d10, d10.plusDays(3));
+            int peak = BookingRules.peakUsage(List.of(), d10, d10.plusDays(3));
 
             assertThat(peak).isZero();
         }

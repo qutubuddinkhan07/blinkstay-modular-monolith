@@ -18,12 +18,12 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 public class RazorpaySignatureTest {
     private static final String WEBHOOK_SECRET = "test_webhook_secret";
     private static final byte[] WEBHOOK_BODY = """
-            {"event": "payment.captured", "payload": {"payment": {"entity": {"id": "pay_test_123", "amount": 400000}}}}
-            """.getBytes(StandardCharsets.UTF_8);
+            {"event":"payment.captured","payload":{"payment":{"entity":{"id":"pay_test_123","amount":400000}}}}"""
+            .getBytes(StandardCharsets.UTF_8);
     private static final String WEBHOOK_SIGNATURE = "4cdeea9ea28e97f69187c1ce09f25272b192f4c6b7df91ea82bc3b2b686c7a43";
 
     @Test
-    void correctSignature() {
+    void correctSignature_isValid() {
         assertThat(RazorpaySignature.valid(WEBHOOK_BODY, WEBHOOK_SIGNATURE, WEBHOOK_SECRET)).isTrue();
     }
 
