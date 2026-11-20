@@ -53,6 +53,14 @@ jobs:
             backend/target/failsafe-reports/
           retention-days: 7
 
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: backend-coverage
+          path: backend/target/site/jacoco/
+          retention-days: 7
+
   # ---------------- FRONTEND: install + lint + build ----------------
   frontend:
     name: Frontend build

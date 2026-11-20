@@ -4,12 +4,17 @@
 
 **A full-stack hotel and stay booking platform built with Spring Boot and React.**
 
-Guests discover and book stays, hosts manage listings and reservations, and admins moderate the platform.
+Guests discover, book and review stays, hosts manage listings and reservations, and admins moderate the platform.
 
-![Java](https://img.shields.io/badge/Java-Spring%20Boot-6DB33F?logo=springboot&logoColor=white)
+### 🔗 Live demo: [blinkstay.netlify.app](https://blinkstay.netlify.app/)
+
+<!-- Replace YOUR_GITHUB_USERNAME/YOUR_REPO_NAME in the CI badge below with your repo, e.g. qutubuddin/blinkstay -->
+
+[![CI](https://github.com/qutubuddinkhan07/blinkstay-modular-monolith/actions/workflows/ci.yml/badge.svg)](https://github.com/qutubuddinkhan07/blinkstay-modular-monolith/actions/workflows/ci.yml)
+![Java](https://img.shields.io/badge/Java%2025-Spring%20Boot%204-6DB33F?logo=springboot&logoColor=white)
 ![React](https://img.shields.io/badge/React-Vite-61DAFB?logo=react&logoColor=black)
-![MySQL](https://img.shields.io/badge/MySQL-Docker-4479A1?logo=mysql&logoColor=white)
-![Status](https://img.shields.io/badge/status-in%20progress-orange)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Aiven-4169E1?logo=postgresql&logoColor=white)
+![Deployed](https://img.shields.io/badge/deployed-Render%20%2B%20Netlify-success)
 
 </div>
 
@@ -40,6 +45,8 @@ Guests discover and book stays, hosts manage listings and reservations, and admi
 - [Screenshots](#screenshots)
 - [Tech stack](#tech-stack)
 - [Architecture](#architecture)
+- [Deployment and CI/CD](#deployment-and-cicd)
+- [Testing](#testing)
 - [Project structure](#project-structure)
 - [Getting started](#getting-started)
 - [API overview](#api-overview)
@@ -53,13 +60,13 @@ Guests discover and book stays, hosts manage listings and reservations, and admi
 
 BlinkStay is a booking platform with three roles:
 
-| Role                     | What they can do                                                                                                        |
-| ------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| **USER** (guest)         | Browse and search listings on a map, save favorites, book rooms, pay, cancel, and get notifications                     |
-| **HOTEL_MANAGER** (host) | Apply to become a host, create and manage listings and rooms, publish or pause listings, view reservations and earnings |
-| **ADMIN**                | Review host requests, block or unblock users, suspend listings, and view all bookings and payments                      |
+| Role                     | What they can do                                                                                                                          |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| **USER** (guest)         | Browse and search listings on a map, save favorites, book rooms, pay, cancel, review stays and get notifications                          |
+| **HOTEL_MANAGER** (host) | Apply to become a host, create and manage listings and rooms, publish or pause listings, view reservations and earnings, reply to reviews |
+| **ADMIN**                | Review host requests, block or unblock users, suspend listings, remove reviews, and view all bookings and payments                        |
 
-The backend is a **modular monolith**: each business area (auth, listing, room, booking, payment, earnings, notification) lives in its own package. Modules talk to each other through **domain events** and small shared interfaces instead of calling each other's internals, so the system can later be split into microservices.
+The backend is a **modular monolith**: each business area (auth, listing, room, booking, payment, earnings, review, notification) lives in its own package. Modules talk to each other through **domain events** and small shared interfaces instead of calling each other's internals, so the system can later be split into microservices.
 
 ---
 
@@ -71,7 +78,8 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - **JWT stored in HttpOnly cookies** with **CSRF protection** (`X-XSRF-TOKEN` header)
 - Logout with **token revocation** (blocked-token table plus a scheduled cleanup job)
 - **Forgot password** flow with OTP and resend cooldown (HTTP 429 on rate limit)
-- Profile: edit details, upload or remove profile photo (Cloudinary), change password, delete account
+- Profile: edit details, upload or remove profile photo (Cloudinary), change password
+- **Delete account** with a 30-day window before the data is purged; an admin can restore the account within that window
 - Role-based access with Spring method security
 
 ### Hosts
@@ -92,14 +100,24 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - **48-hour free cancellation** policy with refund handling
 - Maximum stay of 30 nights
 - **Razorpay (test mode)** checkout with signature verification and webhooks; the **webhook is the source of truth** for payment status
-- A **mock payment gateway** for local development, guarded so it cannot run in production
+- A **mock payment gateway** for development, off in production unless explicitly enabled for demos
 - Scheduled timers for booking completion, payment expiry and refunds
 - Safe under concurrency (for example, a cancel racing a payment, or two cancels at once)
+
+### Reviews and ratings
+
+- Only a guest with a **completed stay** can review, **one review per booking**, so nobody can review a place they never stayed in
+- **1 to 5 stars** with an optional comment (up to 1,000 characters)
+- Guests can **edit or delete** their review; edited reviews are marked as edited
+- Hosts can **reply** to a review (one reply per review); the guest gets an in-app notification
+- Admins can remove abusive or fake reviews
+- Each listing stores its **average rating and review count**, recalculated under a row lock so two reviews at the same time can't produce a wrong average
+- Public, paged review list on the listing page (newest first)
 
 ### Discovery
 
 - Explore page with categories, pagination and skeleton loading
-- Listing detail page with gallery, map, rooms and date-range picker
+- Listing detail page with gallery, map, rooms, reviews and date-range picker
 - **Favorites**
 
 ### Administration
@@ -108,13 +126,13 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Blocking a host **suspends all their listings**; unblocking **restores** the ones that were live
 - Listing moderation: suspend or unsuspend with a reason
 - Host request queue with a pending-count badge
-- All bookings and payments views
+- Admin overview, all bookings, and payments needing attention
 - Cache admin endpoint
 
 ### Notifications
 
 - **Email notifications** (OTP, booking and account events), sent asynchronously
-- **In-app notification bell** with read and delete actions
+- **In-app notification bell** with read and delete actions (bookings, payments, refunds, reviews and replies)
 
 ---
 
@@ -162,13 +180,13 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 
 **Backend**
 
-- Java, Spring Boot, Spring Security, Spring Data JPA (Hibernate)
-- MySQL (run in Docker)
+- Java 25, Spring Boot 4, Spring Security, Spring Data JPA (Hibernate)
+- PostgreSQL (migrated from MySQL)
 - JWT (cookie-based) and CSRF protection
 - Caffeine cache
 - Spring application events and `@Async` listeners
-- Cloudinary (images), Mapbox (geocoding), Razorpay (payments, test mode)
-- Swagger / OpenAPI
+- Cloudinary (images), Mapbox (geocoding), Razorpay (payments, test mode), Zoho Mail API (emails)
+- Swagger / OpenAPI (disabled in production)
 - Maven (wrapper included)
 
 **Frontend**
@@ -180,28 +198,37 @@ The backend is a **modular monolith**: each business area (auth, listing, room, 
 - Tailwind CSS v4, Motion (animations)
 - Sonner (toasts)
 
+**Testing, CI/CD and hosting**
+
+- JUnit 5, Mockito, AssertJ, Spring Boot test slices
+- Testcontainers (real PostgreSQL in Docker for integration tests)
+- GitHub Actions
+- Docker, Render (backend), Netlify (frontend), Aiven (managed PostgreSQL), UptimeRobot (uptime monitoring)
+
 ---
 
 ## Architecture
 
 ```
-                ┌──────────────────────────────┐
-                │     React frontend (Vite)    │
-                └──────────────┬───────────────┘
-                               │ HTTPS, JWT cookie + CSRF header
-                ┌──────────────▼───────────────┐
-                │ Spring Boot modular monolith │
-                │                              │
-                │ auth  listing  room  booking │
-                │ payment  earnings  notif.    │
-                │          ▲         │         │
-                │          └─ events ┘         │
-                └──────┬────────┬────────┬─────┘
-                       │        │        │
-                     MySQL  Cloudinary  Mapbox / Razorpay
+                ┌───────────────────────────────┐
+                │     React frontend (Netlify)   │
+                └──────────────┬────────────────┘
+                               │  HTTPS, JWT cookie + CSRF header
+                ┌──────────────▼────────────────┐
+                │ Spring Boot modular monolith   │
+                │          (Render)              │
+                │  auth  listing  room  booking  │
+                │  payment  earnings  review     │
+                │  notification                  │
+                │          ▲         │           │
+                │          └─ events ┘           │
+                └───┬────────┬────────┬──────────┘
+                    │        │        │
+            PostgreSQL   Cloudinary  Mapbox / Razorpay / Zoho Mail
+             (Aiven)
 ```
 
-- **`common`** holds what modules share: domain events (`UserBlockedEvent`, `ListingSuspendEvent`, `BookingConfirmedEvent`, ...), small contracts (`HostDirectory`, `UserDirectory`, `BookingGuard`, `BookingPayments`, `PaymentRefunds`), the global exception handler and a hotel clock.
+- **`common`** holds what modules share: domain events (`UserBlockedEvent`, `ListingSuspendEvent`, `BookingConfirmedEvent`, ...), small contracts (`HostDirectory`, `UserDirectory`, `BookingGuard`, `BookingPayments`, `PaymentRefunds`, `ReviewableBookings`, `ListingRatings`), the global exception handler and a hotel clock.
 - Modules **publish events** instead of calling each other. For example, blocking a user publishes `UserBlockedEvent`; the listing module listens and suspends that host's listings, and the notification module sends an email.
 - Cache evictions run **after the transaction commits** (`AfterCommitCacheEvictor`) so the cache never holds data that was rolled back.
 
@@ -222,10 +249,58 @@ Diagrams are in [`docs/diagrams`](docs/diagrams):
 
 ---
 
+## Deployment and CI/CD
+
+| Part     | Hosted on                                       |
+| -------- | ----------------------------------------------- |
+| Frontend | **Netlify**                                     |
+| Backend  | **Render** (Docker image built from `backend/`) |
+| Database | **Aiven** managed PostgreSQL                    |
+| Uptime   | **UptimeRobot** pings the API every 5 minutes   |
+
+Every change goes through a branch and a pull request:
+
+```
+ feature branch ──► Pull request ──► GitHub Actions CI
+                        │              ├─ Backend tests  (./mvnw verify: unit + integration tests)
+                        │              └─ Frontend build (npm ci, lint, npm run build)
+                        │
+                        └─► Netlify deploy preview (for frontend changes)
+
+ merge to main ──► CI runs again on main
+                     │
+                     ├─► Render deploys the backend ONLY after CI is green
+                     │   (and only when files under backend/ changed)
+                     └─► Netlify deploys the frontend
+```
+
+- The workflow lives in [`.github/workflows/ci.yml`](.github/workflows/ci.yml).
+- Render's auto-deploy is set to **"After CI checks pass"**, so a failing test means no deploy.
+- Render's build filter only watches `backend/**`, so frontend or docs changes don't restart the backend.
+- Netlify builds from `frontend/` and creates a preview site for each frontend pull request.
+
+---
+
+## Testing
+
+| Type              | Naming  | What it covers                                                                         | Runs with       |
+| ----------------- | ------- | -------------------------------------------------------------------------------------- | --------------- |
+| Unit tests        | `*Test` | Business rules in plain Java with Mockito, no Spring or database, runs in milliseconds | `./mvnw test`   |
+| Integration tests | `*IT`   | The whole Spring app against a **real PostgreSQL** started by Testcontainers           | `./mvnw verify` |
+
+- Integration tests use the same PostgreSQL major version as production, not an in-memory database, so SQL and locking behave the same as in production.
+- A shared container and Spring's context caching keep the integration tests fast.
+- Test data builders keep each test short and focused on what matters.
+- CI runs the full `./mvnw verify` on every pull request and on `main`.
+
+---
+
 ## Project structure
 
 ```
 blinkstay/
+├── .github/workflows/ci.yml  GitHub Actions pipeline
+│
 ├── backend/                  Spring Boot application
 │   ├── src/main/java/blinkstay/
 │   │   ├── auth/             users, JWT, OTP, host requests, admin users
@@ -234,8 +309,8 @@ blinkstay/
 │   │   ├── booking/          availability, bookings, cancellation, timers
 │   │   ├── payment/          payment gateways (mock, Razorpay), webhooks, refunds
 │   │   ├── earnings/         host earnings ledger and dashboard
+│   │   ├── review/           reviews, ratings and host replies
 │   │   ├── notification/     email and in-app notifications
-│   │   ├── review/           reviews (in progress)
 │   │   ├── common/           shared events, contracts, exceptions
 │   │   ├── seed/             sample data loader
 │   │   └── BackendApplication.java
@@ -243,7 +318,10 @@ blinkstay/
 │   │   ├── application.properties
 │   │   ├── application-dev.properties
 │   │   ├── application-prod.properties
-│   │   └── seed/BlinkStay.listings.json
+│   │   └── seed/             sample listings and reviews (JSON)
+│   ├── src/test/java/        unit (*Test) and integration (*IT) tests
+│   ├── db/                   database schema scripts
+│   ├── Dockerfile
 │   └── pom.xml
 │
 ├── frontend/                 React + Vite application
@@ -259,7 +337,9 @@ blinkstay/
 │
 ├── system-design/            requirements, database, API, caching,
 │                             concurrency, scalability and flow write-ups
-└── docs/diagrams/            PlantUML sources and rendered PNGs
+└── docs/
+    ├── diagrams/             PlantUML sources and rendered PNGs
+    └── screenshots/          README images and demo video
 ```
 
 Each backend module follows the same layout: `controller`, `dto`, `entities`, `enums`, `repository`, `service`, `serviceImpl`, and where needed `listener`, `timer` or `scheduler`.
@@ -270,18 +350,21 @@ Each backend module follows the same layout: `controller`, `dto`, `entities`, `e
 
 ### Prerequisites
 
-- JDK (version as set in `backend/pom.xml`)
-- Node.js 18 or newer and npm
-- Docker (for MySQL)
+- JDK 25
+- Node.js 22 and npm
+- PostgreSQL (local install or Docker)
+- Docker Desktop (needed for the integration tests)
 - Free accounts for Cloudinary, Mapbox and Razorpay (test mode) if you want those features
 
-### 1. Start MySQL
+### 1. Start PostgreSQL
+
+Use a local PostgreSQL install, or run it in Docker:
 
 ```bash
-docker run -d --name blinkstay-mysql \
-  -e MYSQL_ROOT_PASSWORD=your_password \
-  -e MYSQL_DATABASE=blinkstay \
-  -p 3306:3306 mysql:8
+docker run -d --name blinkstay-postgres \
+  -e POSTGRES_PASSWORD=your_password \
+  -e POSTGRES_DB=blinkstay \
+  -p 5432:5432 postgres:18
 ```
 
 ### 2. Configure the backend
@@ -293,7 +376,7 @@ Create `backend/.env` (it is not committed) and fill in the values that `applica
 - Cloudinary cloud name, API key and secret
 - Mapbox access token
 - Razorpay key ID, key secret and webhook secret
-- mail (SMTP) settings
+- mail settings (with mail disabled, emails are printed to the console)
 
 ### 3. Run the backend
 
@@ -302,7 +385,7 @@ cd backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-On Windows use `mvnw.cmd`. Sample listings are seeded on first start from `resources/seed/BlinkStay.listings.json`.
+On Windows use `mvnw.cmd`. Sample listings (and, if enabled, sample reviews) are seeded on first start.
 
 ### 4. Run the frontend
 
@@ -322,24 +405,39 @@ npm run dev
 
 Open http://localhost:5173.
 
+### 5. Run the tests
+
+```bash
+cd backend
+./mvnw test      # unit tests only (no Docker needed)
+./mvnw verify    # unit + integration tests (Docker Desktop must be running)
+
+cd ../frontend
+npm run lint
+npm run build
+```
+
 > **Testing the API with Postman:** every non-GET request needs the `X-XSRF-TOKEN` header, copied from the `XSRF-TOKEN` cookie.
 
 ---
 
 ## API overview
 
-The API is versioned by area. Full request and response details are in Swagger and in [`system-design/05-api-design.md`](system-design/05-api-design.md).
+The API is versioned by area. Full request and response details are in Swagger (local only) and in [`system-design/05-api-design.md`](system-design/05-api-design.md).
 
-| Area                                                       | Base path                |
-| ---------------------------------------------------------- | ------------------------ |
-| Auth (register, OTP, login, logout, forgot/reset password) | `/api/v1/auth`           |
-| Admin users (list, block, unblock)                         | `/api/v2/admin/users`    |
-| Listings, publish/pause/resume, my listings                | `/api/v3/listings`       |
-| Admin listing moderation                                   | `/api/v3/admin/listings` |
-| Favorites                                                  | `/api/v3/favorites`      |
-| Availability and bookings                                  | `/api/v5/bookings`       |
-| Host reservations                                          | `/api/v5/host/bookings`  |
-| Admin bookings                                             | `/api/v5/admin/bookings` |
+| Area                                                       | Base path                              |
+| ---------------------------------------------------------- | -------------------------------------- |
+| Auth (register, OTP, login, logout, forgot/reset password) | `/api/v1/auth`                         |
+| Admin users (list, block, unblock)                         | `/api/v2/admin/users`                  |
+| Listings, publish/pause/resume, my listings                | `/api/v3/listings`                     |
+| Admin listing moderation                                   | `/api/v3/admin/listings`               |
+| Favorites                                                  | `/api/v3/favorites`                    |
+| Availability and bookings                                  | `/api/v5/bookings`                     |
+| Host reservations                                          | `/api/v5/host/bookings`                |
+| Admin bookings                                             | `/api/v5/admin/bookings`               |
+| Public reviews of a listing                                | `/api/v5/listings/{listingId}/reviews` |
+| Write, edit, delete and reply to reviews                   | `/api/v5/reviews`                      |
+| Admin review removal                                       | `/api/v5/admin/reviews`                |
 
 ---
 
@@ -366,9 +464,12 @@ The [`system-design`](system-design) folder holds the planning behind the projec
 - [x] Booking with payment hold, cancellation and refunds
 - [x] Razorpay test-mode payments with webhooks
 - [x] Host earnings dashboard
-- [ ] Reviews and ratings
+- [x] Reviews and ratings
+- [x] Migration from MySQL to PostgreSQL
+- [x] Live deployment (Netlify, Render, Aiven)
+- [x] Automated tests and CI/CD with GitHub Actions
+- [ ] Short-lived access tokens with rotating refresh tokens
 - [ ] Monitoring with Prometheus and Grafana
-- [ ] Live deployment
 - [ ] Split into microservices
 
 ---

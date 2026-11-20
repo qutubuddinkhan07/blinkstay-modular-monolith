@@ -226,6 +226,31 @@
                     </execution>
                 </executions>
             </plugin>
+
+            <!-- JaCoCo: measures which lines the tests ran.
+                 prepare-agent sets the JVM "argLine" that both Surefire (*Test) and
+                 Failsafe (*IT) use, so one report covers unit and integration tests.
+                 Report: backend/target/site/jacoco/index.html after "mvn verify". -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.15</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals>
+                            <goal>prepare-agent</goal>
+                        </goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>report</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
     </build>
 
