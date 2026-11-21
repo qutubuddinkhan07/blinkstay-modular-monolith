@@ -26,13 +26,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * Plain unit test, real objects. BookingRules reads the real clock, so dates are
  * relative to TestDates.today() (backlog item 11).
  */
-public class BookingRulesTest {
+class BookingRulesTest {
 
     private BookingRules rules;
     private LocalDate today;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
         rules = new BookingRules(new BookingProperties()); // max 30 nights, 365 days ahead
         today = TestDates.today();
     }
@@ -40,6 +40,7 @@ public class BookingRulesTest {
     @Nested
     @DisplayName("validateStay")
     class ValidateStay {
+
         @Test
         void validStay_returnsNumberOfNights() {
             int nights = rules.validateStay(today.plusDays(10), today.plusDays(12), 1, 2);
@@ -56,42 +57,42 @@ public class BookingRulesTest {
 
         @Test
         void missingDates_isBadRequest() {
-            assertBadRequest(() -> rules.validateStay(null, today.plusDays(2), 1, 1), "Check-in and check-out dates " +
-                    "are required");
+            assertBadRequest(() -> rules.validateStay(null, today.plusDays(2), 1, 1),
+                    "Check-in and check-out dates are required");
         }
 
         @ParameterizedTest(name = "rooms = {0}")
         @NullSource
         @ValueSource(ints = {0, -1, 11})
         void roomsOutside1To10_isBadRequest(Integer rooms) {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(2), rooms, 1), "Rooms must be" +
-                    " between 1 and 10");
+            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(2), rooms, 1),
+                    "Rooms must be between 1 and 10");
         }
 
         @ParameterizedTest(name = "guests = {0}")
         @NullSource
         @ValueSource(ints = {0, 51})
-        void guestOutside1To50_isBadRequest(Integer guests) {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(2), 1, guests), "Guests must be " +
-                    "between 1 and 50");
+        void guestsOutside1To50_isBadRequest(Integer guests) {
+            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(2), 1, guests),
+                    "Guests must be between 1 and 50");
         }
 
         @Test
         void checkInYesterday_isBadRequest() {
-            assertBadRequest(() -> rules.validateStay(today.minusDays(1), today.plusDays(1), 1, 1), "Check-in cannot be " +
-                    "in the past");
+            assertBadRequest(() -> rules.validateStay(today.minusDays(1), today.plusDays(1), 1, 1),
+                    "Check-in cannot be in the past");
         }
 
         @Test
         void checkOutSameDayAsCheckIn_isBadRequest() {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(5), today.plusDays(5), 1, 1), "Check-out must be " +
-                    "after check-in");
+            assertBadRequest(() -> rules.validateStay(today.plusDays(5), today.plusDays(5), 1, 1),
+                    "Check-out must be after check-in");
         }
 
         @Test
-        void checkOutBeforeCheckIn_isRequest() {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(5), today.plusDays(3), 1, 1), "Check-out must be " +
-                    "after check-in");
+        void checkOutBeforeCheckIn_isBadRequest() {
+            assertBadRequest(() -> rules.validateStay(today.plusDays(5), today.plusDays(3), 1, 1),
+                    "Check-out must be after check-in");
         }
 
         @Test
@@ -103,8 +104,8 @@ public class BookingRulesTest {
 
         @Test
         void checkIn366DaysAhead_isBadRequest() {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(366), today.plusDays(367), 1, 1), "Bookings open up" +
-                    " to 365 days ahead");
+            assertBadRequest(() -> rules.validateStay(today.plusDays(366), today.plusDays(367), 1, 1),
+                    "Bookings open up to 365 days ahead");
         }
 
         @Test
@@ -116,22 +117,23 @@ public class BookingRulesTest {
 
         @Test
         void thirtyOneNights_isBadRequest() {
-            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(32), 1, 1), "The maximum stay " +
-                    "is 30 nights");
+            assertBadRequest(() -> rules.validateStay(today.plusDays(1), today.plusDays(32), 1, 1),
+                    "The maximum stay is 30 nights");
         }
     }
 
     @Nested
     @DisplayName("peakUsage (rooms used on the busiest night)")
     class PeakUsage {
+
         // Example from Q46: A = 10-12 Dec with 2 rooms, B = 11-13 Dec with 1 room.
         // Rooms used per night: 10th = 2, 11th = 3, 12th = 1.
-        private final LocalDate d10 = LocalDate.of(20026, 12, 10);
+        private final LocalDate d10 = LocalDate.of(2026, 12, 10);
         private final Booking a = aBooking().stay(d10, d10.plusDays(2)).rooms(2).build();
         private final Booking b = aBooking().stay(d10.plusDays(1), d10.plusDays(3)).rooms(1).build();
 
         @Test
-        void overlappingBookings_busiestNightCountSBoth() {
+        void overlappingBookings_busiestNightCountsBoth() {
             int peak = BookingRules.peakUsage(List.of(a, b), d10, d10.plusDays(3));
 
             assertThat(peak).isEqualTo(3);
@@ -161,7 +163,7 @@ public class BookingRulesTest {
     }
 
     /**
-     * The call must fail with HTTP 400 and exaactly this reason.
+     * The call must fail with HTTP 400 and exactly this reason.
      */
     private static void assertBadRequest(ThrowingCallable call, String reason) {
         assertThatThrownBy(call)
