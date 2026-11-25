@@ -1,6 +1,7 @@
 package blinkstay.support;
 
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 
@@ -17,6 +18,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @SpringBootTest
+@AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Import(PostgresContainerConfig.class)
 public @interface IntegrationTest {
