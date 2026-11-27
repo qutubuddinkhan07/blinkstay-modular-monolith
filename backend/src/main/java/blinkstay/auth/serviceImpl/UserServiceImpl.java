@@ -5,13 +5,15 @@ import blinkstay.auth.entities.User;
 import blinkstay.auth.enums.UserRole;
 import blinkstay.auth.mapper.ModelMapper;
 import blinkstay.auth.repository.UserRepository;
-import blinkstay.auth.service.ImageUploadService;
 import blinkstay.auth.service.UserService;
 import blinkstay.common.booking.BookingGuard;
 import blinkstay.common.events.HostDetailsChangedEvent;
 import blinkstay.common.events.UserDeletedEvent;
 import blinkstay.common.exception.UserAlreadyExistsException;
 import blinkstay.common.exception.UserNotFoundException;
+import blinkstay.common.image.ImageFolder;
+import blinkstay.common.image.ImageStorage;
+import blinkstay.common.image.ImageUploadResult;
 import blinkstay.notification.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -52,7 +54,7 @@ public class UserServiceImpl implements UserService {
     private final Map<String, TempUserRegistrationData> otpHolder;
 
     @Qualifier("authImageUploadService")
-    private final ImageUploadService imageUploadService;
+    private final ImageStorage imageStorage;
 
     private final PasswordEncoder passwordEncoder;
 
@@ -218,9 +220,9 @@ public class UserServiceImpl implements UserService {
 
         if (tempData.getImageBytes() != null) {
             String publicId = "user_" + System.currentTimeMillis(); // never put the email in a public URL
-            ImageUploadResult result = imageUploadService.uploadImage(tempData.getImageBytes(), publicId);
-            user.setProfileImgUrl(result.getUrl());
-            user.setImagePublicId(result.getPublicId());
+            ImageUploadResult result = imageStorage.upload(tempData.getImageBytes(), ImageFolder.PROFILE, publicId);
+            user.setProfileImgUrl(result.url());
+            user.setImagePublicId(result.publicId());
         }
 
         User saved;
@@ -230,7 +232,7 @@ public class UserServiceImpl implements UserService {
             // two verifications at once: the unique email constraint let only one through
             if (user.getImagePublicId() != null) {
                 try {
-                    imageUploadService.deleteImage(user.getImagePublicId());
+                    imageStorage.delete(user.getImagePublicId());
                 } catch (Exception ex) {
                     log.warn("Could not remove the orphaned image {}", user.getImagePublicId());
                 }
@@ -254,8 +256,7 @@ public class UserServiceImpl implements UserService {
     public Map<String, Object> getImageDetails(UUID userId) {
         User user = helperGetUserId(userId);
         if (user.getImagePublicId() != null) {
-            Map<String, Object> details = imageUploadService.getImageDetails(user.getImagePublicId());
-            return details;
+            return imageStorage.details(user.getImagePublicId());
         }
 
         throw new ResponseStatusException(HttpStatus.NOT_FOUND, "User image is not uploaded");
@@ -283,10 +284,10 @@ public class UserServiceImpl implements UserService {
 
         // Upload new image
         String publicId = "user_" + userId + "_" + System.currentTimeMillis();
-        ImageUploadResult result = imageUploadService.updateImage(image, publicId);
+        ImageUploadResult result = imageStorage.upload(image, ImageFolder.PROFILE, publicId);
 
-        user.setProfileImgUrl(result.getUrl());
-        user.setImagePublicId(result.getPublicId());
+        user.setProfileImgUrl(result.url());
+        user.setImagePublicId(result.publicId());
 
         user = userRepository.save(user);
 
@@ -294,7 +295,7 @@ public class UserServiceImpl implements UserService {
 
         if (oldPublicId != null && !oldPublicId.isBlank()) {
             try {
-                imageUploadService.deleteImage(oldPublicId);
+                imageStorage.delete(oldPublicId);
             } catch (Exception e) {
                 log.warn("Could not delete old image {}: {}", oldPublicId, e.getMessage());
             }
@@ -318,12 +319,8 @@ public class UserServiceImpl implements UserService {
                     "You don't have a profile image publicId [Seeded data] to delete");
         }
 
-        Map<String, Object> result = imageUploadService.deleteImage(publicId);
-        String outcome = String.valueOf(result.get("result"));
-
-        // "not found" means Cloudinary no longer has it, so clearing our record is
-        // correct
-        if (!"ok".equals(outcome) && !"not found".equals(outcome)) {
+        // true also for "not found": Cloudinary no longer has it, so clearing our record is correct
+        if (!imageStorage.delete(publicId)) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not delete the image, please try again");
         }
 
@@ -348,7 +345,7 @@ public class UserServiceImpl implements UserService {
 
         for (User user : users) {
             try {
-                imageUploadService.deleteImage(user.getImagePublicId());
+                imageStorage.delete(user.getImagePublicId());
                 user.setImagePublicId(null);
                 user.setProfileImgUrl(null);
             } catch (Exception e) {
