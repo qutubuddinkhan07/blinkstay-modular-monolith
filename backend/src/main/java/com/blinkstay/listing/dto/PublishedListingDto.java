@@ -1,0 +1,39 @@
+package com.blinkstay.listing.dto;
+
+import com.blinkstay.listing.enums.ListingCategory;
+import lombok.*;
+
+import java.math.BigDecimal;
+import java.util.List;
+import java.util.UUID;
+
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class PublishedListingDto {
+    private UUID id;
+
+    private String title;
+
+    private String location;
+
+    private String country;
+
+    private ListingCategory category;
+
+    private List<String> amenities;
+
+    private List<String> imageUrls;
+
+    private String address;
+
+    private Double averageRating;    // null until the first review
+
+    private int reviewCount;
+
+    private BigDecimal latitude;
+
+    private BigDecimal longitude;
+}
