@@ -1,38 +1,32 @@
 package blinkstay.listing.mapper;
 
-import blinkstay.listing.dto.*;
+import blinkstay.common.image.ImageUploadResult;
+import blinkstay.listing.dto.AddListingDto;
+import blinkstay.listing.dto.GeometryDto;
+import blinkstay.listing.dto.ImageDto;
+import blinkstay.listing.dto.ListingDetailsResponseDto;
 import blinkstay.listing.entities.Listing;
 import blinkstay.listing.entities.ListingGeometry;
 import blinkstay.listing.entities.ListingImage;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 
 @Component("listingModelMapper")
-@SuppressWarnings({"rawtypes"})
 public class ModelMapper {
-    public ImageUploadResult objectToImageUploadResult(Map uploadResult, Long size) {
-        return ImageUploadResult.builder().url((String) uploadResult.get("secure_url"))
-                .publicId((String) uploadResult.get("public_id")).size(size).format((String) uploadResult.get("format"))
-                .build();
-    }
 
     public Listing addListingDtoToListing(AddListingDto dto, UUID managerId) {
-        Listing listing = Listing.builder().title(dto.getTitle()).location(dto.getLocation())
+        return Listing.builder().title(dto.getTitle()).location(dto.getLocation())
                 .description(dto.getDescription()).country(dto.getCountry()).amenities(dto.getAmenities())
                 .category(dto.getCategory()).managerId(managerId).build();
-
-        return listing;
     }
 
+    // ImageUploadResult is a record: url() and publicId(), no getters, no builder
     public ListingImage imageUploadResultToListingImage(ImageUploadResult imageUploadResult, UUID listingId,
                                                         Integer order) {
-        ListingImage listingImage = ListingImage.builder().listingId(listingId).imageUrl(imageUploadResult.getUrl())
-                .publicId(imageUploadResult.getPublicId()).displayOrder(order).build();
-
-        return listingImage;
+        return ListingImage.builder().listingId(listingId).imageUrl(imageUploadResult.url())
+                .publicId(imageUploadResult.publicId()).displayOrder(order).build();
     }
 
     public GeometryDto geometryToGeometryDto(ListingGeometry geometry) {

@@ -5,6 +5,9 @@ import blinkstay.common.directory.HostDirectory;
 import blinkstay.common.events.ListingRestoredEvent;
 import blinkstay.common.events.ListingSuspendEvent;
 import blinkstay.common.exception.ManagerNotOwnerException;
+import blinkstay.common.image.ImageFolder;
+import blinkstay.common.image.ImageStorage;
+import blinkstay.common.image.ImageUploadResult;
 import blinkstay.common.review.ReviewCleanup;
 import blinkstay.listing.constants.ImagePublicIds;
 import blinkstay.listing.dto.*;
@@ -16,7 +19,6 @@ import blinkstay.listing.enums.ListingStatus;
 import blinkstay.listing.enums.SuspensionSource;
 import blinkstay.listing.mapper.ModelMapper;
 import blinkstay.listing.repository.*;
-import blinkstay.listing.service.ImageUploadService;
 import blinkstay.listing.service.ListingService;
 import blinkstay.listing.service.MapboxGeocodingService;
 import blinkstay.room.dto.RoomResponseDto;
@@ -48,8 +50,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ListingServiceImpl implements ListingService {
 
-    @Qualifier("lisitingImageUploadService")
-    private final ImageUploadService imageUploadService;
+    private final ImageStorage imageStorage;
 
     private final ListingRepository listingRepo;
 
@@ -84,7 +85,7 @@ public class ListingServiceImpl implements ListingService {
         for (String publicId : publicIds) {
             try {
                 log.info("Rolling back Cloudinary image: {}", publicId);
-                imageUploadService.deleteImage(publicId);
+                imageStorage.delete(publicId);
             } catch (Exception e) {
                 log.error("Failed to delete image from Cloudinary during rollback for publicId: {}", publicId, e);
             }
@@ -156,11 +157,11 @@ public class ListingServiceImpl implements ListingService {
                 String publicId = "listing_" + savedListing.getId() + "_" + System.currentTimeMillis() + "_" + (i + 1);
 
                 // Upload to Cloudinary
-                ImageUploadResult uploadResult = imageUploadService.uploadImage(file, publicId);
+                ImageUploadResult uploadResult = imageStorage.upload(file, ImageFolder.LISTING, publicId);
 
                 // Track uploaded ID immediately after success
-                if (uploadResult != null && uploadResult.getPublicId() != null) {
-                    uploadedPublicIds.add(uploadResult.getPublicId());
+                if (uploadResult != null && uploadResult.publicId() != null) {
+                    uploadedPublicIds.add(uploadResult.publicId());
                 }
 
                 ListingImage listingImage = modelMapper.imageUploadResultToListingImage(uploadResult,
@@ -350,10 +351,10 @@ public class ListingServiceImpl implements ListingService {
 
                 String publicId = "listing_" + listingId + "_" + System.currentTimeMillis() + "_" + nextOrder;
 
-                ImageUploadResult uploadResult = imageUploadService.uploadImage(file, publicId);
+                ImageUploadResult uploadResult = imageStorage.upload(file, ImageFolder.LISTING, publicId);
 
-                if (uploadResult != null && uploadResult.getPublicId() != null) {
-                    uploadedPublicIds.add(uploadResult.getPublicId());
+                if (uploadResult != null && uploadResult.publicId() != null) {
+                    uploadedPublicIds.add(uploadResult.publicId());
                 }
 
                 ListingImage listingImage = modelMapper.imageUploadResultToListingImage(uploadResult, listingId,
@@ -408,7 +409,7 @@ public class ListingServiceImpl implements ListingService {
             log.info("Image {} is a seed image: skipping Cloudinary delete", imageId);
         } else {
             try {
-                imageUploadService.deleteImage(image.getPublicId());
+                imageStorage.delete(image.getPublicId());
             } catch (Exception e) {
                 log.error("Failed to delete Cloudinary image {} (DB row already removed)", image.getPublicId(), e);
             }
@@ -507,7 +508,7 @@ public class ListingServiceImpl implements ListingService {
     private void deleteImagesFromCloudinary(List<String> publicIds) {
         for (String publicId : publicIds) {
             try {
-                imageUploadService.deleteImage(publicId);
+                imageStorage.delete(publicId);
             } catch (Exception e) {
                 log.error("Failed to delete Cloudinary image {} after listing delete", publicId, e);
             }
@@ -638,7 +639,7 @@ public class ListingServiceImpl implements ListingService {
         if (listing.getStatus() != ListingStatus.SUSPENDED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Listing is not suspended");
         }
-        
+
         if (listing.getSuspensionSource() == SuspensionSource.OWNER_BLOCKED) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "This listing was suspended because its owner is blocked. Unblock the owner instead.");

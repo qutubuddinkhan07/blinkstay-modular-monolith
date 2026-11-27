@@ -1,4 +1,4 @@
-package blinkstay.auth.config;
+package blinkstay.common.cloudinary;
 
 import com.cloudinary.Cloudinary;
 import com.cloudinary.utils.ObjectUtils;

@@ -2,9 +2,9 @@ package blinkstay.auth.scheduler;
 
 import blinkstay.auth.entities.User;
 import blinkstay.auth.repository.UserRepository;
-import blinkstay.auth.service.ImageUploadService;
 import blinkstay.common.cache.AfterCommitCacheEvictor;
 import blinkstay.common.events.DeletedAccountPurgedEvent;
+import blinkstay.common.image.ImageStorage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,7 +27,7 @@ public class DeletedAccountPurger {
     private final UserRepository userRepository;
 
     @Qualifier("authImageUploadService")
-    private final ImageUploadService imageUploadService;
+    private final ImageStorage imageStorage;
 
     private final ApplicationEventPublisher publisher;
     private final AfterCommitCacheEvictor cacheEvictor;
@@ -58,7 +58,7 @@ public class DeletedAccountPurger {
                 @Override
                 public void afterCommit() {
                     try {
-                        imageUploadService.deleteImage(publicId);
+                        imageStorage.delete(publicId);
                     } catch (Exception e) {
                         log.error("Purge: could not delete Cloudinary image {} of user {}", publicId, userId, e);
                     }
