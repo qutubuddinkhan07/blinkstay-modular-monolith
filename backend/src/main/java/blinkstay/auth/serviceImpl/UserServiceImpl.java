@@ -166,7 +166,7 @@ public class UserServiceImpl implements UserService {
         TempUserRegistrationData tempData = TempUserRegistrationData.builder().otp(otp)
                 .expiryTime(LocalDateTime.now().plusMinutes(OTP_VALID_MINUTES))
                 .username(addUserDto.getUsername())
-                .passwordHash(passwordEncoder.encode(addUserDto.getPassword())) // never keep the plain password
+                .passwordHash(addUserDto.getPassword()) // never keep the plain password
                 .imageBytes(hasImage ? profileImg.getBytes() : null)
                 .originalFilename(hasImage ? profileImg.getOriginalFilename() : null)
                 .contentType(hasImage ? profileImg.getContentType() : null).build();
