@@ -1,0 +1,8 @@
+${AnsiColor.BRIGHT_CYAN}
+ ____  _ _       _     ____  _
+| __ )| (_)_ __ | | __/ ___|| |_ __ _ _   _
+|  _ \| | | '_ \| |/ /\___ \| __/ _` | | | |
+| |_) | | | | | |   <  ___) | || (_| | |_| |
+|____/|_|_|_| |_|_|\_\|____/ \__\__,_|\__, |
+                                      |___/
+${AnsiColor.BRIGHT_BLACK} :: BlinkStay${application.formatted-version} :: Spring Boot${spring-boot.formatted-version} :: Java ${java.version} :: profile ${spring.profiles.active:default}${AnsiColor.DEFAULT}
